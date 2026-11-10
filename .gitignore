@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+secrets/
+
+# MCP server config contains live API keys and tokens
+MCP/mcp.json
+
+# IDE / local tooling state
+.qoder/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+.vercel
+coverage/
+*.tsbuildinfo
+next-env.d.ts
