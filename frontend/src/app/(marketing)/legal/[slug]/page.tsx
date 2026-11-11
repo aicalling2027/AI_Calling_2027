@@ -10,6 +10,9 @@ import { formatDate } from "@/lib/date";
 
 type RouteParams = { slug: string };
 
+// [block] params are read to render the document, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return legalDocuments.map((document) => ({ slug: document.slug }));
 }

@@ -18,6 +18,9 @@ import {
 
 type RouteParams = { city: string };
 
+// [block] params are read to render the city page, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return cities.map((city) => ({ city: city.slug }));
 }

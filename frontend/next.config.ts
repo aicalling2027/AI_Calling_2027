@@ -5,12 +5,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
+    // Without an explicit root, Turbopack walks past this folder looking for a
+    // lockfile and can resolve from a parent directory instead.
+    root: __dirname,
   },
 };
 

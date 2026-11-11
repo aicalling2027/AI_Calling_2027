@@ -1,0 +1,107 @@
+# Local full stack: API + PostgreSQL + Redis + a Celery worker.
+#
+#   docker compose up --build
+#   open http://localhost:8000/docs
+#
+# Without a .env file the API falls back to sane development defaults and uses
+# the bundled PostgreSQL instead of SQLite.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ownai
+      POSTGRES_PASSWORD: ownai
+      POSTGRES_DB: ownai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ownai -d ownai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./Backend
+    command: ["python", "app.py", "--no-reload", "--workers", "2"]
+    env_file:
+      - ./Backend/.env
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://ownai:ownai@db:5432/ownai
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_TASK_ALWAYS_EAGER: "false"
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: ./Backend
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - --loglevel=info
+      - --concurrency=2
+    env_file:
+      - ./Backend/.env
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://ownai:ownai@db:5432/ownai
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build: ./Backend
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - beat
+      - --loglevel=info
+    env_file:
+      - ./Backend/.env
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://ownai:ownai@db:5432/ownai
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

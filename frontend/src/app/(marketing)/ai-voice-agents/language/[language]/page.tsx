@@ -12,6 +12,9 @@ import { getLanguage, landingFaq, languages } from "@/content/landings";
 
 type RouteParams = { language: string };
 
+// [block] params are read to render the language page, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return languages.map((language) => ({ language: language.slug }));
 }

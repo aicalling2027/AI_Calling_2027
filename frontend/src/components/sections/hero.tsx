@@ -25,7 +25,7 @@ const waveBars = [
   0.5, 0.8, 0.38, 0.66,
 ];
 
-/** The headline with one keyword in coral and a hand-drawn underline. */
+/** The headline with one keyword in tangerine and a hand-drawn underline. */
 function Headline() {
   const index = hero.title.indexOf(hero.highlight);
 
@@ -36,13 +36,13 @@ function Headline() {
   return (
     <>
       {hero.title.slice(0, index)}
-      <span className="relative inline-block text-coral-deep">
+      <span className="relative inline-block text-tangerine-deep">
         {hero.highlight}
         <svg
           aria-hidden
           viewBox="0 0 220 14"
           preserveAspectRatio="none"
-          className="absolute inset-x-0 -bottom-1.5 h-3 w-full text-coral md:-bottom-2.5"
+          className="absolute inset-x-0 -bottom-1.5 h-3 w-full text-tangerine md:-bottom-2.5"
         >
           <path
             d="M3 10.4C46 4.2 96 2.4 145 4.8c26 1.3 51 3.4 72 6"
@@ -80,7 +80,7 @@ export function Hero() {
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-ink-soft">
-              <span className="size-1.5 rounded-full bg-coral-deep" aria-hidden />
+              <span className="size-1.5 rounded-full bg-tangerine-deep" aria-hidden />
               {hero.eyebrow}
             </span>
 
@@ -122,7 +122,7 @@ export function Hero() {
                   key={item}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft"
                 >
-                  <Check className="size-3.5 shrink-0 text-coral-deep" aria-hidden />
+                  <Check className="size-3.5 shrink-0 text-tangerine-deep" aria-hidden />
                   {item}
                 </li>
               ))}
@@ -134,7 +134,7 @@ export function Hero() {
             <div className="card p-5 md:p-6">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-semibold text-ink">Call summary</p>
-                <span className="rounded-full bg-coral-tint px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-coral-ink">
+                <span className="rounded-full bg-tangerine-tint px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-tangerine-ink">
                   Illustrative
                 </span>
               </div>
@@ -143,15 +143,15 @@ export function Hero() {
                 {callRows.map((row) => (
                   <div
                     key={row.label}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-line bg-ivory-light px-3 py-2.5"
+                    className="flex items-center justify-between gap-4 rounded-xl border border-line bg-cream px-3 py-2.5"
                   >
                     <dt className="text-xs uppercase tracking-[0.1em] text-ink-soft">
                       {row.label}
                     </dt>
                     <dd className="text-right text-sm font-medium text-ink">
                       {row.badge ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-coral-tint px-2.5 py-1 text-[0.7rem] font-semibold text-coral-ink">
-                          <span className="size-1.5 rounded-full bg-coral" aria-hidden />
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-tangerine-tint px-2.5 py-1 text-[0.7rem] font-semibold text-tangerine-ink">
+                          <span className="size-1.5 rounded-full bg-tangerine" aria-hidden />
                           {row.value}
                         </span>
                       ) : (
@@ -163,14 +163,14 @@ export function Hero() {
               </dl>
 
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-tint text-blue">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-cobalt-tint text-cobalt">
                   <Play className="size-4 translate-x-[1px]" aria-hidden />
                 </span>
                 <div aria-hidden className="flex h-8 flex-1 items-center gap-[3px]">
                   {waveBars.map((height, index) => (
                     <span
                       key={index}
-                      className="wave-bar w-[3px] shrink-0 rounded-full bg-blue"
+                      className="wave-bar w-[3px] shrink-0 rounded-full bg-cobalt"
                       style={{
                         height: `${Math.round(height * 30)}px`,
                         animationDelay: `${index * 70}ms`,
@@ -189,11 +189,11 @@ export function Hero() {
                   Transcript preview
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-ink">
-                  <span className="font-semibold text-blue">Agent</span> Good
+                  <span className="font-semibold text-cobalt">Agent</span> Good
                   evening, is this Priya?
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-ink">
-                  <span className="font-semibold text-blue">Priya</span> Yes, who
+                  <span className="font-semibold text-cobalt">Priya</span> Yes, who
                   is calling?
                 </p>
               </div>

@@ -3,6 +3,37 @@ node_modules/
 .pnp
 .pnp.*
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+.Python
+build/
+dist/
+*.egg-info/
+
+# Local database (regenerated on startup)
+*.db
+*.db-journal
+*.sqlite3
+aio.db
+
+# Test / tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Celery runtime state
+celerybeat-schedule*
+celerybeat.pid
+
 # Next.js
 .next/
 out/
@@ -39,3 +70,7 @@ Thumbs.db
 coverage/
 *.tsbuildinfo
 next-env.d.ts
+
+# Local scratch files
+Backend/_smoke.*
+Backend/_sig_dump.py

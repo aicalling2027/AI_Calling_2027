@@ -12,6 +12,9 @@ import { getQuestion, questions } from "@/content/questions";
 
 type RouteParams = { slug: string };
 
+// [block] params are read to render the entry, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return questions.map((question) => ({ slug: question.slug }));
 }

@@ -1,0 +1,10 @@
+# ---------------------------------------------------------------------------
+# OWN AI - development / CI dependencies
+# Install:  python -m pip install -r requirements-dev.txt
+# Test:     python -m pytest
+# ---------------------------------------------------------------------------
+-r requirements.txt
+
+pytest>=8.3.0
+pytest-cov>=6.0.0
+ruff>=0.8.0

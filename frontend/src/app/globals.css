@@ -29,10 +29,25 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* AOTMS palette — bg-ivory-light, bg-blue-night, text-coral-ink... */
+  /* AOTMS palette — brand names first: bg-cobalt, text-tangerine, bg-cream. */
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
+  --color-cobalt-night: var(--cobalt-night);
+  --color-cobalt-tint: var(--cobalt-tint);
+  --color-cobalt-line: var(--cobalt-line);
+  --color-tangerine: var(--tangerine);
+  --color-tangerine-lift: var(--tangerine-lift);
+  --color-tangerine-deep: var(--tangerine-deep);
+  --color-tangerine-tint: var(--tangerine-tint);
+  --color-tangerine-ink: var(--tangerine-ink);
+  --color-cream: var(--cream);
+  --color-cream-deep: var(--cream-deep);
+
+  /* Legacy names, kept generated so every template written before the
+     rename inherits the new palette untouched. */
   --color-ivory-light: var(--ivory-light);
   --color-ivory: var(--ivory);
   --color-blue: var(--blue);
@@ -72,66 +87,82 @@
 :root {
   /* ------------------------------------------------------------------
      AOTMS Global Pvt. Ltd. brand palette — the single place to edit.
-     60% ivory-light / white, 30% blue, 10% coral.
+     Three colours on white: Cobalt Blue #185ADB, Tangerine #FF8A3D and
+     Cream Linen #F5F1E8. Roughly 60% white / 30% cobalt / 10% tangerine.
      ------------------------------------------------------------------ */
   --surface: #ffffff; /* cards and raised surfaces */
-  --ivory-light: #f6f3ee; /* page background */
-  --ivory: #eae6de; /* alternate section background */
+  --cream: #f5f1e8; /* Cream Linen — header bar, inset panels, quiet bands */
+  --cream-deep: #ece5d5; /* deeper cream for alternate sections */
   --ink: #14202b; /* body text */
-  --ink-soft: #4b5b68; /* secondary text (7.4:1 on ivory-light) */
-  --blue: #226192; /* primary buttons, links, icons (5.9:1 on ivory-light) */
-  --blue-night: #123a5a; /* dark sections and footer */
-  --blue-tint: #e6eef5; /* icon backgrounds, subtle fills */
-  --blue-deep: #1b5079; /* blue hover */
-  --coral: #ef8557; /* accent fills only — never white text on it */
-  --coral-lift: #f39a72; /* coral hover (lighter, keeps ink text legible) */
-  --coral-deep: #c8582b; /* accent text at display sizes (3.9:1) */
-  --coral-tint: #fde6db; /* badge backgrounds */
-  --coral-ink: #a8431e; /* small accent text: 5.4:1 on ivory-light, 5.0:1 on coral-tint */
-  --line: rgba(18, 58, 90, 0.08); /* card hairlines */
-  --hairline: rgba(18, 58, 90, 0.14); /* dividers and inputs */
-  --blue-line: rgba(34, 97, 146, 0.35); /* secondary button edge */
-  --on-night-line: rgba(255, 255, 255, 0.28); /* outlines on blue-night */
+  --ink-soft: #4b5b68; /* secondary text (7.2:1 on white) */
+  --cobalt: #185adb; /* Cobalt Blue — buttons, links, icons (5.9:1 on white) */
+  --cobalt-night: #0d2a6b; /* dark bands and footer (13.4:1 with white) */
+  --cobalt-tint: #dfe8fc; /* icon backgrounds, subtle fills */
+  --cobalt-deep: #1246b4; /* cobalt hover */
+  --tangerine: #ff8a3d; /* Tangerine — accent fills only, never white text */
+  --tangerine-lift: #ffa366; /* tangerine hover (lighter, keeps ink text legible) */
+  --tangerine-deep: #d2641a; /* accent text at display sizes (3.8:1 on white) */
+  --tangerine-tint: #ffe6d5; /* badge backgrounds */
+  --tangerine-ink: #a84a12; /* small accent text: 5.8:1 on white, 4.8:1 on tint */
 
-  --elevation-card: 0 10px 30px rgba(18, 58, 90, 0.08);
-  --elevation-hover: 0 18px 40px rgba(18, 58, 90, 0.16);
-  --elevation-button: 0 8px 20px -8px rgba(18, 58, 90, 0.55);
-  --elevation-pill: 0 1px 2px rgba(18, 58, 90, 0.1);
+  /* Legacy names — anything written before the rename keeps working. */
+  --ivory-light: var(--cream);
+  --ivory: var(--cream-deep);
+  --blue: var(--cobalt);
+  --blue-night: var(--cobalt-night);
+  --blue-tint: var(--cobalt-tint);
+  --blue-deep: var(--cobalt-deep);
+  --coral: var(--tangerine);
+  --coral-lift: var(--tangerine-lift);
+  --coral-deep: var(--tangerine-deep);
+  --coral-tint: var(--tangerine-tint);
+  --coral-ink: var(--tangerine-ink);
 
-  /* shadcn semantic mapping */
-  --background: var(--ivory-light);
+  --line: rgba(13, 42, 107, 0.08); /* card hairlines */
+  --hairline: rgba(13, 42, 107, 0.14); /* dividers and inputs */
+  --cobalt-line: rgba(24, 90, 219, 0.35); /* secondary button edge */
+  --blue-line: var(--cobalt-line);
+  --on-night-line: rgba(255, 255, 255, 0.28); /* outlines on cobalt-night */
+
+  --elevation-card: 0 10px 30px rgba(13, 42, 107, 0.08);
+  --elevation-hover: 0 18px 40px rgba(13, 42, 107, 0.16);
+  --elevation-button: 0 8px 20px -8px rgba(24, 90, 219, 0.55);
+  --elevation-pill: 0 1px 2px rgba(13, 42, 107, 0.1);
+
+  /* shadcn semantic mapping — white page, cobalt primary, tangerine accent. */
+  --background: #ffffff;
   --foreground: var(--ink);
   --card: var(--surface);
   --card-foreground: var(--ink);
   --popover: var(--surface);
   --popover-foreground: var(--ink);
-  --primary: var(--blue);
+  --primary: var(--cobalt);
   --primary-foreground: #ffffff;
-  --secondary: var(--blue-tint);
-  --secondary-foreground: var(--blue);
-  --muted: var(--ivory);
+  --secondary: var(--cobalt-tint);
+  --secondary-foreground: var(--cobalt);
+  --muted: var(--cream-deep);
   --muted-foreground: var(--ink-soft);
-  --accent: var(--coral);
+  --accent: var(--tangerine);
   --accent-foreground: var(--ink);
   --destructive: #b3261e;
   --border: var(--hairline);
   --input: var(--hairline);
-  --ring: var(--blue);
-  --chart-1: var(--blue);
-  --chart-2: var(--coral);
-  --chart-3: var(--blue-night);
-  --chart-4: var(--coral-deep);
+  --ring: var(--cobalt);
+  --chart-1: var(--cobalt);
+  --chart-2: var(--tangerine);
+  --chart-3: var(--cobalt-night);
+  --chart-4: var(--tangerine-deep);
   --chart-5: var(--ink-soft);
   --radius: 0.75rem;
 
   --sidebar: var(--surface);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--blue);
+  --sidebar-primary: var(--cobalt);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--blue-tint);
-  --sidebar-accent-foreground: var(--blue);
+  --sidebar-accent: var(--cobalt-tint);
+  --sidebar-accent-foreground: var(--cobalt);
   --sidebar-border: var(--hairline);
-  --sidebar-ring: var(--blue);
+  --sidebar-ring: var(--cobalt);
 }
 
 @layer base {
@@ -161,7 +192,7 @@
 
   .eyebrow {
     @apply text-xs font-semibold tracking-[0.18em] uppercase;
-    color: var(--coral-ink);
+    color: var(--tangerine-ink);
   }
 
   .display {
@@ -208,23 +239,23 @@
   }
 
   .icon-tile-blue {
-    background-color: var(--blue-tint);
-    color: var(--blue);
+    background-color: var(--cobalt-tint);
+    color: var(--cobalt);
   }
 
   .icon-tile-accent {
-    background-color: var(--coral-tint);
-    color: var(--coral-ink);
+    background-color: var(--tangerine-tint);
+    color: var(--tangerine-ink);
   }
 
   .icon-tile-quiet {
-    background-color: var(--ivory);
-    color: var(--blue);
+    background-color: var(--cream-deep);
+    color: var(--cobalt);
   }
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
-    background-color: var(--blue);
+    background-color: var(--cobalt);
     color: #ffffff;
     box-shadow: var(--elevation-button);
     transition:
@@ -233,15 +264,15 @@
   }
 
   .btn-primary:hover {
-    background-color: var(--blue-deep);
-    box-shadow: 0 10px 24px -8px rgba(18, 58, 90, 0.6);
+    background-color: var(--cobalt-deep);
+    box-shadow: 0 10px 24px -8px rgba(24, 90, 219, 0.6);
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
     background-color: var(--surface);
-    color: var(--blue);
-    border: 1px solid var(--blue-line);
+    color: var(--cobalt);
+    border: 1px solid var(--cobalt-line);
     transition:
       background-color 0.2s ease,
       color 0.2s ease,
@@ -249,21 +280,21 @@
   }
 
   .btn-secondary:hover {
-    background-color: var(--blue-tint);
-    color: var(--blue-deep);
-    border-color: var(--blue);
+    background-color: var(--cobalt-tint);
+    color: var(--cobalt-deep);
+    border-color: var(--cobalt);
   }
 
-  /* Accent button — coral fill with ink text, used sparingly. */
+  /* Accent button — tangerine fill with ink text, used sparingly. */
   .btn-accent {
     @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
-    background-color: var(--coral);
+    background-color: var(--tangerine);
     color: var(--ink);
     transition: background-color 0.2s ease;
   }
 
   .btn-accent:hover {
-    background-color: var(--coral-lift);
+    background-color: var(--tangerine-lift);
   }
 
   .btn-on-night {
@@ -287,13 +318,13 @@
     box-shadow: var(--elevation-pill);
   }
 
-  /* Soft radial glows behind the hero — blue-tint left, coral-tint right. */
+  /* Soft radial glows behind the hero — cobalt left, tangerine right. */
   .glow-blue {
-    background-image: radial-gradient(closest-side, var(--blue-tint), transparent);
+    background-image: radial-gradient(closest-side, var(--cobalt-tint), transparent);
   }
 
   .glow-coral {
-    background-image: radial-gradient(closest-side, var(--coral-tint), transparent);
+    background-image: radial-gradient(closest-side, var(--tangerine-tint), transparent);
   }
 
   /* Animated audio waveform bars in the hero call card. */
@@ -302,9 +333,9 @@
     transform-origin: center;
   }
 
-  /* Full-bleed dark band: white text, coral accents. Used once per page. */
+  /* Full-bleed dark band: white text, tangerine accents. Used once per page. */
   .section-night {
-    background-color: var(--blue-night);
+    background-color: var(--cobalt-night);
     color: #ffffff;
   }
 }

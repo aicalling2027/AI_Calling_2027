@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
 
+import { AuthNav, AuthNavMobile } from "@/components/auth/auth-nav";
 import { Container } from "@/components/layout/container";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,7 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-ivory-light/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-line bg-cream/85 backdrop-blur-md">
       <Container>
         <div className="flex h-16 items-center justify-between gap-6 md:h-20">
           <Link
@@ -91,7 +92,7 @@ export function SiteHeader() {
                     aria-expanded={openMenu === item.label}
                     aria-controls={`menu-${item.label}`}
                     onClick={() => toggleMenu(item.label)}
-                    className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-blue-tint/70 hover:text-blue"
+                    className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-cobalt-tint/70 hover:text-cobalt"
                   >
                     {item.label}
                     <ChevronDown
@@ -111,7 +112,7 @@ export function SiteHeader() {
                         <Link
                           key={child.href}
                           href={child.href}
-                          className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-blue-tint/60"
+                          className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-cobalt-tint/60"
                         >
                           <span className="block text-sm font-semibold text-ink">
                             {child.label}
@@ -130,7 +131,7 @@ export function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href ?? "#"}
-                  className="rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-blue-tint/70 hover:text-blue"
+                  className="rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-cobalt-tint/70 hover:text-cobalt"
                 >
                   {item.label}
                 </Link>
@@ -138,6 +139,8 @@ export function SiteHeader() {
             )}
           </nav>
 
+          {/* The primary CTA lives in the hero only, so the header corner stays
+              quiet: one outline link plus the account entry. */}
           <div className="hidden items-center gap-2 xl:flex">
             <Link
               href={cta.secondary.href}
@@ -148,12 +151,7 @@ export function SiteHeader() {
             >
               {cta.secondary.label}
             </Link>
-            <Link
-              href={cta.primary.href}
-              className={cn(buttonVariants({ size: "lg" }), "h-10 px-5 text-sm")}
-            >
-              {cta.primary.label}
-            </Link>
+            <AuthNav />
           </div>
 
           <button
@@ -170,7 +168,7 @@ export function SiteHeader() {
       </Container>
 
       {mobileOpen ? (
-        <div id="mobile-nav" className="border-t border-line bg-ivory-light xl:hidden">
+        <div id="mobile-nav" className="border-t border-line bg-cream xl:hidden">
           <Container className="py-4">
             <nav aria-label="Mobile" className="flex flex-col">
               {primaryNav.map((item) =>
@@ -202,12 +200,6 @@ export function SiteHeader() {
             </nav>
             <div className="mt-4 flex flex-col gap-2">
               <Link
-                href={cta.primary.href}
-                className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-sm")}
-              >
-                {cta.primary.label}
-              </Link>
-              <Link
                 href={cta.secondary.href}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
@@ -216,6 +208,7 @@ export function SiteHeader() {
               >
                 {cta.secondary.label}
               </Link>
+              <AuthNavMobile />
             </div>
           </Container>
         </div>

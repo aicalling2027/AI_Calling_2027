@@ -13,6 +13,9 @@ import { site } from "@/lib/site";
 
 type RouteParams = { slug: string };
 
+// [block] params are read to render the term, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return glossaryTerms.map((term) => ({ slug: term.slug }));
 }

@@ -17,6 +17,9 @@ type RouteParams = { slug: string };
 
 // `cacheComponents` forbids route segment config (dynamicParams/revalidate),
 // so unknown slugs are rejected inside the page via notFound().
+// [block] params are read to render the page, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return productPages.map((page) => ({ slug: page.slug }));
 }

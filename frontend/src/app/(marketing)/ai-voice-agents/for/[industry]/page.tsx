@@ -13,6 +13,9 @@ import { getIndustry, industries } from "@/content/landings";
 
 type RouteParams = { industry: string };
 
+// [block] params are read to render the industry page, so this route cannot stream an instant shell.
+export const instant = false;
+
 export function generateStaticParams(): RouteParams[] {
   return industries.map((industry) => ({ industry: industry.slug }));
 }

@@ -1,0 +1,1879 @@
+AOTMS AI CALLING 
+COMPLETE PRODUCT REQUIREMENTS DOCUMENT (PRD) 
+Organization: Academy of Tech Masters 
+Product Name: OWN AI 
+Product Category: Multilingual AI Calling SaaS Platform 
+Document Version: 1.0 
+Document Status: Initial Consolidated Draft – Pending Reverse Engineering Validation 
+Reference Product: Outpero AI 
+Development Approach: Agile, Modular Monolith 
+Repository: AOTMS_AI_2027 
+ 
+TABLE OF CONTENTS 
+1. Product Overview 
+2. Product Vision and Objectives 
+3. Target Users and User Roles 
+4. Application Navigation and Modules 
+5. Dashboard 
+6. Employees 
+7. New Employee Creation 
+8. Employee Management Workspace 
+9. Talk to an Employee 
+10. Instant Leads 
+11. Bulk Campaigns 
+12. Inbound Calls 
+13. Leads & Results 
+14. All Conversations 
+15. Train Employees 
+16. Phone Numbers 
+17. Performance 
+18. Billing 
+19. Settings 
+
+=== PAGE BREAK ===
+
+20. Developers 
+21. Integrations 
+22. Technical Architecture 
+23. Technology Stack 
+24. Programming Architecture 
+25. Complete Folder Structure 
+26. Database Architecture 
+27. API Architecture 
+28. AI Voice Processing Architecture 
+29. Workflow Automation 
+30. Security Requirements 
+31. Non-Functional Requirements 
+32. Testing Requirements 
+33. Deployment and Infrastructure 
+34. Development Roadmap 
+35. Development Time Estimation 
+36. MVP Scope 
+37. Acceptance Criteria 
+38. Reverse Engineering Validation 
+39. Future Scope 
+ 
+1. PRODUCT OVERVIEW 
+1.1 Introduction 
+OWN AI is a multilingual AI Calling SaaS platform designed to help businesses automate inbound and 
+outbound voice conversations through intelligent AI employees. 
+The platform enables organizations to create, configure, train, deploy, and manage AI voice employees 
+capable of performing business operations such as: 
+• Lead Generation 
+• Customer Support 
+
+=== PAGE BREAK ===
+
+• Sales Calling 
+• Appointment Scheduling 
+• Follow-up Calls 
+• Customer Qualification 
+• Information Collection 
+• Business Communication 
+• Inbound Call Handling 
+• Outbound Call Campaigns 
+Users can create AI employees using custom prompts, select supported languages, configure voices, 
+select AI models, provide knowledge sources, and connect phone numbers. 
+The platform will provide a centralized dashboard to monitor calls, leads, conversations, employee 
+performance, usage, and billing. 
+1.2 Product Vision 
+To build a scalable multilingual AI Calling platform that enables businesses across India and other 
+markets to automate voice-based customer interactions using configurable AI employees. 
+1.3 Product Goals 
+1. Build a complete AI Employee creation and management system. 
+2. Support multilingual AI voice conversations, targeting 15+ Indian languages. 
+3. Enable inbound and outbound AI calling. 
+4. Provide instant lead calling and bulk campaign management. 
+5. Allow users to train AI employees with business-specific knowledge. 
+6. Provide call analytics, transcripts, recordings, and summaries. 
+7. Support CRM and third-party integrations. 
+8. Automate business workflows using n8n. 
+9. Provide organization-level management and multi-tenant security. 
+10. Implement subscription and usage-based billing. 
+1.4 Product Design Principles 
+• Simple and intuitive user experience. 
+• Modular and maintainable architecture. 
+• Secure multi-tenant design. 
+
+=== PAGE BREAK ===
+
+• Provider-independent AI integration. 
+• Scalable calling infrastructure. 
+• Reliable background processing. 
+• API-first backend. 
+• Clear usage and billing transparency. 
+ 
+2. TARGET USERS 
+The platform is intended for: 
+• Small and Medium Businesses. 
+• Sales and Marketing Teams. 
+• Customer Support Teams. 
+• Call Centers. 
+• Educational Institutions. 
+• Hospitals and Clinics. 
+• Insurance and Finance Companies. 
+• Real Estate Businesses. 
+• Travel and Tourism Businesses. 
+• Local Service Providers. 
+• Jewellery and Fashion Businesses. 
+• Enterprise Organizations. 
+ 
+3. USER ROLES AND PERMISSIONS 
+3.1 Super Admin 
+Platform-level administrator. 
+Responsibilities: 
+• Manage organizations. 
+• Manage platform users. 
+• Manage subscription plans. 
+• Monitor platform usage. 
+
+=== PAGE BREAK ===
+
+• Manage AI providers. 
+• Monitor calling infrastructure. 
+• Manage platform configurations. 
+• Access platform-level analytics. 
+3.2 Organization Owner 
+Responsibilities: 
+• Manage organization. 
+• Manage subscription and billing. 
+• Create and manage employees. 
+• Manage team members. 
+• Configure integrations. 
+• View organization analytics. 
+3.3 Organization Admin 
+Responsibilities: 
+• Manage organization operations. 
+• Create AI employees. 
+• Manage campaigns. 
+• Manage leads. 
+• Manage calling configuration. 
+• Manage team permissions according to assigned access. 
+3.4 Manager 
+Responsibilities: 
+• Monitor AI employee performance. 
+• Manage leads. 
+• Review conversations. 
+• Monitor campaigns. 
+• Manage follow-ups. 
+• View operational reports. 
+3.5 Team Member 
+
+=== PAGE BREAK ===
+
+Responsibilities depend on permissions: 
+• Access assigned employees. 
+• View permitted leads. 
+• Review assigned conversations. 
+• Perform permitted calling operations. 
+All roles must be protected by Role-Based Access Control (RBAC). 
+ 
+4. APPLICATION NAVIGATION AND MODULES 
+The application will use the following navigation structure. 
+OVERVIEW 
+1. Dashboard 
+2. Employees 
+3. New Employee 
+4. Talk to an Employee 
+CALLING 
+1. Instant Leads 
+2. Bulk Campaigns 
+3. Inbound Calls 
+RESULTS & SETUP 
+1. Leads & Results 
+2. All Conversations 
+3. Train Employees 
+4. Phone Numbers 
+5. Performance 
+6. Billing 
+7. Settings 
+8. Developers 
+ 
+5. MODULE 01 – DASHBOARD 
+
+=== PAGE BREAK ===
+
+5.1 Purpose 
+The Dashboard provides a centralized overview of business operations, AI employees, calling activity, 
+leads, conversations, and performance. 
+5.2 Dashboard Components 
+A. Quick Actions 
+Provide shortcuts to frequently used actions. 
+• Create New Employee. 
+• Start Instant Lead Calling. 
+• Create Bulk Campaign. 
+• Configure Inbound Calls. 
+• Upload Leads. 
+• View Conversations. 
+B. Your AI Employees 
+Display configured AI employees. 
+Required fields: 
+• Employee Name. 
+• Avatar. 
+• Status. 
+• Supported Languages. 
+• Assigned Voice. 
+• AI Model. 
+• Total Calls. 
+• Success Rate. 
+• Last Active Time. 
+Actions: 
+• View Employee. 
+• Edit Employee. 
+• Test Employee. 
+• Activate / Deactivate. 
+
+=== PAGE BREAK ===
+
+C. Needs Your Attention 
+Display alerts and pending operational actions. 
+Examples: 
+• Failed calls. 
+• Campaign failures. 
+• Incomplete employee configuration. 
+• Low account credits. 
+• Phone number issues. 
+• Integration failures. 
+• Pending follow-ups. 
+D. Recent Summary 
+Display recent business activities: 
+• Total Calls. 
+• Leads Generated. 
+• Successful Conversations. 
+• Appointments Scheduled. 
+• Pending Follow-ups. 
+• Human Transfers. 
+E. At A Glance 
+Display important KPIs: 
+• Total Calls. 
+• Answered Calls. 
+• Missed Calls. 
+• Successful Calls. 
+• Total Leads. 
+• Qualified Leads. 
+• Average Call Duration. 
+• Credits Used. 
+F. Trends 
+
+=== PAGE BREAK ===
+
+Display interactive analytical charts. 
+Requirements: 
+• Daily view. 
+• Weekly view. 
+• Monthly view. 
+• Custom date range. 
+• Interactive tooltips. 
+• Data filters. 
+G. Calls Over Time 
+Display calling activity over time. 
+Metrics: 
+• Total Calls. 
+• Inbound Calls. 
+• Outbound Calls. 
+• Answered Calls. 
+• Failed Calls. 
+Visualization: Line Chart. 
+H. Busiest Hours 
+Display the busiest calling periods. 
+Visualization: Bar Chart. 
+I. How Conversations Ended 
+Display conversation outcomes. 
+Categories: 
+• Successful. 
+• Lead Captured. 
+• Appointment Booked. 
+• Interested. 
+• Not Interested. 
+• No Answer. 
+
+=== PAGE BREAK ===
+
+• Busy. 
+• Failed. 
+• Transferred to Human. 
+• Other. 
+Visualization: Donut / Pie Chart. 
+J. Where Conversations Came From 
+Display conversation sources. 
+Sources: 
+• Instant Leads. 
+• Bulk Campaigns. 
+• Inbound Calls. 
+• Google Sheets. 
+• Meta Lead Ads. 
+• Manual Upload. 
+• API Integration. 
+• Other Integrations. 
+Visualization: Donut Chart. 
+K. Manager Insights 
+Display operational insights. 
+Examples: 
+• Best-performing AI employees. 
+• Highest-converting campaigns. 
+• Calling hours with better response rates. 
+• Employees requiring additional training. 
+• Pending follow-ups. 
+• Failed campaign alerts. 
+AI-generated insights are a proposed enhancement. 
+L. Recent Calls 
+Display recent calls in a table. 
+
+=== PAGE BREAK ===
+
+Required columns: 
+Field Description 
+Contact Customer name and number 
+Employee Assigned AI employee 
+Channel Inbound / Outbound 
+Outcome Final call result 
+Sentiment Customer sentiment 
+Captured Captured information 
+Talk Time Conversation duration 
+Credits Credits consumed 
+Speed to Lead Time to first call attempt 
+Time Call date and time 
+Summary Conversation summary 
+Actions: 
+• View Conversation. 
+• View Transcript. 
+• Listen to Recording. 
+• View Contact. 
+• Export Data. 
+ 
+6. MODULE 02 – EMPLOYEES 
+6.1 Purpose 
+The Employees module manages all AI employees created by an organization. 
+Each employee represents an independently configurable AI voice agent. 
+6.2 Employee Listing 
+Display: 
+• Employee Name. 
+
+=== PAGE BREAK ===
+
+• Employee Avatar. 
+• Description. 
+• Languages. 
+• Voice. 
+• AI Model. 
+• Status. 
+• Total Calls. 
+• Success Rate. 
+• Creation Date. 
+Actions: 
+• View. 
+• Edit. 
+• Duplicate. 
+• Activate. 
+• Deactivate. 
+• Delete. 
+Filters: 
+• Employee Name. 
+• Status. 
+• Language. 
+• Creation Date. 
+ 
+7. MODULE 03 – NEW EMPLOYEE CREATION 
+7.1 Purpose 
+Allow users to create custom AI employees through a guided configuration workflow. 
+7.2 Employee Identity 
+Fields: 
+• Employee Name. 
+• Employee Description. 
+
+=== PAGE BREAK ===
+
+• Avatar. 
+• Employee Purpose. 
+• Business Category. 
+7.3 Language Selection 
+Requirements: 
+• Select one or multiple languages. 
+• Support configured Indian languages. 
+• Validate language availability. 
+• Validate voice compatibility. 
+• Configure default conversation language. 
+• Support language-specific prompts. 
+The initial target is 15+ Indian languages, subject to provider capabilities and testing. 
+7.4 Custom Prompt Editor 
+Users must be able to create custom AI instructions in any language supported by the selected AI model. 
+Requirements: 
+• System Prompt Editor. 
+• Employee Personality. 
+• Employee Role. 
+• Business Instructions. 
+• Conversation Objectives. 
+• Greeting Instructions. 
+• Customer Interaction Rules. 
+• Response Style. 
+• Conversation Closing Instructions. 
+• Prompt Editing. 
+• Prompt Version History. 
+7.5 Voice Commands – Speech to Text 
+Allow users to provide employee instructions using voice input. 
+Requirements: 
+
+=== PAGE BREAK ===
+
+• Microphone permission. 
+• Audio recording. 
+• Speech-to-text conversion. 
+• Editable transcription. 
+• Insert transcription into prompt editor. 
+7.6 AI Model Selection 
+Allow users to select an available AI model. 
+Display: 
+• Model Name. 
+• Provider. 
+• Language Support. 
+• Model Capabilities. 
+• Configuration Options. 
+Model availability must be validated through configured provider integrations. 
+7.7 Built-in Employee Templates 
+Provide predefined business templates. 
+Initial categories: 
+1. Insurance & Finance. 
+2. Travel & Tourism. 
+3. Hospital & Clinic. 
+4. Coaching & Tuitions. 
+5. Real Estate. 
+6. Local Services. 
+7. Jewellery & Fashion. 
+Each template should contain: 
+• Template Name. 
+• Description. 
+• Suggested Employee Role. 
+• Default Prompt. 
+
+=== PAGE BREAK ===
+
+• Suggested Languages. 
+• Suggested Voice. 
+• Conversation Guidelines. 
+• Suggested Outcomes. 
+Users must be able to customize templates before saving. 
+7.8 Build Employee 
+Requirements: 
+• Validate required fields. 
+• Validate language and voice compatibility. 
+• Validate AI model selection. 
+• Save employee configuration. 
+• Display creation status. 
+• Navigate to employee workspace after successful creation. 
+ 
+8. MODULE 04 – EMPLOYEE MANAGEMENT WORKSPACE 
+After creating an employee, users can open a dedicated employee workspace. 
+The workspace will contain: 
+1. Overview. 
+2. Instant Leads. 
+3. Call Script. 
+4. Training. 
+5. Actions. 
+6. Outcomes. 
+7. Voices. 
+8. Settings. 
+8.1 Employee Overview 
+Display: 
+• Employee Identity. 
+• Status. 
+
+=== PAGE BREAK ===
+
+• Languages. 
+• Voice. 
+• AI Model. 
+• Total Calls. 
+• Successful Calls. 
+• Average Call Duration. 
+• Recent Conversations. 
+Actions: 
+• Edit Employee. 
+• Test Employee. 
+• Activate / Deactivate. 
+8.2 Instant Leads 
+Allow users to initiate individual calls using the selected employee. 
+Fields: 
+• Customer Name. 
+• Phone Number. 
+• Lead Information. 
+• Selected Language. 
+• Employee. 
+Actions: 
+• Start Calling. 
+• View Calling Status. 
+• View Result. 
+• Schedule Follow-up. 
+8.3 Call Script 
+Manage employee conversation instructions. 
+Requirements: 
+• Edit System Prompt. 
+• Configure Greeting. 
+
+=== PAGE BREAK ===
+
+• Define Conversation Objectives. 
+• Define Questions. 
+• Define Conversation Stages. 
+• Configure Objection Handling. 
+• Configure Closing Instructions. 
+• Preview Script. 
+• Test Script. 
+• Save Versions. 
+8.4 Training 
+Allow users to provide employee-specific knowledge. 
+Proposed requirements: 
+• PDF Upload. 
+• DOCX Upload. 
+• TXT Upload. 
+• Website URL. 
+• FAQ Management. 
+• Knowledge Source Management. 
+• Processing Status. 
+• Remove Source. 
+• Test Knowledge Responses. 
+Knowledge retrieval may use Retrieval-Augmented Generation (RAG). 
+8.5 Actions 
+Configure actions that an AI employee can execute. 
+Proposed actions: 
+• Capture Lead Information. 
+• Schedule Appointment. 
+• Create Follow-up. 
+• Send Notification. 
+• Transfer to Human. 
+
+=== PAGE BREAK ===
+
+• Trigger Webhook. 
+• Update CRM. 
+• Send WhatsApp Message. 
+Actions must have validation, permissions, and execution logs. 
+8.6 Outcomes 
+Configure conversation outcomes. 
+Examples: 
+• Interested. 
+• Not Interested. 
+• Qualified Lead. 
+• Unqualified Lead. 
+• Appointment Scheduled. 
+• Callback Requested. 
+• Follow-up Required. 
+• No Answer. 
+• Failed. 
+• Human Transfer. 
+Requirements: 
+• Create Custom Outcomes. 
+• Edit Outcomes. 
+• Configure Descriptions. 
+• Map AI-detected Outcomes. 
+• Store Outcomes with Call Records. 
+• Use Outcomes in Analytics. 
+8.7 Voices 
+Configure AI employee voices. 
+Requirements: 
+• Provider Selection. 
+• Voice Selection. 
+
+=== PAGE BREAK ===
+
+• Language Compatibility. 
+• Voice Preview. 
+• Voice Configuration. 
+• Speaking Style Settings, if supported. 
+8.8 Settings 
+Manage employee-specific settings. 
+• Employee Name. 
+• Description. 
+• Language. 
+• Voice. 
+• AI Model. 
+• Prompt. 
+• Calling Preferences. 
+• Employee Status. 
+• Delete Employee. 
+ 
+9. MODULE 05 – TALK TO AN EMPLOYEE 
+9.1 Purpose 
+Allow users to test AI employees before production deployment. 
+Requirements: 
+• Select Employee. 
+• Start Test Conversation. 
+• Test Voice Responses. 
+• Test Language. 
+• Test Prompt Instructions. 
+• Test Knowledge Base. 
+• View Transcript. 
+• Review Conversation Behavior. 
+
+=== PAGE BREAK ===
+
+Test calls must be clearly identified and separated from production billing unless explicitly configured 
+otherwise. 
+ 
+10. MODULE 06 – INSTANT LEADS 
+10.1 Purpose 
+Enable users to initiate AI-powered outbound calls to individual leads. 
+Requirements: 
+• Enter Customer Name. 
+• Enter Phone Number. 
+• Select Employee. 
+• Select Language. 
+• Add Optional Lead Details. 
+• Start Call. 
+• Display Call Status. 
+• Save Call Result. 
+• Capture Lead Information. 
+• Generate Summary. 
+• Schedule Follow-up. 
+Call states: 
+• Queued. 
+• Initiating. 
+• Ringing. 
+• Answered. 
+• In Progress. 
+• Completed. 
+• No Answer. 
+• Busy. 
+• Failed. 
+• Cancelled. 
+
+=== PAGE BREAK ===
+
+ 
+11. MODULE 07 – BULK CAMPAIGNS 
+11.1 Purpose 
+Enable users to create and manage outbound AI calling campaigns for multiple contacts. 
+Requirements: 
+• Create Campaign. 
+• Campaign Name. 
+• Campaign Description. 
+• Upload Contacts. 
+• Import Google Sheets. 
+• Select AI Employee. 
+• Configure Calling Schedule. 
+• Configure Retry Rules. 
+• Configure Priorities. 
+• Start Campaign. 
+• Pause Campaign. 
+• Resume Campaign. 
+• Stop Campaign. 
+• Monitor Progress. 
+• View Campaign Results. 
+• Export Data. 
+11.2 Campaign Analytics 
+• Total Contacts. 
+• Pending Calls. 
+• Completed Calls. 
+• Answered Calls. 
+• Failed Calls. 
+• Successful Leads. 
+• Conversion Rate. 
+
+=== PAGE BREAK ===
+
+• Credits Used. 
+Calling must respect applicable consent, DND, DLT, calling-hour restrictions, and telephony provider 
+policies. 
+ 
+12. MODULE 08 – INBOUND CALLS 
+12.1 Purpose 
+Enable organizations to receive customer calls through configured phone numbers and AI employees. 
+Requirements: 
+• Configure Inbound Numbers. 
+• Assign AI Employees. 
+• Configure Welcome Messages. 
+• Configure Call Routing. 
+• Handle Incoming Calls. 
+• Manage Concurrent Calls. 
+• Capture Customer Information. 
+• Generate Call Summary. 
+• Save Transcript. 
+• Store Recording Metadata. 
+• Transfer to Human Agent. 
+Detailed routing rules will be validated during reverse engineering. 
+ 
+13. MODULE 09 – LEADS & RESULTS 
+13.1 Purpose 
+Provide centralized lead management. 
+Requirements: 
+• View All Leads. 
+• Search Leads. 
+• Filter Leads. 
+• View Lead Details. 
+
+=== PAGE BREAK ===
+
+• View Associated Calls. 
+• Manage Lead Status. 
+• Manage Qualification. 
+• Assign Leads. 
+• Schedule Follow-ups. 
+• Export Leads. 
+Lead fields: 
+• Lead ID. 
+• Name. 
+• Phone Number. 
+• Email. 
+• Source. 
+• Assigned Employee. 
+• Status. 
+• Qualification Status. 
+• Last Contact Date. 
+• Follow-up Date. 
+• Summary. 
+ 
+14. MODULE 10 – ALL CONVERSATIONS 
+14.1 Purpose 
+Provide centralized conversation history for inbound and outbound calls. 
+Requirements: 
+• View Conversations. 
+• Search Contacts. 
+• Filter Employee. 
+• Filter Date. 
+• Filter Outcome. 
+• Filter Sentiment. 
+
+=== PAGE BREAK ===
+
+• View Call Details. 
+• View Transcript. 
+• Play Recording. 
+• View AI Summary. 
+• View Captured Information. 
+• View Credits Used. 
+• Export Data. 
+Conversation details: 
+• Contact. 
+• Employee. 
+• Call Direction. 
+• Start Time. 
+• End Time. 
+• Duration. 
+• Call Status. 
+• Transcript. 
+• Recording. 
+• Summary. 
+• Sentiment. 
+• Outcome. 
+• Captured Data. 
+• Credits Used. 
+Recording and transcript access must follow organization permissions and retention rules. 
+ 
+15. MODULE 11 – TRAIN EMPLOYEES 
+15.1 Purpose 
+Provide centralized management of AI employee training and knowledge sources. 
+Requirements: 
+• View All Employees. 
+
+=== PAGE BREAK ===
+
+• Manage Knowledge Sources. 
+• Upload Documents. 
+• Add Website URLs. 
+• Manage FAQs. 
+• Track Processing Status. 
+• Update Knowledge. 
+• Remove Knowledge. 
+• Test Responses. 
+The relationship between centralized training and employee-specific training must be validated during 
+reference product analysis. 
+ 
+16. MODULE 12 – PHONE NUMBERS 
+16.1 Purpose 
+Manage telephony numbers used for inbound and outbound calling. 
+Requirements: 
+• View Numbers. 
+• Add / Configure Numbers. 
+• Assign Numbers to Employees. 
+• Configure Inbound Routing. 
+• Configure Outbound Caller ID. 
+• View Provider. 
+• View Number Status. 
+• Manage Assignments. 
+Number provisioning depends on telephony provider support and applicable Indian regulations. 
+ 
+17. MODULE 13 – PERFORMANCE 
+17.1 Purpose 
+Provide analytics for AI employees, campaigns, calls, and organizations. 
+Metrics: 
+
+=== PAGE BREAK ===
+
+• Total Calls. 
+• Successful Calls. 
+• Answer Rate. 
+• Lead Conversion Rate. 
+• Average Call Duration. 
+• Average Response Time. 
+• Employee Performance. 
+• Campaign Performance. 
+• Credits Used. 
+• Cost Per Call. 
+• Cost Per Qualified Lead. 
+Requirements: 
+• Date Filters. 
+• Comparison Views. 
+• Charts. 
+• Employee Reports. 
+• Campaign Reports. 
+• Export Reports. 
+ 
+18. MODULE 14 – BILLING 
+18.1 Purpose 
+Manage subscriptions, credits, payments, and usage. 
+Requirements: 
+• Current Subscription. 
+• Available Credits. 
+• Credit Usage. 
+• Call Consumption. 
+• Subscription Plans. 
+• Additional Credit Purchase. 
+
+=== PAGE BREAK ===
+
+• Payment History. 
+• Invoices. 
+• Payment Status. 
+• Razorpay Integration. 
+Billing must use verified provider usage records and an auditable credit ledger. 
+ 
+19. MODULE 15 – SETTINGS 
+19.1 Purpose 
+Provide organization-level and user-level configuration. 
+Proposed categories: 
+• Organization Profile. 
+• User Profile. 
+• Team Management. 
+• Roles and Permissions. 
+• Language Preferences. 
+• Notifications. 
+• Security. 
+• Calling Preferences. 
+• Integrations. 
+• Billing Preferences. 
+Detailed settings will be finalized through reference product analysis. 
+ 
+20. MODULE 16 – DEVELOPERS 
+20.1 Purpose 
+Provide developers with tools to integrate OWN AI into external systems. 
+Requirements: 
+• API Documentation. 
+• API Key Management. 
+• Webhook Configuration. 
+
+=== PAGE BREAK ===
+
+• Webhook Event History. 
+• API Usage. 
+• Authentication Documentation. 
+• Request and Response Examples. 
+• Integration Guides. 
+• Error Codes. 
+• API Rate Limits. 
+API secrets must be securely generated, stored, and rotated. 
+ 
+21. INTEGRATION REQUIREMENTS 
+The platform will support the following integrations. 
+Integration Purpose 
+Supabase Database, Authentication, Storage 
+Sarvam AI Multilingual Voice AI 
+Sarvam SIP SIP Telephony Connectivity 
+Redis Caching and Queue Management 
+Celery Background Processing 
+n8n Business Workflow Automation 
+Google Sheets API Lead Synchronization 
+Meta Lead Ads API Facebook and Instagram Lead Acquisition 
+WhatsApp Business Cloud API Messaging and Notifications 
+Calendly API Appointment Scheduling 
+Zoom API Video Meetings 
+Razorpay Payment Processing 
+Sentry Error Monitoring 
+Grafana Performance Monitoring 
+
+=== PAGE BREAK ===
+
+All integrations must support secure credential management, validation, error handling, and usage 
+logging. 
+ 
+22. TECHNICAL ARCHITECTURE 
+22.1 Architecture Strategy 
+OWN AI will use a Monorepo architecture with a Modular Monolith backend initially. 
+The repository will contain: 
+• Frontend. 
+• Backend. 
+• AI Engine. 
+• Background Workers. 
+• Automation. 
+• Database. 
+• Shared Contracts. 
+• Infrastructure. 
+• Tests. 
+• Documentation. 
+The architecture must support future separation of high-load services where justified. 
+22.2 High-Level System Architecture 
+Frontend: 
+React + TypeScript + Vite 
+↓ 
+Backend: 
+Python + FastAPI 
+↓ 
+Core Systems: 
+• Supabase PostgreSQL. 
+• Supabase Auth. 
+• Supabase Storage. 
+• Redis. 
+
+=== PAGE BREAK ===
+
+• Celery. 
+• AI Engine. 
+• Telephony Integration. 
+• n8n Automation. 
+External Services: 
+• Sarvam AI. 
+• Sarvam SIP. 
+• WhatsApp Business API. 
+• Google Sheets. 
+• Meta Lead Ads. 
+• Calendly. 
+• Zoom. 
+• Razorpay. 
+Real-time voice streaming and call lifecycle processing must be handled by the backend and 
+AI/telephony layer. n8n should be used for business workflow automation, not as the real-time audio 
+engine. 
+ 
+23. APPROVED TECHNOLOGY STACK 
+Layer Technology Purpose 
+Frontend React + TypeScript Website and dashboard 
+UI Styling Tailwind CSS Responsive interfaces 
+UI Components shadcn/ui Reusable components 
+Backend Python + FastAPI APIs and business logic 
+Workflow Automation n8n Business workflows 
+Database PostgreSQL (Supabase) Application data 
+ORM SQLAlchemy Database access 
+Database Migrations Alembic Schema versioning 
+Voice AI Sarvam AI Voice conversations 
+
+=== PAGE BREAK ===
+
+Telephony / SIP Sarvam AI SIP SIP calling 
+Queue Management Redis Queue and cache 
+Background Processing Celery Asynchronous jobs 
+Authentication Supabase Auth Authentication 
+Authorization RBAC + RLS Access control 
+Lead Integration Google Sheets API Lead synchronization 
+Advertisement Integration Meta Lead Ads API Lead acquisition 
+Messaging WhatsApp Business Cloud API Messaging 
+Appointment Scheduling Calendly API Appointments 
+Video Meetings Zoom API Meetings 
+Payments Razorpay Billing 
+Deployment Docker Containerization 
+Reverse Proxy Nginx Traffic routing 
+Error Monitoring Sentry Error tracking 
+Performance Monitoring Grafana Operational monitoring 
+Browser Testing Playwright E2E tests 
+API Testing Postman / Automated Tests API verification 
+Version Control Git + GitHub Source control 
+CI/CD GitHub Actions Automated checks 
+ 
+24. PROGRAMMING ARCHITECTURE 
+24.1 Frontend Architecture 
+Technology: 
+• React. 
+• TypeScript. 
+• Vite. 
+
+=== PAGE BREAK ===
+
+• Tailwind CSS. 
+• shadcn/ui. 
+Architecture: 
+Feature-oriented frontend structure. 
+Responsibilities: 
+• Dashboard rendering. 
+• Navigation. 
+• Employee configuration. 
+• Calling interfaces. 
+• Analytics. 
+• API integration. 
+• Form validation. 
+• Authentication state. 
+• Loading and error states. 
+24.2 Backend Architecture 
+Technology: 
+• Python. 
+• FastAPI. 
+• SQLAlchemy. 
+• Pydantic. 
+• Alembic. 
+Responsibilities: 
+• Authentication validation. 
+• Organization management. 
+• Employee management. 
+• Campaign management. 
+• Lead management. 
+• Call lifecycle. 
+• Conversation management. 
+
+=== PAGE BREAK ===
+
+• Training management. 
+• Billing. 
+• Integration management. 
+• Webhook processing. 
+• Analytics. 
+All API routes must be versioned under /api/v1. 
+24.3 AI Engine Architecture 
+Responsibilities: 
+• AI Employee Orchestration. 
+• Prompt Management. 
+• Speech-to-Text. 
+• LLM Processing. 
+• Text-to-Speech. 
+• Conversation State. 
+• Knowledge Retrieval. 
+• Language Configuration. 
+• Provider Integration. 
+The system should use provider adapters so that additional AI providers can be added without changing 
+core business logic. 
+24.4 Background Processing 
+Technology: 
+Redis + Celery. 
+Responsibilities: 
+• Campaign Execution. 
+• Scheduled Calls. 
+• Retry Handling. 
+• Follow-up Scheduling. 
+• Lead Processing. 
+• Notifications. 
+
+=== PAGE BREAK ===
+
+• Report Generation. 
+• Analytics Aggregation. 
+24.5 Workflow Automation 
+Technology: 
+n8n. 
+Responsibilities: 
+• Lead Processing. 
+• CRM Synchronization. 
+• Appointment Workflows. 
+• Follow-up Automation. 
+• WhatsApp Notifications. 
+• External Webhooks. 
+ 
+25. COMPLETE PROGRAMMING FOLDER STRUCTURE 
+Repository Name: AOTMS_AI_2027 
+AOTMS_AI_2027/ 
+│ 
+├── frontend/ 
+│   ├── public/ 
+│   ├── src/ 
+│   │   ├── assets/ 
+│   │   ├── components/ 
+│   │   │   ├── ui/ 
+│   │   │   ├── layout/ 
+│   │   │   ├── charts/ 
+│   │   │   └── common/ 
+│   │   ├── pages/ 
+│   │   │   ├── dashboard/ 
+│   │   │   ├── employees/ 
+
+=== PAGE BREAK ===
+
+│   │   │   ├── calling/ 
+│   │   │   ├── leads/ 
+│   │   │   ├── conversations/ 
+│   │   │   ├── training/ 
+│   │   │   ├── phone-numbers/ 
+│   │   │   ├── performance/ 
+│   │   │   ├── billing/ 
+│   │   │   ├── settings/ 
+│   │   │   └── developers/ 
+│   │   ├── features/ 
+│   │   │   ├── auth/ 
+│   │   │   ├── employees/ 
+│   │   │   ├── campaigns/ 
+│   │   │   ├── instant-leads/ 
+│   │   │   ├── inbound-calls/ 
+│   │   │   ├── conversations/ 
+│   │   │   └── integrations/ 
+│   │   ├── hooks/ 
+│   │   ├── services/ 
+│   │   ├── stores/ 
+│   │   ├── types/ 
+│   │   ├── utils/ 
+│   │   ├── routes/ 
+│   │   ├── App.tsx 
+│   │   └── main.tsx 
+│   ├── package.json 
+│   └── vite.config.ts 
+│ 
+
+=== PAGE BREAK ===
+
+├── backend/ 
+│   ├── app/ 
+│   │   ├── main.py 
+│   │   ├── core/ 
+│   │   │   ├── config.py 
+│   │   │   ├── security.py 
+│   │   │   ├── logging.py 
+│   │   │   └── exceptions.py 
+│   │   ├── api/ 
+│   │   │   └── v1/ 
+│   │   │       ├── auth.py 
+│   │   │       ├── organizations.py 
+│   │   │       ├── employees.py 
+│   │   │       ├── campaigns.py 
+│   │   │       ├── leads.py 
+│   │   │       ├── calls.py 
+│   │   │       ├── conversations.py 
+│   │   │       ├── training.py 
+│   │   │       ├── phone_numbers.py 
+│   │   │       ├── billing.py 
+│   │   │       ├── integrations.py 
+│   │   │       └── webhooks.py 
+│   │   ├── modules/ 
+│   │   │   ├── auth/ 
+│   │   │   ├── organizations/ 
+│   │   │   ├── employees/ 
+│   │   │   ├── campaigns/ 
+│   │   │   ├── leads/ 
+
+=== PAGE BREAK ===
+
+│   │   │   ├── calls/ 
+│   │   │   ├── conversations/ 
+│   │   │   ├── training/ 
+│   │   │   ├── phone_numbers/ 
+│   │   │   ├── billing/ 
+│   │   │   └── analytics/ 
+│   │   ├── integrations/ 
+│   │   │   ├── supabase/ 
+│   │   │   ├── sarvam/ 
+│   │   │   ├── telephony/ 
+│   │   │   ├── n8n/ 
+│   │   │   ├── whatsapp/ 
+│   │   │   ├── google_sheets/ 
+│   │   │   ├── meta_ads/ 
+│   │   │   ├── calendly/ 
+│   │   │   ├── zoom/ 
+│   │   │   └── razorpay/ 
+│   │   ├── database/ 
+│   │   ├── middleware/ 
+│   │   ├── schemas/ 
+│   │   └── utils/ 
+│   ├── tests/ 
+│   ├── requirements.txt 
+│   └── pyproject.toml 
+│ 
+├── ai-engine/ 
+│   ├── agents/ 
+│   ├── prompts/ 
+
+=== PAGE BREAK ===
+
+│   ├── models/ 
+│   ├── speech_to_text/ 
+│   ├── text_to_speech/ 
+│   ├── conversation/ 
+│   ├── orchestration/ 
+│   ├── knowledge_base/ 
+│   └── providers/ 
+│ 
+├── workers/ 
+│   ├── celery_app.py 
+│   ├── tasks/ 
+│   │   ├── calling/ 
+│   │   ├── campaigns/ 
+│   │   ├── leads/ 
+│   │   ├── followups/ 
+│   │   ├── notifications/ 
+│   │   └── reports/ 
+│   └── schedules/ 
+│ 
+├── automation/ 
+│   ├── workflows/ 
+│   │   ├── lead-processing/ 
+│   │   ├── follow-ups/ 
+│   │   ├── appointments/ 
+│   │   ├── crm-sync/ 
+│   │   └── notifications/ 
+│   └── README.md 
+│ 
+
+=== PAGE BREAK ===
+
+├── database/ 
+│   ├── migrations/ 
+│   ├── seeds/ 
+│   ├── functions/ 
+│   ├── policies/ 
+│   ├── schemas/ 
+│   └── database-diagrams/ 
+│ 
+├── shared/ 
+│   ├── api-contracts/ 
+│   ├── event-schemas/ 
+│   └── constants/ 
+│ 
+├── infra/ 
+│   ├── docker/ 
+│   ├── nginx/ 
+│   ├── monitoring/ 
+│   ├── grafana/ 
+│   └── deployment/ 
+│ 
+├── tests/ 
+│   ├── unit/ 
+│   ├── integration/ 
+│   ├── e2e/ 
+│   ├── security/ 
+│   └── load/ 
+│ 
+├── docs/ 
+
+=== PAGE BREAK ===
+
+│   ├── PRD/ 
+│   ├── REVERSE_ENGINEERING/ 
+│   ├── ARCHITECTURE/ 
+│   ├── DATABASE/ 
+│   ├── API/ 
+│   ├── WORKFLOWS/ 
+│   └── DEPLOYMENT/ 
+│ 
+├── scripts/ 
+│   ├── setup/ 
+│   ├── development/ 
+│   ├── database/ 
+│   └── deployment/ 
+│ 
+├── .github/ 
+│   └── workflows/ 
+│ 
+├── .env.example 
+├── .gitignore 
+├── docker-compose.yml 
+├── README.md 
+└── LICENSE 
+25.1 Folder Responsibilities 
+Directory Responsibility 
+frontend Complete web application 
+backend APIs and business logic 
+ai-engine AI voice processing 
+
+=== PAGE BREAK ===
+
+workers Background processing 
+automation n8n workflows 
+database PostgreSQL schema and migrations 
+shared Shared contracts and constants 
+infra Deployment and monitoring 
+tests Automated testing 
+docs Product and technical documentation 
+scripts Setup and deployment scripts 
+25.2 Implementation Rule 
+The folder structure is a target architecture. 
+The development team must inspect the existing repository before creating files. Do not overwrite 
+existing working code. 
+Create files progressively as their modules are approved. 
+Do not create unnecessary empty files or deploy every component as a separate microservice during the 
+initial phase. 
+ 
+26. DATABASE ARCHITECTURE 
+Primary Database: Supabase PostgreSQL. 
+ORM: SQLAlchemy. 
+Migration Tool: Alembic. 
+26.1 Proposed Database Domains 
+Organization and Access 
+• organizations 
+• users 
+• organization_members 
+• roles 
+• permissions 
+• role_permissions 
+
+=== PAGE BREAK ===
+
+AI Employees 
+• employees 
+• employee_languages 
+• employee_prompts 
+• employee_voices 
+• employee_models 
+• employee_settings 
+• employee_prompt_versions 
+Employee Training 
+• training_sources 
+• training_documents 
+• training_jobs 
+• knowledge_chunks 
+• employee_knowledge_sources 
+Leads and Contacts 
+• contacts 
+• leads 
+• lead_sources 
+• lead_assignments 
+• lead_activities 
+• followups 
+Campaigns 
+• campaigns 
+• campaign_contacts 
+• campaign_schedules 
+• campaign_attempts 
+Calls and Conversations 
+• calls 
+• conversations 
+
+=== PAGE BREAK ===
+
+• transcripts 
+• recordings 
+• conversation_summaries 
+• conversation_outcomes 
+• extracted_information 
+Calling Infrastructure 
+• phone_numbers 
+• phone_number_assignments 
+• telephony_providers 
+• call_events 
+Actions and Automation 
+• employee_actions 
+• action_executions 
+• workflows 
+• workflow_executions 
+• webhooks 
+Billing 
+• subscription_plans 
+• subscriptions 
+• credit_accounts 
+• credit_ledger 
+• usage_records 
+• payments 
+• invoices 
+Integrations 
+• integrations 
+• integration_credentials 
+• integration_events 
+• integration_logs 
+
+=== PAGE BREAK ===
+
+Monitoring and Security 
+• audit_logs 
+• api_keys 
+• notification_logs 
+These are proposed logical entities. Exact table definitions, foreign keys, indexes, constraints, and 
+relationships must be designed during database engineering. 
+26.2 Database Requirements 
+• Organization-level data isolation. 
+• PostgreSQL Row Level Security. 
+• Foreign key constraints. 
+• Appropriate indexes. 
+• Transaction management. 
+• Database migrations. 
+• Backup and recovery. 
+• Audit trails. 
+• Usage ledger integrity. 
+ 
+27. API ARCHITECTURE 
+Backend: FastAPI. 
+Base Route: 
+/api/v1 
+27.1 Proposed API Groups 
+API Group Purpose 
+/auth Authentication validation 
+/organizations Organization management 
+/users User management 
+/employees AI employee operations 
+/campaigns Campaign operations 
+
+=== PAGE BREAK ===
+
+/leads Lead management 
+/calls Calling operations 
+/conversations Conversation management 
+/training Employee training 
+/phone-numbers Number management 
+/performance Analytics 
+/billing Subscription and usage 
+/integrations External integrations 
+/webhooks Provider webhooks 
+/developers API and developer tools 
+27.2 API Standards 
+• Versioned APIs. 
+• Request validation using Pydantic. 
+• Consistent response schemas. 
+• Standardized error responses. 
+• Authentication and authorization. 
+• Rate limiting. 
+• Pagination. 
+• Filtering and sorting. 
+• Idempotency for critical operations. 
+• API documentation using OpenAPI. 
+ 
+28. AI VOICE PROCESSING ARCHITECTURE 
+28.1 Core Processing Components 
+• Speech-to-Text. 
+• LLM Processing. 
+• Text-to-Speech. 
+
+=== PAGE BREAK ===
+
+• Conversation State. 
+• Prompt Management. 
+• Voice Configuration. 
+• Language Detection where supported. 
+• Knowledge Retrieval. 
+• Call State Management. 
+28.2 Provider Architecture 
+Initial Voice AI Provider: Sarvam AI. 
+The provider integration must be isolated behind internal interfaces. 
+Future providers may be integrated without rewriting the employee management and campaign 
+modules. 
+28.3 Real-Time Calling Requirements 
+• Low-latency audio processing. 
+• Call state tracking. 
+• Audio stream management. 
+• Conversation turn management. 
+• Error recovery. 
+• Call termination handling. 
+• Provider event handling. 
+• Call recording metadata. 
+Actual latency and concurrency targets must be finalized through provider testing. 
+ 
+29. WORKFLOW AUTOMATION ARCHITECTURE 
+Automation Platform: n8n. 
+29.1 Initial Workflows 
+Lead Processing 
+New Lead → Validate → Save Lead → Trigger Calling Job. 
+Follow-up 
+Call Completed → Evaluate Outcome → Schedule Follow-up → Notify User. 
+
+=== PAGE BREAK ===
+
+Appointment 
+Customer Requests Appointment → Check Availability → Create Booking → Send Confirmation. 
+CRM Synchronization 
+Lead Captured → Validate Data → Update CRM → Save Integration Result. 
+WhatsApp Notification 
+Call Completed → Prepare Message → Send Notification → Log Result. 
+29.2 Workflow Requirements 
+• Workflow versioning. 
+• Execution history. 
+• Error handling. 
+• Retry policies. 
+• Credential security. 
+• Webhook authentication. 
+• Execution monitoring. 
+Real-time call processing must not depend on ordinary n8n execution. 
+ 
+30. SECURITY REQUIREMENTS 
+• Secure authentication. 
+• Supabase Auth integration. 
+• Role-Based Access Control. 
+• Organization-level tenant isolation. 
+• PostgreSQL Row Level Security. 
+• Secure credential storage. 
+• Password hashing where custom credentials exist. 
+• JWT validation. 
+• Refresh token rotation and revocation. 
+• API rate limiting. 
+• Input validation. 
+• Webhook signature verification. 
+
+=== PAGE BREAK ===
+
+• Audit logging. 
+• Recording and transcript access control. 
+• Backup and recovery. 
+• No secrets in source code. 
+• No API keys committed to GitHub. 
+Production credentials must be stored in deployment secrets or an approved secrets manager. 
+ 
+31. NON-FUNCTIONAL REQUIREMENTS 
+Performance 
+• Responsive dashboard. 
+• Efficient API responses. 
+• Optimized database queries. 
+• Asynchronous job processing. 
+• Efficient call data retrieval. 
+Reliability 
+• Retry handling. 
+• Idempotent webhook processing. 
+• Call state reconciliation. 
+• Background job monitoring. 
+• Error logging. 
+• Operational alerts. 
+Scalability 
+• Multi-tenant architecture. 
+• Scalable worker processes. 
+• Redis queue management. 
+• Independent scaling of high-load components when necessary. 
+Usability 
+• Clear navigation. 
+• Guided employee creation. 
+
+=== PAGE BREAK ===
+
+• Search and filtering. 
+• Responsive design. 
+• Clear call status. 
+• Accessible interface components. 
+• Consistent UI design system. 
+Maintainability 
+• Modular source code. 
+• Type annotations. 
+• API documentation. 
+• Database migrations. 
+• Automated tests. 
+• Code review. 
+• CI/CD checks. 
+ 
+32. TESTING REQUIREMENTS 
+Unit Testing 
+Test individual modules and business logic. 
+Integration Testing 
+Test: 
+• Supabase connectivity. 
+• FastAPI and database. 
+• Redis and Celery. 
+• AI provider integrations. 
+• Telephony integrations. 
+• n8n webhooks. 
+• Razorpay integration. 
+Frontend Testing 
+Test: 
+• Navigation. 
+
+=== PAGE BREAK ===
+
+• Forms. 
+• Employee creation. 
+• Campaign configuration. 
+• Dashboard interactions. 
+End-to-End Testing 
+Test complete workflows: 
+1. User Registration. 
+2. Organization Creation. 
+3. Employee Creation. 
+4. Employee Training. 
+5. Test Conversation. 
+6. Instant Lead Calling. 
+7. Bulk Campaign. 
+8. Inbound Call. 
+9. Conversation Review. 
+10. Billing and Usage. 
+Security Testing 
+• Authentication. 
+• Authorization. 
+• Tenant Isolation. 
+• RLS. 
+• API Security. 
+• Secrets Exposure. 
+• Webhook Security. 
+Load Testing 
+Evaluate: 
+• Concurrent calls. 
+• Campaign job processing. 
+• API throughput. 
+
+=== PAGE BREAK ===
+
+• Database load. 
+• Worker capacity. 
+ 
+33. DEPLOYMENT AND INFRASTRUCTURE 
+33.1 Deployment Technology 
+• Docker. 
+• Nginx. 
+• Supabase Cloud. 
+• Cloud Server. 
+• GitHub Actions. 
+• Sentry. 
+• Grafana. 
+33.2 Environments 
+Development 
+Local development and testing. 
+Staging 
+Pre-production validation and integration testing. 
+Production 
+Live customer application. 
+33.3 Deployment Requirements 
+• Containerized services. 
+• Secure environment configuration. 
+• Database migrations. 
+• Health checks. 
+• Centralized logs. 
+• Error monitoring. 
+• Backup strategy. 
+• Rollback strategy. 
+• CI/CD validation. 
+
+=== PAGE BREAK ===
+
+ 
+34. DEVELOPMENT ROADMAP 
+Phase 1 – Product Discovery 
+• Analyze existing PRD. 
+• Reverse engineer reference product. 
+• Document modules. 
+• Document workflows. 
+• Identify gaps. 
+• Finalize functional requirements. 
+Phase 2 – Architecture 
+• Finalize system architecture. 
+• Finalize folder structure. 
+• Design database schema. 
+• Design API specifications. 
+• Define security model. 
+• Define integration contracts. 
+Phase 3 – Foundation 
+• GitHub repository setup. 
+• Frontend project setup. 
+• Backend project setup. 
+• Supabase configuration. 
+• Redis configuration. 
+• Docker development environment. 
+• Authentication. 
+• Organization and tenant management. 
+Phase 4 – Frontend Development 
+• Dashboard. 
+• Employee Listing. 
+• Employee Creation. 
+
+=== PAGE BREAK ===
+
+• Employee Workspace. 
+• Calling Pages. 
+• Leads. 
+• Conversations. 
+• Training. 
+• Performance. 
+• Billing. 
+• Settings. 
+Phase 5 – Backend Development 
+• Employee APIs. 
+• Lead APIs. 
+• Campaign APIs. 
+• Calling APIs. 
+• Conversation APIs. 
+• Training APIs. 
+• Billing APIs. 
+• Integration APIs. 
+Phase 6 – AI Voice Engine 
+• Sarvam integration. 
+• STT. 
+• LLM orchestration. 
+• TTS. 
+• Prompt configuration. 
+• Voice selection. 
+• Conversation state management. 
+Phase 7 – Telephony 
+• SIP connectivity. 
+• Outbound calls. 
+• Inbound calls. 
+
+=== PAGE BREAK ===
+
+• Call state handling. 
+• Webhooks. 
+• Call recording metadata. 
+Phase 8 – Automation 
+• n8n workflows. 
+• Lead automation. 
+• Follow-ups. 
+• CRM integrations. 
+• Appointment workflows. 
+• WhatsApp notifications. 
+Phase 9 – Billing and Analytics 
+• Usage tracking. 
+• Credit ledger. 
+• Razorpay. 
+• Dashboard analytics. 
+• Campaign reports. 
+• Employee performance. 
+Phase 10 – Production Readiness 
+• End-to-end testing. 
+• Security validation. 
+• Load testing. 
+• Monitoring. 
+• Deployment. 
+• Documentation. 
+• Production release. 
+ 
+35. DEVELOPMENT TIME ESTIMATION 
+Assumption: Two full-time developers using Cursor AI, with requirements finalized and API access 
+available. 
+
+=== PAGE BREAK ===
+
+Layer Technology Estimated Time 
+Frontend React + TypeScript 2–3 weeks 
+UI Styling Tailwind CSS 3–5 days 
+Backend Python + FastAPI 2–3 weeks 
+Workflow Automation n8n 1–2 weeks 
+Database Supabase PostgreSQL 3–5 days 
+ORM SQLAlchemy 2–3 days 
+Voice AI Sarvam AI 1–2 weeks 
+Telephony / SIP Sarvam AI SIP 4–7 days 
+Queue Management Redis 2–3 days 
+Background Processing Celery 3–5 days 
+Authentication Supabase Auth + JWT validation 2–3 days 
+Lead Integration Google Sheets API 2–3 days 
+Advertisement Integration Meta Lead Ads API 3–5 days 
+Messaging WhatsApp Business Cloud API 3–5 days 
+Appointment Scheduling Calendly API 2–3 days 
+Video Meetings Zoom API 2–3 days 
+Deployment Docker 3–5 days 
+Error Monitoring Sentry 1–2 days 
+Performance Monitoring Grafana 2–3 days 
+Estimation Notes 
+• These are initial engineering estimates. 
+• Estimates overlap and should not be added directly to calculate calendar duration. 
+• Product discovery, telephony testing, security hardening, and production QA may increase the 
+total timeline. 
+• External API approvals and provider limitations may affect delivery. 
+
+=== PAGE BREAK ===
+
+• Two developers must coordinate frontend, backend, and integration tasks. 
+ 
+36. MVP RELEASE SCOPE 
+The first release should prioritize: 
+1. User Registration and Login. 
+2. Organization Setup. 
+3. Dashboard. 
+4. AI Employee Creation. 
+5. Custom Prompt Configuration. 
+6. Language and Voice Selection. 
+7. Employee Training. 
+8. Talk to an Employee. 
+9. Instant Leads. 
+10. Basic Bulk Campaigns. 
+11. Inbound Calling. 
+12. Call History. 
+13. Conversation Transcripts. 
+14. Lead Management. 
+15. Basic Performance Analytics. 
+16. Usage Tracking. 
+17. Basic Billing. 
+Advanced CRM marketplace, enterprise reporting, and advanced AI analytics can follow after MVP 
+validation. 
+ 
+37. ACCEPTANCE CRITERIA 
+The MVP will be considered ready when: 
+• Users can register and create organizations. 
+• Users can create AI employees. 
+• Users can configure prompts, languages, and voices. 
+
+=== PAGE BREAK ===
+
+• Users can test employees. 
+• Users can initiate authorized outbound calls. 
+• Users can receive configured inbound calls. 
+• Call results are stored accurately. 
+• Conversations and transcripts can be reviewed. 
+• Leads can be captured and managed. 
+• Usage and credits are tracked. 
+• Organization data remains isolated. 
+• Critical workflows pass automated tests. 
+• Production monitoring and error handling are operational. 
+ 
+38. REVERSE ENGINEERING VALIDATION 
+Outpero AI is the reference product for authorized feature and workflow observation. 
+The reverse engineering process must document: 
+• Screens and navigation. 
+• User workflows. 
+• Forms and inputs. 
+• Actions and outcomes. 
+• Validation rules. 
+• Loading and error states. 
+• Available integrations. 
+• User roles. 
+• Calling behavior. 
+• Reporting behavior. 
+38.1 Requirement Classification 
+Each requirement must be classified as: 
+Observed: Directly verified in the reference product. 
+Proposed: Recommended functionality for OWN AI. 
+Pending Validation: Requires further inspection or clarification. 
+
+=== PAGE BREAK ===
+
+38.2 Validation Status 
+Module Current Status 
+Dashboard Initial requirements documented 
+Employees Initial requirements documented 
+New Employee Initial requirements documented 
+Employee Workspace Initial requirements documented 
+Talk to an Employee Proposed requirements 
+Instant Leads Initial requirements documented 
+Bulk Campaigns Initial requirements documented 
+Inbound Calls Initial requirements documented 
+Leads & Results Proposed requirements 
+All Conversations Proposed requirements 
+Train Employees Proposed requirements 
+Phone Numbers Proposed requirements 
+Performance Proposed requirements 
+Billing Proposed requirements 
+Settings Proposed requirements 
+Developers Proposed requirements 
+The initial PRD is not a verified specification of all reference product functionality. 
+Each module must be compared with actual product behavior before its final implementation 
+requirements are approved. 
+ 
+39. FUTURE SCOPE 
+Potential future capabilities: 
+• Advanced AI Agent Builder. 
+• Visual Conversation Flow Builder. 
+• Integrations Marketplace. 
+
+=== PAGE BREAK ===
+
+• Advanced CRM Marketplace. 
+• Custom Voice Configuration. 
+• Advanced Knowledge Base. 
+• Advanced RAG. 
+• Real-Time Call Monitoring. 
+• Human Agent Handoff. 
+• Team Collaboration. 
+• White-Label SaaS. 
+• Enterprise Analytics. 
+• Advanced Usage-Based Billing. 
+• Additional AI and telephony providers. 
+• More Indian and international languages. 
+• Advanced Quality Assurance. 
+• Automated Conversation Evaluation. 
+These features require separate prioritization and approval. 
+ 
+40. FINAL PROJECT PRINCIPLES 
+1. Existing PRD and approved requirements are the source of truth. 
+2. Outpero AI is a reference for product discovery, not a source of proprietary code. 
+3. No module should be implemented without its approved requirements. 
+4. The original PRD must remain unchanged as a baseline. 
+5. New observations must be documented before modifying the final specification. 
+6. Supabase PostgreSQL is the primary database. 
+7. FastAPI is responsible for core backend business logic. 
+8. n8n handles business workflow automation. 
+9. Redis and Celery handle background processing. 
+10. AI and telephony integrations must use modular provider adapters. 
+11. Security and tenant isolation must be implemented from the beginning. 
+12. Development must proceed incrementally with testing and review. 
+
+=== PAGE BREAK ===
+
+13. Existing working files must never be overwritten without inspection and approval. 
+14. Production credentials must never be committed to GitHub. 
+ 
+DOCUMENT CONTROL 
+Product: OWN AI 
+Organization: Academy of Tech Masters 
+Reference Product: Outpero AI 
+Document: Complete Product Requirements Document 
+Version: 1.0 
+Status: Consolidated Initial Draft 
+Next Milestone: Complete Reverse Engineering Audit and Final PRD Approval 
+End of Document. 
+ 

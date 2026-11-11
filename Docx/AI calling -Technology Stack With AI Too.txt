@@ -1,0 +1,91 @@
+Technology-wise development time estimation. 
+Assuming 2 full-time developers using Cursor AI, with requirements finalized and API access 
+available, the estimated development time is: 
+ 
+Layer / Category Technology Purpose Estimated Time 
+with Cursor AI 
+Frontend React + 
+TypeScript 
+Build website and application 
+dashboard 
+2–3 weeks 
+UI Styling Tailwind CSS Create responsive layouts and 
+user interfaces 
+3–5 days 
+Backend Python + FastAPI Handle APIs, business logic and 
+application workflows 
+2–3 weeks 
+Workflow 
+Automation 
+n8n Orchestrate lead processing, AI 
+calling, WhatsApp, appointments 
+and follow-ups 
+1–2 weeks 
+Database PostgreSQL 
+(Supabase) 
+Store leads, users, calls, 
+transcripts and appointments 
+3–5 days 
+ORM SQLAlchemy Manage database operations and 
+data models 
+2–3 days 
+Voice AI Sarvam AI Power inbound and outbound AI 
+voice conversations 
+1–2 weeks 
+Telephony / SIP Sarvam AI SIP Handle SIP-based calling 
+connectivity 
+4–7 days 
+Queue 
+Management 
+Redis Manage pending calling jobs and 
+background task queues 
+2–3 days 
+Background 
+Processing 
+Celery Execute asynchronous backend 
+tasks and retries 
+3–5 days 
+Authentication JWT + Refresh 
+Tokens 
+Manage secure user 
+authentication and sessions 
+2–3 days 
+Lead Integration Google Sheets 
+API 
+Synchronize manually added leads 2–3 days 
+Advertisement 
+Integration 
+Meta Lead Ads 
+API 
+Retrieve Facebook and Instagram 
+advertisement leads 
+3–5 days 
+Messaging WhatsApp 
+Business Cloud 
+API 
+Send automated WhatsApp 
+messages and notifications 
+3–5 days 
+Appointment 
+Scheduling 
+Calendly API Manage demo and counselling 
+appointments 
+2–3 days 
+Video Meetings Zoom API Create and retrieve online 
+meeting details 
+2–3 days 
+
+=== PAGE BREAK ===
+
+Deployment Docker Package and deploy application 
+services 
+3–5 days 
+Error Monitoring Sentry Track application errors and 
+exceptions 
+1–2 days 
+Performance 
+Monitoring 
+Grafana Monitor system performance and 
+operational metrics 
+2–3 days 
+ 
