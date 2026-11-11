@@ -4,11 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Only allow same-origin relative paths, so `next` can never leave the site.
- * Falls back to the account view, which is what a completed sign-in should show.
+ * Falls back to the dashboard, which is where a completed sign-in should land.
  */
 function safeNext(value: string | null): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/account";
+    return "/dashboard";
   }
   return value;
 }

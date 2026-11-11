@@ -8,6 +8,7 @@ import { HowItWorks } from "@/components/sections/how-it-works";
 import { PricingSection } from "@/components/sections/pricing-section";
 import { UseCases } from "@/components/sections/use-cases";
 import { VoiceSamples } from "@/components/sections/voice-samples";
+import { LandingSpiderCursor } from "@/components/ui/landing-spider-cursor";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -27,6 +28,9 @@ export default function HomePage() {
       <ApiSection />
       <PricingSection />
       <FinalCta />
+
+      {/* Decorative cursor companion: home page only. */}
+      <LandingSpiderCursor />
     </>
   );
 }

@@ -31,9 +31,9 @@ const linkErrors: Record<string, string> = {
 };
 
 // Where a successful sign-in lands when the caller did not ask for a specific
-// page. The account view is the one screen that proves the session works, so a
-// fresh Google or email sign-in ends there instead of on the home page.
-const DEFAULT_AFTER_SIGN_IN = "/account";
+// page. The dashboard is the product home once a session exists, so a fresh
+// Google or email sign-in ends there instead of on the home page.
+const DEFAULT_AFTER_SIGN_IN = "/dashboard";
 
 function safeNext(value: string | undefined): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {

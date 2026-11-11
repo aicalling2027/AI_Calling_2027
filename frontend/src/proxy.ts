@@ -11,10 +11,25 @@ import {
  * Refreshes the Supabase session before a request renders, so server
  * components never read an expired access token. Requests without a session
  * cookie return immediately, which keeps anonymous traffic on the static path.
+ *
+ * `/dashboard` is guarded here as well as in its layout: this response is a
+ * real redirect, so an anonymous visitor never sees the dashboard chrome paint
+ * before the layout's redirect takes effect mid-stream.
  */
 export async function proxy(request: NextRequest) {
+  const needsSession = request.nextUrl.pathname.startsWith("/dashboard");
+
+  function redirectToLogin() {
+    const url = request.nextUrl.clone();
+    const next = `${url.pathname}${url.search}`;
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", next);
+    return NextResponse.redirect(url);
+  }
+
   if (!isSupabaseConfigured) {
-    return NextResponse.next();
+    return needsSession ? redirectToLogin() : NextResponse.next();
   }
 
   const hasSessionCookie = request.cookies
@@ -22,7 +37,7 @@ export async function proxy(request: NextRequest) {
     .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
 
   if (!hasSessionCookie) {
-    return NextResponse.next();
+    return needsSession ? redirectToLogin() : NextResponse.next();
   }
 
   let response = NextResponse.next({ request });
@@ -46,7 +61,11 @@ export async function proxy(request: NextRequest) {
 
   // Verifies (and, if needed, refreshes) the session while the response can
   // still be modified. Without this call the refreshed cookies are lost.
-  await supabase.auth.getClaims();
+  const { data: claims } = await supabase.auth.getClaims();
+
+  if (needsSession && !claims) {
+    return redirectToLogin();
+  }
 
   response.headers.set("Cache-Control", "private, no-store");
   return response;

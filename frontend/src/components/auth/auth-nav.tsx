@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LayoutGrid, LogOut, UserRound } from "lucide-react";
 
 import { UserAvatar } from "@/components/auth/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
@@ -126,6 +126,14 @@ export function AuthNav() {
           </div>
           <div className="my-1 h-px bg-line" />
           <Link
+            href="/dashboard"
+            role="menuitem"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-blue-tint/60"
+          >
+            <LayoutGrid className="size-4 text-ink-soft" />
+            Dashboard
+          </Link>
+          <Link
             href="/account"
             role="menuitem"
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-blue-tint/60"
@@ -190,7 +198,17 @@ export function AuthNavMobile() {
           <p className="truncate text-xs text-ink-soft">{user.email}</p>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <Link
+        href="/dashboard"
+        className={cn(
+          buttonVariants({ variant: "default", size: "lg" }),
+          "mt-3 h-10 w-full gap-2 text-sm",
+        )}
+      >
+        <LayoutGrid className="size-4" />
+        Dashboard
+      </Link>
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <Link
           href="/account"
           className={cn(

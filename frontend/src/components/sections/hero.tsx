@@ -115,7 +115,7 @@ export function Hero() {
 
           {/* Voice visualiser — one illustrative call on a loop, no real audio.
               It sits straight on the page: no panel, no background colour. */}
-          <div className="relative flex items-center justify-center">
+          <div data-silk-anchor className="relative flex items-center justify-center">
             <VoiceOrb />
           </div>
         </div>
