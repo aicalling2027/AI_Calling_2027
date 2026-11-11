@@ -51,14 +51,14 @@ export function CtaBand({
             <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
               <Link
                 href={primary.href}
-                className="btn-accent h-12 gap-2 px-7 text-sm"
+                className="btn-fill btn-accent h-12 gap-2 px-7 text-sm [--btn-fill-color:var(--cobalt-night)] hover:text-white"
               >
                 {primary.label}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
               <Link
                 href={secondary.href}
-                className="btn-on-night h-12 px-7 text-sm"
+                className="btn-fill btn-on-night h-12 px-7 text-sm hover:text-ink"
               >
                 {secondary.label}
               </Link>

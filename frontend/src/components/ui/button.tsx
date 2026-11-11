@@ -3,17 +3,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-xl border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        // Blue fill, white text, soft depth. Secondary is white with a blue edge.
-        default: "bg-blue text-white shadow-button hover:bg-blue-deep",
+        // Blue fill, white text, soft depth. Every hover is the shared tangerine
+        // disc from .btn-fill, so the label flips to ink to stay legible on it.
+        default: "btn-fill bg-blue text-white shadow-button hover:text-ink",
         outline:
-          "border-blue-line bg-surface text-blue hover:bg-blue-tint hover:text-blue-deep aria-expanded:bg-blue-tint aria-expanded:text-blue-deep",
+          "btn-fill border-blue-line bg-surface text-blue hover:text-ink aria-expanded:bg-blue-tint aria-expanded:text-blue-deep",
         secondary:
-          "bg-blue-tint text-blue hover:bg-blue-tint/70 aria-expanded:bg-blue-tint",
-        // Accent — coral fill with ink text. Never white on coral.
+          "btn-fill bg-blue-tint text-blue hover:text-ink aria-expanded:bg-blue-tint",
+        // Accent is coral already, so a coral disc on top would be invisible —
+        // it keeps its own hover and never takes the fill. Same for the quiet
+        // utility variants below, where a fill would fight the control's job.
         accent:
           "bg-coral text-ink hover:bg-coral-lift aria-expanded:bg-coral aria-expanded:text-ink",
         ghost:

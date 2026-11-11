@@ -1,29 +1,13 @@
 import Link from "next/link";
-import { Check, Play } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { Container } from "@/components/layout/container";
 import BlurText from "@/components/reactbits/BlurText";
+import { VoiceOrb } from "@/components/sections/voice-orb";
 import { buttonVariants } from "@/components/ui/button";
 import { hero } from "@/content/home";
 import { cta } from "@/lib/site";
 import { cn } from "@/lib/utils";
-
-/**
- * Illustrative call data for the hero card. Deliberately fictional and
- * labelled as such on the card — never presented as a real customer record.
- */
-const callRows = [
-  { label: "Contact", value: "Priya S." },
-  { label: "Employee", value: "AOTMS Voice Agent (Telugu)" },
-  { label: "Outcome", value: "Interested", badge: true },
-  { label: "Talk time", value: "02:41" },
-];
-
-/** Static bar heights keep the waveform identical on server and client. */
-const waveBars = [
-  0.45, 0.8, 0.35, 0.65, 1, 0.5, 0.75, 0.4, 0.6, 0.9, 0.45, 0.7, 0.55, 0.95,
-  0.5, 0.8, 0.38, 0.66,
-];
 
 /** The headline with one keyword in tangerine and a hand-drawn underline. */
 function Headline() {
@@ -129,75 +113,10 @@ export function Hero() {
             </ul>
           </div>
 
-          {/* Illustrative call summary — sample data, clearly labelled. */}
-          <div className="relative">
-            <div className="card p-5 md:p-6">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-ink">Call summary</p>
-                <span className="rounded-full bg-tangerine-tint px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-tangerine-ink">
-                  Illustrative
-                </span>
-              </div>
-
-              <dl className="mt-4 space-y-2.5">
-                {callRows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-line bg-cream px-3 py-2.5"
-                  >
-                    <dt className="text-xs uppercase tracking-[0.1em] text-ink-soft">
-                      {row.label}
-                    </dt>
-                    <dd className="text-right text-sm font-medium text-ink">
-                      {row.badge ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-tangerine-tint px-2.5 py-1 text-[0.7rem] font-semibold text-tangerine-ink">
-                          <span className="size-1.5 rounded-full bg-tangerine" aria-hidden />
-                          {row.value}
-                        </span>
-                      ) : (
-                        row.value
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-
-              <div className="mt-3 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-cobalt-tint text-cobalt">
-                  <Play className="size-4 translate-x-[1px]" aria-hidden />
-                </span>
-                <div aria-hidden className="flex h-8 flex-1 items-center gap-[3px]">
-                  {waveBars.map((height, index) => (
-                    <span
-                      key={index}
-                      className="wave-bar w-[3px] shrink-0 rounded-full bg-cobalt"
-                      style={{
-                        height: `${Math.round(height * 30)}px`,
-                        animationDelay: `${index * 70}ms`,
-                        animationDuration: `${1000 + (index % 4) * 140}ms`,
-                      }}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-semibold tabular-nums text-ink-soft">
-                  02:41
-                </span>
-              </div>
-
-              <div className="mt-3 rounded-xl border border-line px-3.5 py-3">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-ink-soft">
-                  Transcript preview
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-ink">
-                  <span className="font-semibold text-cobalt">Agent</span> Good
-                  evening, is this Priya?
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-ink">
-                  <span className="font-semibold text-cobalt">Priya</span> Yes, who
-                  is calling?
-                </p>
-              </div>
-            </div>
+          {/* Voice visualiser — one illustrative call on a loop, no real audio.
+              It sits straight on the page: no panel, no background colour. */}
+          <div className="relative flex items-center justify-center">
+            <VoiceOrb />
           </div>
         </div>
       </Container>

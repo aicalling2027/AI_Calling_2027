@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { site } from "@/lib/site";
+import { ButtonFill } from "@/components/ui/button-fill";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,7 +47,11 @@ export default function RootLayout({
       lang={site.locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Tracks the pointer for the shared button hover — renders nothing. */}
+        <ButtonFill />
+      </body>
     </html>
   );
 }

@@ -25,10 +25,16 @@ export function FinalCta() {
               {finalCta.body}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href={cta.primary.href} className="btn-accent h-12 px-7 text-sm">
+              <Link
+                href={cta.primary.href}
+                className="btn-fill btn-accent h-12 px-7 text-sm [--btn-fill-color:var(--cobalt-night)] hover:text-white"
+              >
                 {cta.primary.label}
               </Link>
-              <Link href={cta.secondary.href} className="btn-on-night h-12 px-7 text-sm">
+              <Link
+                href={cta.secondary.href}
+                className="btn-fill btn-on-night h-12 px-7 text-sm hover:text-ink"
+              >
                 {cta.secondary.label}
               </Link>
             </div>
