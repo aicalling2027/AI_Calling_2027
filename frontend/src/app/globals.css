@@ -1,26 +1,336 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Dark utilities only apply behind an explicit .dark class, which this
+   light-only brand never sets. Keeps shadcn's dark: classes inert. */
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* AOTMS palette — bg-ivory-light, bg-blue-night, text-coral-ink... */
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ivory-light: var(--ivory-light);
+  --color-ivory: var(--ivory);
+  --color-blue: var(--blue);
+  --color-blue-night: var(--blue-night);
+  --color-blue-tint: var(--blue-tint);
+  --color-blue-deep: var(--blue-deep);
+  --color-coral: var(--coral);
+  --color-coral-lift: var(--coral-lift);
+  --color-coral-deep: var(--coral-deep);
+  --color-coral-tint: var(--coral-tint);
+  --color-coral-ink: var(--coral-ink);
+  --color-hairline: var(--hairline);
+  --color-line: var(--line);
+  --color-blue-line: var(--blue-line);
+  --color-on-night-line: var(--on-night-line);
+
+  /* Deprecated aliases kept so older templates inherit the new look.
+     elevated surfaces resolve to white, tints to the new tint scale. */
+  --color-ivory-raised: var(--surface);
+  --color-ivory-subtle: var(--surface);
+  --color-blue-soft: var(--blue-tint);
+  --color-coral-soft: var(--coral-tint);
+
+  --shadow-card: var(--elevation-card);
+  --shadow-card-hover: var(--elevation-hover);
+  --shadow-button: var(--elevation-button);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem; /* 20px — the card radius */
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 1.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* ------------------------------------------------------------------
+     AOTMS Global Pvt. Ltd. brand palette — the single place to edit.
+     60% ivory-light / white, 30% blue, 10% coral.
+     ------------------------------------------------------------------ */
+  --surface: #ffffff; /* cards and raised surfaces */
+  --ivory-light: #f6f3ee; /* page background */
+  --ivory: #eae6de; /* alternate section background */
+  --ink: #14202b; /* body text */
+  --ink-soft: #4b5b68; /* secondary text (7.4:1 on ivory-light) */
+  --blue: #226192; /* primary buttons, links, icons (5.9:1 on ivory-light) */
+  --blue-night: #123a5a; /* dark sections and footer */
+  --blue-tint: #e6eef5; /* icon backgrounds, subtle fills */
+  --blue-deep: #1b5079; /* blue hover */
+  --coral: #ef8557; /* accent fills only — never white text on it */
+  --coral-lift: #f39a72; /* coral hover (lighter, keeps ink text legible) */
+  --coral-deep: #c8582b; /* accent text at display sizes (3.9:1) */
+  --coral-tint: #fde6db; /* badge backgrounds */
+  --coral-ink: #a8431e; /* small accent text: 5.4:1 on ivory-light, 5.0:1 on coral-tint */
+  --line: rgba(18, 58, 90, 0.08); /* card hairlines */
+  --hairline: rgba(18, 58, 90, 0.14); /* dividers and inputs */
+  --blue-line: rgba(34, 97, 146, 0.35); /* secondary button edge */
+  --on-night-line: rgba(255, 255, 255, 0.28); /* outlines on blue-night */
+
+  --elevation-card: 0 10px 30px rgba(18, 58, 90, 0.08);
+  --elevation-hover: 0 18px 40px rgba(18, 58, 90, 0.16);
+  --elevation-button: 0 8px 20px -8px rgba(18, 58, 90, 0.55);
+  --elevation-pill: 0 1px 2px rgba(18, 58, 90, 0.1);
+
+  /* shadcn semantic mapping */
+  --background: var(--ivory-light);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--blue-tint);
+  --secondary-foreground: var(--blue);
+  --muted: var(--ivory);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--coral);
+  --accent-foreground: var(--ink);
+  --destructive: #b3261e;
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--blue);
+  --chart-1: var(--blue);
+  --chart-2: var(--coral);
+  --chart-3: var(--blue-night);
+  --chart-4: var(--coral-deep);
+  --chart-5: var(--ink-soft);
+  --radius: 0.75rem;
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--blue-tint);
+  --sidebar-accent-foreground: var(--blue);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--blue);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  ::selection {
+    background-color: var(--coral-tint);
+    color: var(--ink);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* Section rhythm: 96px on desktop, 64px on mobile. */
+  .section {
+    @apply py-16 md:py-24;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.18em] uppercase;
+    color: var(--coral-ink);
+  }
+
+  .display {
+    @apply font-heading font-semibold tracking-tight;
+    color: var(--ink);
+  }
+
+  /* Headings that sit on the blue-night band. */
+  .display-on-night {
+    @apply font-heading font-semibold tracking-tight;
+    color: #ffffff;
+  }
+
+  /* White card: 20px radius, hairline border, soft depth, optional lift. */
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: var(--elevation-card);
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-2px);
+    border-color: var(--hairline);
+    box-shadow: var(--elevation-hover);
+  }
+
+  /* Flat white panel inside a tinted section — no hover behaviour. */
+  .panel {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: var(--elevation-card);
+  }
+
+  /* 48px rounded-square icon tiles. Colour comes from a single tone class so
+     no two background declarations ever compete. */
+  .icon-tile {
+    @apply inline-flex size-12 shrink-0 items-center justify-center rounded-xl;
+  }
+
+  .icon-tile-blue {
+    background-color: var(--blue-tint);
+    color: var(--blue);
+  }
+
+  .icon-tile-accent {
+    background-color: var(--coral-tint);
+    color: var(--coral-ink);
+  }
+
+  .icon-tile-quiet {
+    background-color: var(--ivory);
+    color: var(--blue);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
+    background-color: var(--blue);
+    color: #ffffff;
+    box-shadow: var(--elevation-button);
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--blue-deep);
+    box-shadow: 0 10px 24px -8px rgba(18, 58, 90, 0.6);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
+    background-color: var(--surface);
+    color: var(--blue);
+    border: 1px solid var(--blue-line);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--blue-tint);
+    color: var(--blue-deep);
+    border-color: var(--blue);
+  }
+
+  /* Accent button — coral fill with ink text, used sparingly. */
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
+    background-color: var(--coral);
+    color: var(--ink);
+    transition: background-color 0.2s ease;
+  }
+
+  .btn-accent:hover {
+    background-color: var(--coral-lift);
+  }
+
+  .btn-on-night {
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold;
+    color: #ffffff;
+    border: 1px solid var(--on-night-line);
+    background-color: transparent;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .btn-on-night:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+
+  /* The supplied logo artwork sits on a white box, so it rides a white pill. */
+  .brand-pill {
+    @apply inline-flex items-center rounded-xl bg-white px-2 py-1;
+    box-shadow: var(--elevation-pill);
+  }
+
+  /* Soft radial glows behind the hero — blue-tint left, coral-tint right. */
+  .glow-blue {
+    background-image: radial-gradient(closest-side, var(--blue-tint), transparent);
+  }
+
+  .glow-coral {
+    background-image: radial-gradient(closest-side, var(--coral-tint), transparent);
+  }
+
+  /* Animated audio waveform bars in the hero call card. */
+  .wave-bar {
+    animation: aotms-wave 1.15s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  /* Full-bleed dark band: white text, coral accents. Used once per page. */
+  .section-night {
+    background-color: var(--blue-night);
+    color: #ffffff;
+  }
+}
+
+@keyframes aotms-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
