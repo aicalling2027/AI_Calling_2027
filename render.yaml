@@ -1,0 +1,60 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# OPTIONAL. The existing service can be fixed by hand in Settings (Root
+# Directory / Build Command / Start Command). This file is the deterministic
+# alternative: Dashboard -> New -> Blueprint -> pick this repo. Values marked
+# `sync: false` are prompted for instead of being committed.
+#
+# Why these values:
+# - rootDir      the FastAPI app lives in Backend/, not the repo root.
+# - runtime      "python" native; Docker is not used.
+# - startCommand uvicorn serves ASGI. Render's default `gunicorn
+#   your_application.wsgi` is a WSGI placeholder and is not installed.
+# - $PORT        Render routes traffic to the port it injects.
+
+services:
+  - type: web
+    name: aotms-backend
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: Backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_RELOAD
+        value: "false"
+      - key: LOG_JSON
+        value: "true"
+      - key: DB_AUTO_CREATE_TABLES
+        value: "true"
+      - key: DB_POOL_SIZE
+        value: "3"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "true"
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: CORS_ORIGINS
+        value: http://localhost:3000,https://aotms.com,https://www.aotms.com
+
+      # Prompted on first create — never stored in the repo.
+      # DATABASE_URL must be the Supabase pooler (IPv4), password %40-encoded.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TELEPHONY_WEBHOOK_SECRET
+        generateValue: true
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
