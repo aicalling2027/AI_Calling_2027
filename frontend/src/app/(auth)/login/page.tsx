@@ -30,9 +30,14 @@ const linkErrors: Record<string, string> = {
   missing_code: "That link is incomplete. Request a fresh one and try again.",
 };
 
+// Where a successful sign-in lands when the caller did not ask for a specific
+// page. The account view is the one screen that proves the session works, so a
+// fresh Google or email sign-in ends there instead of on the home page.
+const DEFAULT_AFTER_SIGN_IN = "/account";
+
 function safeNext(value: string | undefined): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return DEFAULT_AFTER_SIGN_IN;
   }
   return value;
 }

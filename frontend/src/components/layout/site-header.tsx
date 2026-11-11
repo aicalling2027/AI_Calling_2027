@@ -140,30 +140,34 @@ export function SiteHeader() {
           </nav>
 
           {/* The primary CTA lives in the hero only, so the header corner stays
-              quiet: one outline link plus the account entry. */}
-          <div className="hidden items-center gap-2 xl:flex">
-            <Link
-              href={cta.secondary.href}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-10 px-4 text-sm",
-              )}
-            >
-              {cta.secondary.label}
-            </Link>
+              quiet: one outline link plus the account entry. The account control
+              sits outside the xl-only cluster on purpose — otherwise a signed-in
+              visitor on a 1024-1279px screen has no account entry at all. */}
+          <div className="flex items-center gap-2">
+            <div className="hidden xl:block">
+              <Link
+                href={cta.secondary.href}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "h-10 px-4 text-sm",
+                )}
+              >
+                {cta.secondary.label}
+              </Link>
+            </div>
             <AuthNav />
-          </div>
 
-          <button
-            type="button"
-            className="inline-flex size-10 items-center justify-center rounded-full border border-line bg-surface text-ink xl:hidden"
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-nav"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobile({ pathname, open: !mobileOpen })}
-          >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
+            <button
+              type="button"
+              className="inline-flex size-10 items-center justify-center rounded-full border border-line bg-surface text-ink xl:hidden"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-nav"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMobile({ pathname, open: !mobileOpen })}
+            >
+              {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
+          </div>
         </div>
       </Container>
 

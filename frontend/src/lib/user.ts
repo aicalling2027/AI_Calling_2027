@@ -14,6 +14,23 @@ export function userDisplayName(user: User): string {
   return user.email ?? "Your account";
 }
 
+/**
+ * Provider-supplied avatar. Google sends `avatar_url` (and mirrors it as
+ * `picture`), so OAuth users get a real photo instead of initials.
+ */
+export function userAvatarUrl(user: User): string | null {
+  const metadata = user.user_metadata ?? {};
+  const candidates = [metadata.avatar_url, metadata.picture];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.startsWith("https://")) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 /** Two-letter avatar label, e.g. "ameen@aotms.com" → "AA". */
 export function userInitials(user: User): string {
   const words = userDisplayName(user)

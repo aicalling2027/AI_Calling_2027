@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 
+import { UserAvatar } from "@/components/auth/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/supabase/use-auth-user";
-import { userDisplayName, userInitials } from "@/lib/user";
+import { userDisplayName } from "@/lib/user";
 import { cn } from "@/lib/utils";
 
 function useSignOut() {
@@ -69,13 +70,16 @@ export function AuthNav() {
     return (
       <Link
         href="/login"
+        aria-label="Sign in"
         className={cn(
           buttonVariants({ variant: "outline", size: "lg" }),
-          "h-10 gap-2 px-4 text-sm",
+          "h-10 gap-2 px-3 text-sm xl:px-4",
         )}
       >
         <UserRound className="size-4" />
-        Sign in
+        {/* Below xl the header collapses to icons, so the label comes back
+            only when the full navigation is visible. */}
+        <span className="hidden xl:inline">Sign in</span>
       </Link>
     );
   }
@@ -89,7 +93,7 @@ export function AuthNav() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls="account-menu"
-        aria-label="Account menu"
+        aria-label={`Account menu for ${userDisplayName(user)}`}
         onClick={() =>
           setMenu((current) => ({
             pathname,
@@ -98,9 +102,7 @@ export function AuthNav() {
         }
         className="flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-blue-tint"
       >
-        <span className="grid size-8 place-items-center rounded-full bg-blue text-[0.7rem] font-semibold uppercase tracking-wide text-white">
-          {userInitials(user)}
-        </span>
+        <UserAvatar user={user} />
         <ChevronDown
           className={cn(
             "size-3.5 text-ink-soft transition-transform",
@@ -180,9 +182,7 @@ export function AuthNavMobile() {
   return (
     <div className="rounded-2xl border border-line bg-surface p-3">
       <div className="flex items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue text-xs font-semibold uppercase tracking-wide text-white">
-          {userInitials(user)}
-        </span>
+        <UserAvatar user={user} className="size-9 text-xs" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-ink">
             {userDisplayName(user)}

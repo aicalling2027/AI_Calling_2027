@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { UserAvatar } from "@/components/auth/user-avatar";
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
 import { formatDate } from "@/lib/date";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import { userDisplayName, userInitials } from "@/lib/user";
+import { userDisplayName } from "@/lib/user";
 
 // Reads the session cookie, so the page renders per request.
 export const instant = false;
@@ -57,9 +58,7 @@ export default async function AccountPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <div className="card p-6">
             <div className="flex items-center gap-4">
-              <span className="grid size-14 place-items-center rounded-full bg-blue text-base font-semibold uppercase tracking-wide text-white">
-                {userInitials(user)}
-              </span>
+              <UserAvatar user={user} className="size-14 text-base" />
               <div className="min-w-0">
                 <h1 className="truncate text-lg font-semibold text-ink">
                   {userDisplayName(user)}
