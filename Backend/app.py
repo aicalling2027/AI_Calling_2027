@@ -7,6 +7,10 @@
     python app.py --workers 4     # multi-process (production, needs --no-reload)
     python app.py --check         # validate config + database, then exit
 
+When a hosting platform sets ``PORT`` (Render, Cloud Run, Heroku), the defaults
+become ``0.0.0.0:$PORT`` and reload is off, so ``python app.py`` is a valid start
+command with no flags. Explicit ``--host`` / ``--port`` still win.
+
 This file only does argument parsing and diagnostics; everything else lives in
 ``app/main.py`` so ``uvicorn app.main:app`` and ``TestClient`` behave identically.
 """
@@ -32,18 +36,26 @@ BANNER = """
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     from app.core.config import settings
 
+    # A managed platform injects the port it routes traffic to; binding anything
+    # else (or to 127.0.0.1) makes the deploy look dead. ``PORT`` is the
+    # convention Render/Cloud Run/Heroku use.
+    runtime_port = os.environ.get("PORT", "").strip()
+    platform_managed = runtime_port.isdigit()
+    default_host = "0.0.0.0" if platform_managed else settings.app_host
+    default_port = int(runtime_port) if platform_managed else settings.app_port
+
     parser = argparse.ArgumentParser(
         prog="app.py",
         description="Run the OWN AI backend.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--host", default=settings.app_host, help="Bind address.")
-    parser.add_argument("--port", type=int, default=settings.app_port, help="Bind port.")
+    parser.add_argument("--host", default=default_host, help="Bind address.")
+    parser.add_argument("--port", type=int, default=default_port, help="Bind port.")
     parser.add_argument(
         "--reload",
         dest="reload",
         action="store_true",
-        default=settings.app_reload,
+        default=settings.app_reload and not platform_managed,
         help="Restart on file changes (development only).",
     )
     parser.add_argument(
