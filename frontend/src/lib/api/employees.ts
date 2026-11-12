@@ -58,6 +58,22 @@ type EmployeePage = { items: EmployeeRecord[]; meta?: { total: number } };
 
 export type DedupeResult = { scanned: number; duplicates: number; archivedIds: string[] };
 
+/** What a pull from the Sarvam workspace did, one line per deployment. */
+export type ImportSummary = {
+  fetched: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  items: {
+    employeeId: string;
+    name: string;
+    deploymentId: string;
+    status: string;
+    action: string;
+    reason: string | null;
+  }[];
+};
+
 /** Fields the create form collects beyond the plain `NewAgentInput`. */
 export type NewEmployeeInput = {
   name: string;
@@ -293,5 +309,43 @@ export async function dedupeEmployees(): Promise<DedupeResult> {
     scanned: result.scanned,
     duplicates: result.duplicates,
     archivedIds: result.archived_ids,
+  };
+}
+
+/**
+ * Pull the agents that already exist on Sarvam into this workspace.
+ *
+ * The backend links each deployment to an employee instead of deploying a new
+ * agent, so this is safe to run again: it only refreshes what changed.
+ */
+export async function importEmployees(): Promise<ImportSummary> {
+  const result = await apiFetch<{
+    fetched: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    items: {
+      employee_id: string;
+      name: string;
+      deployment_id: string;
+      status: string;
+      action: string;
+      reason: string | null;
+    }[];
+  }>("/employees/import", { method: "POST" });
+
+  return {
+    fetched: result.fetched,
+    created: result.created,
+    updated: result.updated,
+    skipped: result.skipped,
+    items: result.items.map((item) => ({
+      employeeId: item.employee_id,
+      name: item.name,
+      deploymentId: item.deployment_id,
+      status: item.status,
+      action: item.action,
+      reason: item.reason,
+    })),
   };
 }

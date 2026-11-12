@@ -17,7 +17,13 @@ from app.core.constants import (
     SUPPORTED_VOICES,
     EmployeeStatus,
 )
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    NotFoundError,
+    ProviderError,
+    ProviderNotConfiguredError,
+    ValidationError,
+)
 from app.core.pagination import PageParams, apply_sorting, paginate
 from app.database.base import utcnow
 from app.database.models.employee import (
@@ -37,6 +43,8 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeDedupeOut,
     EmployeeDetail,
+    EmployeeImportItem,
+    EmployeeImportOut,
     EmployeeLanguageIn,
     EmployeeOut,
     EmployeeStatusUpdate,
@@ -658,6 +666,147 @@ def deduplicate(
 
 
 # ---------------------------------------------------------------------------
+# Import from Sarvam
+# ---------------------------------------------------------------------------
+def import_deployments(
+    db: Session, organization_id: str, *, user_id: str | None = None
+) -> EmployeeImportOut:
+    """Pull the agents that already exist on Sarvam into this workspace.
+
+    Voice Agents has no "list agents" call: an agent only becomes addressable
+    through the deployment that binds it to a phone number, so one deployment
+    becomes one AI employee. The pull *links* to what is already there - it
+    never provisions a deployment and never deletes one - so running it twice
+    only refreshes the version, status and sync time.
+    """
+    missing = sarvam_agents.missing_workspace_settings()
+    if missing:
+        raise ProviderNotConfiguredError(
+            "Sarvam is not addressed yet. Set "
+            f"{', '.join(missing)} in the backend environment, then import again.",
+            details={"missing": missing},
+        )
+
+    result = sarvam_agents.list_deployments()
+    if not result.ok:
+        raise ProviderError(
+            result.error or "Sarvam did not return its deployments.",
+            details={
+                "provider": sarvam_agents.PROVIDER,
+                "status_code": result.status_code,
+            },
+        )
+
+    deployments = [
+        item
+        for item in (result.data.get("items") or [])
+        if isinstance(item, dict) and item.get("deployment_id")
+    ]
+    if not deployments:
+        return EmployeeImportOut(fetched=0, created=0, updated=0, skipped=0, items=[])
+
+    bindings = {
+        row.deployment_id: row
+        for row in db.execute(
+            select(EmployeeAgentBinding).where(
+                EmployeeAgentBinding.organization_id == organization_id,
+                EmployeeAgentBinding.deployment_id.in_(
+                    [str(item["deployment_id"]) for item in deployments]
+                ),
+            )
+        ).scalars()
+        if row.deployment_id
+    }
+    employees = {
+        row.id: row
+        for row in db.execute(
+            select(Employee).where(Employee.organization_id == organization_id)
+        ).scalars()
+    }
+
+    # Only the visible rows take a name or a seat; an archived one must stay
+    # archived and must not be counted against the plan twice.
+    taken_names = {
+        (row.name or "").strip().lower()
+        for row in employees.values()
+        if row.status != str(EmployeeStatus.ARCHIVED)
+    }
+    limits = billing.plan_limits(db, organization_id)
+    headroom = max(0, limits["max_employees"] - len(taken_names))
+
+    items: list[EmployeeImportItem] = []
+    created = updated = skipped = 0
+
+    for deployment in deployments:
+        deployment_id = str(deployment["deployment_id"])
+        target = _deployment_status(deployment)
+        binding = bindings.get(deployment_id)
+
+        if binding is not None:
+            employee = employees.get(binding.employee_id)
+            if employee is None or employee.status == str(EmployeeStatus.ARCHIVED):
+                # Archived in this workspace on purpose: a pull must not bring
+                # it back, or removing an employee would not stick.
+                skipped += 1
+                items.append(
+                    _import_item(
+                        binding.employee_id,
+                        employee.name if employee else "",
+                        deployment,
+                        binding.status,
+                        "skipped",
+                        "Archived in this workspace",
+                    )
+                )
+                continue
+
+            _refresh_binding(binding, deployment, target, employee)
+            updated += 1
+            items.append(
+                _import_item(
+                    employee.id,
+                    employee.name,
+                    deployment,
+                    binding.status,
+                    "updated",
+                )
+            )
+            continue
+
+        if headroom <= 0:
+            skipped += 1
+            items.append(
+                _import_item(
+                    "",
+                    str(deployment.get("name") or deployment.get("app_id") or ""),
+                    deployment,
+                    str(deployment.get("status") or ""),
+                    "skipped",
+                    f"Plan limit of {limits['max_employees']} employees reached",
+                )
+            )
+            continue
+
+        employee, binding = _create_from_deployment(
+            db, organization_id, deployment, target, taken_names, user_id
+        )
+        headroom -= 1
+        created += 1
+        items.append(
+            _import_item(employee.id, employee.name, deployment, binding.status, "created")
+        )
+
+    db.commit()
+    return EmployeeImportOut(
+        fetched=len(deployments),
+        created=created,
+        updated=updated,
+        skipped=skipped,
+        items=items,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
 def _bindings_for(db: Session, employee_ids: list[str]) -> dict[str, EmployeeAgentBinding]:
@@ -685,6 +834,152 @@ def _provider_agent(binding: EmployeeAgentBinding | None) -> ProviderAgentOut | 
         synced_at=binding.synced_at,
         error=binding.last_error,
     )
+
+
+#: The two states a Sarvam deployment reports. An unknown one is not a licence
+#: to activate, so it imports as a draft.
+_DEPLOYMENT_STATUS = {
+    "active": EmployeeStatus.ACTIVE,
+    "paused": EmployeeStatus.PAUSED,
+}
+
+
+def _deployment_status(deployment: dict[str, Any]) -> EmployeeStatus:
+    return _DEPLOYMENT_STATUS.get(
+        str(deployment.get("status") or "").strip().lower(), EmployeeStatus.DRAFT
+    )
+
+
+def _import_item(
+    employee_id: str,
+    name: str,
+    deployment: dict[str, Any],
+    status: str,
+    action: str,
+    reason: str | None = None,
+) -> EmployeeImportItem:
+    return EmployeeImportItem(
+        employee_id=employee_id,
+        name=name,
+        deployment_id=str(deployment.get("deployment_id") or ""),
+        app_id=str(deployment.get("app_id") or "") or None,
+        app_version=int(deployment.get("app_version") or 1),
+        status=status,
+        action=action,
+        reason=reason,
+    )
+
+
+def _create_from_deployment(
+    db: Session,
+    organization_id: str,
+    deployment: dict[str, Any],
+    status: EmployeeStatus,
+    taken_names: set[str],
+    user_id: str | None,
+) -> tuple[Employee, EmployeeAgentBinding]:
+    """Mirror one remote deployment as a new employee, without deploying again."""
+    deployment_id = str(deployment["deployment_id"])
+    app_id = str(deployment.get("app_id") or "").strip() or None
+    version = int(deployment.get("app_version") or 1)
+    description = str(deployment.get("description") or "").strip()
+
+    employee = Employee(
+        organization_id=organization_id,
+        name=_free_name(
+            str(deployment.get("name") or app_id or "Sarvam agent"), taken_names
+        ),
+        description=description or f"Imported from Sarvam - deployment {deployment_id}",
+        purpose=(f"Sarvam agent {app_id}" if app_id else "Imported Sarvam agent")[:255],
+        default_language="en-IN",
+        voice=_default_voice(),
+        model=DEFAULT_MODEL,
+        # The instructions live in Sarvam; this row is the workspace's mirror of
+        # them, so there is nothing truthful to write here yet.
+        system_prompt="",
+        status=str(status),
+        is_active=status == EmployeeStatus.ACTIVE,
+        created_by=user_id,
+    )
+    db.add(employee)
+    db.flush()
+
+    _sync_languages(
+        db,
+        employee,
+        [EmployeeLanguageIn(language_code="en-IN", is_default=True)],
+    )
+    _snapshot_prompt(db, employee, user_id=user_id, note="Imported from Sarvam")
+
+    binding = EmployeeAgentBinding(
+        organization_id=organization_id,
+        employee_id=employee.id,
+        provider=sarvam_agents.PROVIDER,
+        deployment_id=deployment_id,
+        app_id=app_id,
+        app_version=version,
+        status=str(deployment.get("status") or "").strip().lower() or "active",
+        simulated=False,
+        synced_at=utcnow(),
+    )
+    db.add(binding)
+
+    audit.log_action(
+        db,
+        action="employee.imported",
+        organization_id=organization_id,
+        user_id=user_id,
+        resource_type="employee",
+        resource_id=employee.id,
+        changes={
+            "deployment_id": deployment_id,
+            "app_id": app_id,
+            "app_version": version,
+            "status": str(status),
+        },
+    )
+    db.flush()
+    return employee, binding
+
+
+def _refresh_binding(
+    binding: EmployeeAgentBinding,
+    deployment: dict[str, Any],
+    status: EmployeeStatus,
+    employee: Employee,
+) -> None:
+    """Re-read one deployment. Links only: no new deployment is created."""
+    binding.app_id = str(deployment.get("app_id") or "") or binding.app_id
+    binding.app_version = int(deployment.get("app_version") or binding.app_version or 1)
+    binding.status = str(deployment.get("status") or "").strip().lower() or binding.status
+    binding.simulated = False
+    binding.last_error = None
+    binding.synced_at = utcnow()
+
+    # A pause made on Sarvam is a pause here. Activation is deliberately not
+    # mirrored: a draft has no instructions yet, and an import must never put
+    # an employee on the phone behind the workspace's back.
+    if status == EmployeeStatus.PAUSED and employee.status != str(EmployeeStatus.PAUSED):
+        employee.status = str(EmployeeStatus.PAUSED)
+        employee.is_active = False
+
+
+def _free_name(base: str, taken: set[str]) -> str:
+    """A workspace-unique display name, so an import cannot fight the guard."""
+    cleaned = " ".join(str(base).split())[:120] or "Sarvam agent"
+    candidate = cleaned
+    counter = 2
+    while candidate.lower() in taken:
+        suffix = f" ({counter})"
+        candidate = f"{cleaned[: 120 - len(suffix)].strip()}{suffix}"
+        counter += 1
+    taken.add(candidate.lower())
+    return candidate
+
+
+def _default_voice() -> str:
+    speaker = (settings.sarvam_default_speaker or "").strip()
+    return speaker if speaker in SUPPORTED_VOICES else "anushka"
 
 
 def _assert_name_is_free(

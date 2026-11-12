@@ -12,6 +12,7 @@
 
 import * as React from "react";
 
+import type { ImportSummary } from "@/lib/api/employees";
 import {
   type Agent,
   type ApiKeyRecord,
@@ -79,6 +80,8 @@ type WorkspaceActions = {
   refreshAgents: () => Promise<void>;
   redeployAgent: (id: string) => Promise<Agent>;
   dedupeAgents: () => Promise<number>;
+  /** Pull the agents that already exist on Sarvam in as employees. */
+  importAgents: () => Promise<ImportSummary>;
   addLead: (input: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   addCampaign: (input: {
@@ -264,6 +267,22 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!response.ok) throw new Error(body?.error?.message ?? "The duplicate check failed.");
     await refreshAgents();
     return Number(body?.duplicates ?? 0);
+  }, [refreshAgents]);
+
+  const importAgents = React.useCallback(async (): Promise<ImportSummary> => {
+    const response = await fetch("/api/employees/import", { method: "POST" });
+    const body = (await response.json().catch(() => null)) as
+      | (ImportSummary & { error?: { message?: string } })
+      | null;
+    if (!response.ok) throw new Error(body?.error?.message ?? "Sarvam could not be read.");
+    await refreshAgents();
+    return {
+      fetched: Number(body?.fetched ?? 0),
+      created: Number(body?.created ?? 0),
+      updated: Number(body?.updated ?? 0),
+      skipped: Number(body?.skipped ?? 0),
+      items: body?.items ?? [],
+    };
   }, [refreshAgents]);
 
   const addLead = React.useCallback((input: Omit<Lead, "id">) => {
@@ -493,6 +512,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       refreshAgents,
       redeployAgent,
       dedupeAgents,
+      importAgents,
       addLead,
       updateLead,
       addCampaign,
@@ -519,6 +539,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       refreshAgents,
       redeployAgent,
       dedupeAgents,
+      importAgents,
       addLead,
       updateLead,
       addCampaign,

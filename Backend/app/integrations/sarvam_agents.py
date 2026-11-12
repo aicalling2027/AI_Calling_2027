@@ -36,6 +36,20 @@ def configured() -> bool:
     )
 
 
+#: Reading the workspace needs an API key and the two ids - but no agent id,
+#: because the agents are what the call returns.
+_WORKSPACE_FIELDS = ("sarvam_api_key", "sarvam_org_id", "sarvam_workspace_id")
+
+
+def missing_workspace_settings() -> list[str]:
+    """Env var names still empty, in the order they should be filled in."""
+    return [
+        field.upper()
+        for field in _WORKSPACE_FIELDS
+        if not str(getattr(settings, field, "") or "").strip()
+    ]
+
+
 def _headers() -> dict[str, str]:
     return {
         "X-API-Key": settings.sarvam_api_key,
@@ -120,6 +134,54 @@ def provision(
     if result.ok:
         result.data.setdefault("status", "active")
     return result
+
+
+def list_deployments(*, page_size: int = 100, max_pages: int = 10) -> ProviderResponse:
+    """Every deployment already living in the Sarvam workspace.
+
+    This is the only programmatic view of an agent: Voice Agents has no "list
+    agents" call, an agent becomes addressable through the deployment that
+    binds it to a number. Read-only - nothing is created or deleted.
+    """
+    missing = missing_workspace_settings()
+    if missing:
+        return ProviderResponse(
+            ok=False,
+            error=(
+                "Sarvam is not addressed yet - set "
+                f"{', '.join(missing)} in the backend environment."
+            ),
+            status_code=503,
+        )
+
+    items: list[dict[str, Any]] = []
+    offset = 0
+    for _ in range(max(1, max_pages)):
+        result = request_json(
+            "GET",
+            _deployments_url(),
+            provider=PROVIDER,
+            headers=_headers(),
+            params={
+                "offset": offset,
+                "limit": page_size,
+                "sort_by": "created_at",
+                "sort_order": "asc",
+            },
+            timeout=float(settings.sarvam_timeout_seconds),
+            retries=1,
+        )
+        if not result.ok:
+            return result
+
+        batch = [item for item in (result.data.get("items") or []) if isinstance(item, dict)]
+        items.extend(batch)
+        offset += len(batch)
+        total = int(result.data.get("total") or 0)
+        if len(batch) < page_size or offset >= total:
+            break
+
+    return ProviderResponse(ok=True, data={"items": items, "total": len(items)})
 
 
 def set_status(deployment_id: str, *, action: str) -> ProviderResponse:

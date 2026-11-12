@@ -14,6 +14,7 @@ from app.schemas.employee import (
     EmployeeCreate,
     EmployeeDedupeOut,
     EmployeeDetail,
+    EmployeeImportOut,
     EmployeeOut,
     EmployeeStatusUpdate,
     EmployeeTestRequest,
@@ -73,6 +74,23 @@ def create_employee(
 def deduplicate(principal: Writer, db: DbSession) -> EmployeeDedupeOut:
     """Maintenance pass: keep the oldest of each repeated name, archive the rest."""
     return employees.deduplicate(db, principal.organization_id, user_id=principal.user_id)
+
+
+@router.post(
+    "/import",
+    response_model=EmployeeImportOut,
+    summary="Import the agents that already exist in the Sarvam workspace",
+)
+def import_employees(principal: Writer, db: DbSession) -> EmployeeImportOut:
+    """Pull existing Sarvam deployments in as AI employees.
+
+    One deployment becomes one employee, linked to the deployment that is
+    already running - nothing is deployed or deleted, so repeating the call is
+    safe and only refreshes version, status and sync time.
+    """
+    return employees.import_deployments(
+        db, principal.organization_id, user_id=principal.user_id
+    )
 
 
 @router.get("/{employee_id}", response_model=EmployeeDetail, summary="Get an AI employee")

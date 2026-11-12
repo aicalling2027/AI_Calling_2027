@@ -221,6 +221,31 @@ class EmployeeDedupeOut(APIModel):
     archived_ids: list[str] = Field(default_factory=list)
 
 
+class EmployeeImportItem(APIModel):
+    """One deployment from the Sarvam workspace and what the pull did with it."""
+
+    employee_id: str
+    name: str
+    deployment_id: str
+    app_id: str | None = None
+    app_version: int = 1
+    status: str
+    simulated: bool = False
+    #: created | updated | skipped
+    action: str
+    reason: str | None = None
+
+
+class EmployeeImportOut(APIModel):
+    """Result of pulling the agents that already exist on Sarvam."""
+
+    fetched: int
+    created: int
+    updated: int
+    skipped: int
+    items: list[EmployeeImportItem] = Field(default_factory=list)
+
+
 class EmployeeStatusUpdate(APIModel):
     status: EmployeeStatus
     is_active: bool | None = None

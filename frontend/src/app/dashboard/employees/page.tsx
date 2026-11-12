@@ -8,6 +8,7 @@ import {
   Pause,
   Play,
   Plus,
+  RefreshCw,
   Users,
   Zap,
 } from "lucide-react";
@@ -37,11 +38,12 @@ const STATUS_VARIANT: Record<Agent["status"], "success" | "warning" | "secondary
 };
 
 export default function EmployeesPage() {
-  const { agents, agentsStatus, updateAgent, dedupeAgents } = useWorkspace();
+  const { agents, agentsStatus, updateAgent, dedupeAgents, importAgents } = useWorkspace();
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("All");
   const [language, setLanguage] = React.useState("All");
   const [checking, setChecking] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
 
   const filtered = agents.filter((agent) => {
@@ -79,6 +81,42 @@ export default function EmployeesPage() {
       setNotice(error instanceof Error ? error.message : "The duplicate check failed.");
     } finally {
       setChecking(false);
+    }
+  };
+
+  // Pulls the deployments that already live in the Sarvam workspace, so an
+  // agent built there shows up here without being built a second time.
+  const importFromSarvam = async () => {
+    setImporting(true);
+    setNotice(null);
+    try {
+      const summary = await importAgents();
+      if (summary.fetched === 0) {
+        setNotice("Sarvam has no deployments yet. Deploy an agent there, then import again.");
+        return;
+      }
+
+      const parts: string[] = [];
+      if (summary.created) parts.push(`${summary.created} imported`);
+      if (summary.updated) parts.push(`${summary.updated} refreshed`);
+      if (summary.skipped) parts.push(`${summary.skipped} skipped`);
+
+      const reasons = Array.from(
+        new Set(
+          summary.items
+            .map((item) => item.reason)
+            .filter((reason): reason is string => Boolean(reason)),
+        ),
+      );
+      setNotice(
+        parts.length === 0
+          ? "Everything on Sarvam is already here."
+          : `${parts.join(", ")}.${reasons.length ? ` ${reasons.join("; ")}.` : ""}`,
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Sarvam could not be read.");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -150,6 +188,15 @@ export default function EmployeesPage() {
           />
           <button
             type="button"
+            onClick={importFromSarvam}
+            disabled={importing || agentsStatus === "loading"}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-medium text-ink-soft transition-colors hover:bg-mist disabled:opacity-60"
+          >
+            {importing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            Import from Sarvam
+          </button>
+          <button
+            type="button"
             onClick={removeDuplicates}
             disabled={checking || agentsStatus !== "ready"}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-medium text-ink-soft transition-colors hover:bg-mist disabled:opacity-60"
@@ -192,7 +239,7 @@ export default function EmployeesPage() {
           title={agents.length === 0 ? "No employees yet" : "No employees match these filters"}
           description={
             agents.length === 0
-              ? "Build your first AI employee. The Sarvam agent is deployed automatically when you save it."
+              ? "Build your first AI employee - or import the agents you already have on Sarvam."
               : "Clear the search, choose another language, or build a new employee from a template."
           }
           action={
