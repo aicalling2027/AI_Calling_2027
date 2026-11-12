@@ -26,6 +26,10 @@ import {
 
 import { AuthNav, AuthNavMobile } from "@/components/auth/auth-nav";
 import { Container } from "@/components/layout/container";
+import {
+  LiquidNavLayer,
+  LiquidPanelGlass,
+} from "@/components/ui/liquid-nav-layer";
 import { MenuToggleIcon } from "@/components/ui/menu-toggle-icon";
 import {
   NavigationMenu,
@@ -70,11 +74,20 @@ const groupIcons: Record<string, LucideIcon> = {
 
 /**
  * API and Docs are buttons only: there is no page behind them yet, so they never
- * navigate and stay labelled "Soon" until one exists.
+ * navigate and stay labelled "Soon" until one exists. They render as the two
+ * rows of the Developers panel, and again in the phone menu.
  */
-const toolLinks: { label: string; icon: LucideIcon }[] = [
-  { label: "API", icon: Code2 },
-  { label: "Docs", icon: FileText },
+const toolLinks: { label: string; icon: LucideIcon; description: string }[] = [
+  {
+    label: "API",
+    icon: Code2,
+    description: "Call the platform from your own stack.",
+  },
+  {
+    label: "Docs",
+    icon: FileText,
+    description: "Endpoints, webhooks and integration guides.",
+  },
 ];
 
 function linkIsActive(pathname: string, href: string) {
@@ -84,7 +97,9 @@ function linkIsActive(pathname: string, href: string) {
 
 function itemIsActive(pathname: string, item: NavItem) {
   if (item.href && linkIsActive(pathname, item.href)) return true;
-  return (item.children ?? []).some((child) => linkIsActive(pathname, child.href));
+  return (item.children ?? []).some((child) =>
+    linkIsActive(pathname, child.href),
+  );
 }
 
 /** Marks the API and Docs buttons that have no page behind them yet. */
@@ -121,9 +136,12 @@ function PanelRow({
         aria-current={active ? "page" : undefined}
         target={external ? "_blank" : undefined}
         rel={external ? "noreferrer" : undefined}
+        data-liquid-row
         className={cn(
+          // The sliding glass is the hover surface now, so the row keeps no
+          // fill of its own: two whites would stack and read as a seam.
           "group/row flex cursor-pointer items-start gap-3 rounded-xl p-2.5 outline-none transition-colors",
-          "hover:bg-white/80 focus-visible:ring-3 focus-visible:ring-ring/30",
+          "focus-visible:ring-3 focus-visible:ring-ring/30",
           active && "bg-white shadow-[0_1px_3px_rgba(13,42,107,0.12)]",
         )}
       >
@@ -181,7 +199,11 @@ function ProductPanel({ pathname }: { pathname: string }) {
   const platform = product?.children ?? [];
 
   return (
-    <div className="w-[38rem] max-w-[calc(100vw-2rem)] p-2">
+    <div
+      data-liquid-panel
+      className="relative isolate w-[38rem] max-w-[calc(100vw-2rem)] p-2"
+    >
+      <LiquidPanelGlass />
       <div className="grid grid-cols-3 gap-x-3">
         <div className="min-w-0">
           <PanelLabel>Platform</PanelLabel>
@@ -222,14 +244,21 @@ function ProductPanel({ pathname }: { pathname: string }) {
   );
 }
 
-/** Resources panel: link rows on the left, the API / Docs buttons on the right. */
+/**
+ * Resources panel: one column of link rows. The developer tools are not in here
+ * — they have their own trigger and panel beside it.
+ */
 function ResourcesPanel({ pathname }: { pathname: string }) {
   const resources = primaryNav.find((item) => item.label === "Resources");
   const links = resources?.children ?? [];
 
   return (
-    <div className="grid w-[40rem] max-w-[calc(100vw-2rem)] gap-2 p-2 md:grid-cols-[minmax(0,24rem)_1fr]">
-      <ul className="grid content-start gap-1">
+    <div
+      data-liquid-panel
+      className="relative isolate w-[26rem] max-w-[calc(100vw-2rem)] p-2"
+    >
+      <LiquidPanelGlass />
+      <ul className="grid gap-1">
         {links.map((link) => (
           <li key={link.href}>
             <PanelRow
@@ -242,25 +271,59 @@ function ResourcesPanel({ pathname }: { pathname: string }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
 
-      <div className="self-start rounded-xl border border-line bg-white p-2">
-        <PanelLabel>Developers</PanelLabel>
+/**
+ * A panel row with no page behind it. It is a button, not a link, so the row
+ * cannot promise a destination it does not have; the chip says when.
+ */
+function PanelSoonRow({ tool }: { tool: (typeof toolLinks)[number] }) {
+  const Icon = tool.icon;
+
+  return (
+    <button
+      type="button"
+      title="Coming soon"
+      aria-label={`${tool.label} — coming soon`}
+      data-liquid-row
+      className="group/row flex w-full cursor-pointer items-start gap-3 rounded-xl p-2.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+    >
+      <span
+        aria-hidden
+        className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-white text-cobalt transition-colors group-hover/row:border-cobalt/30 group-hover/row:bg-cobalt-tint"
+      >
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+          {tool.label}
+          <SoonChip />
+        </span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
+          {tool.description}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Developers panel: the two tools, and nothing else competing with them. */
+function DevelopersPanel() {
+  return (
+    <div
+      data-liquid-panel
+      className="relative isolate w-[22rem] max-w-[calc(100vw-2rem)] p-2"
+    >
+      <LiquidPanelGlass />
+      <ul className="grid gap-1">
         {toolLinks.map((tool) => (
-          <button
-            key={tool.label}
-            type="button"
-            title="Coming soon"
-            aria-label={`${tool.label} — coming soon`}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-mist focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none"
-          >
-            <tool.icon aria-hidden className="size-4 text-cobalt" />
-            {tool.label}
-            <span className="ml-auto">
-              <SoonChip />
-            </span>
-          </button>
+          <li key={tool.label}>
+            <PanelSoonRow tool={tool} />
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -339,10 +402,12 @@ export function SiteHeader() {
     pathname,
     open: false,
   });
-  const [openMenu, setOpenMenu] = useState<{ pathname: string; value: string }>({
-    pathname,
-    value: "",
-  });
+  const [openMenu, setOpenMenu] = useState<{ pathname: string; value: string }>(
+    {
+      pathname,
+      value: "",
+    },
+  );
   const [scrolled, setScrolled] = useState(false);
 
   const mobileOpen = mobile.pathname === pathname && mobile.open;
@@ -415,84 +480,97 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          <NavigationMenu
-            aria-label="Main"
-            delayDuration={120}
-            skipDelayDuration={400}
-            value={menuValue}
-            onValueChange={(value) => setOpenMenu({ pathname, value })}
-            // self-stretch makes the menu as tall as the header bar, so the
-            // shared viewport hangs from the header edge instead of the text
-            // baseline. The colour comes from the bar through `text-current`.
-            className="hidden self-stretch text-ink xl:flex"
+          {/* The desktop links sit on a pill of water. The layer is purely
+              decorative, so it is a sibling of the menu rather than a wrapper:
+              Radix positions the shared panel against the menu, and nesting
+              the list would move it. */}
+          <div
+            data-liquid-nav
+            className="relative hidden self-stretch items-center xl:flex"
           >
-            <NavigationMenuList>
-              {primaryNav.map((item) =>
-                item.children ? (
-                  <NavigationMenuItem key={item.label}>
-                    <NavigationMenuTrigger
-                      aria-current={
-                        itemIsActive(pathname, item) ? "page" : undefined
-                      }
-                      className={cn(
-                        "cursor-pointer hover:bg-mist/70 data-[state=open]:bg-mist",
-                        itemIsActive(pathname, item) &&
-                          "bg-cobalt-tint text-cobalt-deep",
-                      )}
-                    >
-                      {item.label}
-                    </NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      {item.label === "Product" ? (
-                        <ProductPanel pathname={pathname} />
-                      ) : (
-                        <ResourcesPanel pathname={pathname} />
-                      )}
-                    </NavigationMenuContent>
-                  </NavigationMenuItem>
-                ) : (
-                  <NavigationMenuItem key={item.label}>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        href={item.href ?? "#"}
+            <LiquidNavLayer
+              tone="light"
+              className="inset-y-2 -inset-x-3 rounded-full"
+            />
+            <NavigationMenu
+              aria-label="Main"
+              delayDuration={120}
+              skipDelayDuration={400}
+              value={menuValue}
+              onValueChange={(value) => setOpenMenu({ pathname, value })}
+              // self-stretch makes the menu as tall as the header bar, so the
+              // shared viewport hangs from the header edge instead of the text
+              // baseline. The colour comes from the bar through `text-current`.
+              className="relative z-10 self-stretch text-ink-soft xl:flex"
+            >
+              <NavigationMenuList>
+                {primaryNav.map((item) =>
+                  item.children ? (
+                    <NavigationMenuItem key={item.label}>
+                      <NavigationMenuTrigger
+                        data-liquid-item
                         aria-current={
                           itemIsActive(pathname, item) ? "page" : undefined
                         }
-                        // The active classes must merge with the trigger style
-                        // in one cn() call: Slot concatenates className strings,
-                        // so Tailwind order — not our intent — would decide.
+                        // No fill on hover or open: the water drop behind the row
+                        // is what marks the target now.
                         className={cn(
-                          navigationMenuTriggerStyle(),
-                          "cursor-pointer hover:bg-mist/70",
-                          itemIsActive(pathname, item) &&
-                            "bg-cobalt-tint text-cobalt-deep",
+                          "cursor-pointer hover:bg-transparent hover:text-ink data-[state=open]:bg-transparent data-[state=open]:text-ink",
+                          itemIsActive(pathname, item) && "text-cobalt-deep",
                         )}
                       >
                         {item.label}
-                      </Link>
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                ),
-              )}
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent>
+                        {item.label === "Product" ? (
+                          <ProductPanel pathname={pathname} />
+                        ) : (
+                          <ResourcesPanel pathname={pathname} />
+                        )}
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  ) : (
+                    <NavigationMenuItem key={item.label}>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          data-liquid-item
+                          href={item.href ?? "#"}
+                          aria-current={
+                            itemIsActive(pathname, item) ? "page" : undefined
+                          }
+                          // The active classes must merge with the trigger style
+                          // in one cn() call: Slot concatenates className strings,
+                          // so Tailwind order — not our intent — would decide.
+                          className={cn(
+                            navigationMenuTriggerStyle(),
+                            "cursor-pointer hover:bg-transparent hover:text-ink",
+                            itemIsActive(pathname, item) && "text-cobalt-deep",
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                  ),
+                )}
 
-              {toolLinks.map((tool) => (
-                <NavigationMenuItem key={tool.label}>
-                  <button
-                    type="button"
-                    title="Coming soon"
-                    aria-label={`${tool.label} — coming soon`}
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      "cursor-pointer gap-2 hover:bg-mist/70",
-                    )}
+                {/* API and Docs are a pair, not two loose buttons, so they get
+                    their own trigger beside Resources. The trigger joins the
+                    water like any other item. */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger
+                    data-liquid-item
+                    className="cursor-pointer hover:bg-transparent hover:text-ink data-[state=open]:bg-transparent data-[state=open]:text-ink"
                   >
-                    {tool.label}
-                    <SoonChip />
-                  </button>
+                    Developers
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <DevelopersPanel />
+                  </NavigationMenuContent>
                 </NavigationMenuItem>
-              ))}
-            </NavigationMenuList>
-          </NavigationMenu>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
 
           {/* The header corner holds two actions: the cobalt CTA and the account
               entry. The account control sits outside the xl-only cluster on
@@ -555,10 +633,7 @@ export function SiteHeader() {
                   )}
                 >
                   {item.label}
-                  <ChevronRight
-                    aria-hidden
-                    className="size-4 text-ink-soft"
-                  />
+                  <ChevronRight aria-hidden className="size-4 text-ink-soft" />
                 </Link>
               ),
             )}

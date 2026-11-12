@@ -369,13 +369,68 @@
     box-shadow: var(--elevation-pill);
   }
 
+  /* Frosted material for the nav pill and the panels it opens. A white tint
+     with a blurred backdrop, a hairline in brand navy to give the edge, and a
+     lift shadow. Over the hero's white field the hairline is what makes the
+     shape read, so it is not decorative. */
+  .liquid-glass {
+    background-color: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4) brightness(1.04);
+    backdrop-filter: blur(24px) saturate(1.4) brightness(1.04);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.9),
+      inset 0 0 0 1px rgba(13, 42, 107, 0.09),
+      0 24px 48px -24px rgba(13, 42, 107, 0.35),
+      0 2px 8px rgba(13, 42, 107, 0.06);
+  }
+
+  /* The highlight that slides between dropdown rows. Same ingredients as the
+     pill — white tint, blurred backdrop, a chrome edge — scaled down to a card.
+     The overshoot on transform is what makes it read as liquid rather than as a
+     hover fill that simply switched on. */
+  .lg-row-glass {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    border-radius: 12px;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.94),
+      rgba(255, 255, 255, 0.5)
+    );
+    -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.06);
+    backdrop-filter: blur(10px) saturate(1.3) brightness(1.06);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.95),
+      inset 0 -2px 7px rgba(0, 162, 255, 0.16),
+      inset 0 0 0 1px rgba(13, 42, 107, 0.08),
+      0 10px 22px -14px rgba(0, 40, 90, 0.5);
+    transition:
+      transform 0.42s cubic-bezier(0.22, 1.4, 0.4, 1),
+      width 0.3s cubic-bezier(0.22, 1, 0.5, 1),
+      height 0.3s cubic-bezier(0.22, 1, 0.5, 1),
+      opacity 0.18s ease;
+    will-change: transform, width, height;
+  }
+
   /* Soft radial glows behind the hero — cobalt left, tangerine right. */
   .glow-blue {
-    background-image: radial-gradient(closest-side, var(--cobalt-tint), transparent);
+    background-image: radial-gradient(
+      closest-side,
+      var(--cobalt-tint),
+      transparent
+    );
   }
 
   .glow-coral {
-    background-image: radial-gradient(closest-side, var(--tangerine-tint), transparent);
+    background-image: radial-gradient(
+      closest-side,
+      var(--tangerine-tint),
+      transparent
+    );
   }
 
   /* Full-bleed dark band: white text, tangerine accents. Used once per page. */
