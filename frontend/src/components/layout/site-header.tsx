@@ -580,7 +580,7 @@ export function SiteHeader() {
             <div className="hidden xl:block">
               <Link
                 href={cta.primary.href}
-                className="btn-fill inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-cobalt px-4 text-sm font-medium text-white hover:text-ink"
+                className="btn-glass inline-flex h-10 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-semibold"
               >
                 {cta.primary.label}
               </Link>
@@ -589,7 +589,7 @@ export function SiteHeader() {
 
             <button
               type="button"
-              className="btn-fill inline-flex size-10 cursor-pointer items-center justify-center rounded-xl border border-line text-ink xl:hidden"
+              className="btn-glass inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-ink xl:hidden"
               aria-expanded={mobileOpen}
               aria-controls="mobile-nav"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -662,7 +662,7 @@ export function SiteHeader() {
                     type="button"
                     title="Coming soon"
                     aria-label={`${tool.label} — coming soon`}
-                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-ink"
+                    className="btn-glass flex cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-medium text-ink"
                   >
                     <tool.icon aria-hidden className="size-4 text-cobalt" />
                     {tool.label}
@@ -676,7 +676,7 @@ export function SiteHeader() {
           <div className="mt-auto flex flex-col gap-2 pt-8">
             <Link
               href={cta.primary.href}
-              className="btn-fill inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-cobalt text-sm font-medium text-white hover:text-ink"
+              className="btn-glass inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full text-sm font-semibold"
             >
               {cta.primary.label}
             </Link>

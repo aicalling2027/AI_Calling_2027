@@ -104,7 +104,7 @@ export function VoiceOrb() {
         type="button"
         onClick={() => setPlaying((value) => !value)}
         aria-label={playing ? "Pause the agent demo" : "Play the agent demo"}
-        className="btn-fill col-start-1 row-start-1 grid aspect-square w-[26%] cursor-pointer place-items-center rounded-full border border-white/25 bg-cobalt text-white shadow-button transition-colors hover:text-ink focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+        className="btn-glass col-start-1 row-start-1 grid aspect-square w-[26%] cursor-pointer place-items-center rounded-full text-cobalt focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
       >
         {playing ? (
           <Pause aria-hidden className="size-[36%]" />

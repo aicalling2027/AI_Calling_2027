@@ -45,7 +45,7 @@ export function Integrations() {
           <Link
             href={integrations.cta.href}
             className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
+              buttonVariants({ variant: "glass", size: "lg" }),
               "h-11 px-6 text-sm",
             )}
           >

@@ -20,7 +20,7 @@ export function ApiSection() {
               </p>
               <Link
                 href="/contact"
-                className="mt-7 inline-flex h-11 items-center rounded-full bg-blue px-6 text-sm font-semibold text-white shadow-button transition-colors hover:bg-blue-deep"
+                className="btn-glass mt-7 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold"
               >
                 Request API access
               </Link>

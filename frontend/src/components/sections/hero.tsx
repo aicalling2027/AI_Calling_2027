@@ -1,6 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Languages, PhoneCall, UserRoundCheck, type LucideIcon } from "lucide-react";
+import {
+  Languages,
+  PhoneCall,
+  UserRoundCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Container } from "@/components/layout/container";
 import BlurText from "@/components/reactbits/BlurText";
@@ -61,9 +66,21 @@ function Headline() {
  * wording stays in `content/home`.
  */
 const trustCards: { icon: LucideIcon; placement: string; tint: string }[] = [
-  { icon: Languages, placement: "lg:left-[5%] lg:top-[14%]", tint: "icon-tile-blue" },
-  { icon: PhoneCall, placement: "lg:bottom-[18%] lg:left-[7%]", tint: "icon-tile-accent" },
-  { icon: UserRoundCheck, placement: "lg:right-[3%] lg:top-[34%]", tint: "icon-tile-blue" },
+  {
+    icon: Languages,
+    placement: "lg:left-[5%] lg:top-[14%]",
+    tint: "icon-tile-blue",
+  },
+  {
+    icon: PhoneCall,
+    placement: "lg:bottom-[18%] lg:left-[7%]",
+    tint: "icon-tile-accent",
+  },
+  {
+    icon: UserRoundCheck,
+    placement: "lg:right-[3%] lg:top-[34%]",
+    tint: "icon-tile-blue",
+  },
 ];
 
 export function Hero() {
@@ -102,15 +119,18 @@ export function Hero() {
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3 md:mt-8">
           <Link
             href={cta.primary.href}
-            className={cn(buttonVariants({ size: "lg" }), "h-11 px-6 text-sm md:h-12 md:px-7")}
+            className={cn(
+              buttonVariants({ variant: "glass", size: "lg" }),
+              "h-11 px-6 text-sm font-semibold md:h-12 md:px-7",
+            )}
           >
             {cta.primary.label}
           </Link>
           <Link
             href="/pricing"
             className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
-              "h-11 px-6 text-sm md:h-12 md:px-7",
+              buttonVariants({ variant: "glass", size: "lg" }),
+              "h-11 px-6 text-sm text-ink-soft md:h-12 md:px-7",
             )}
           >
             See pricing
