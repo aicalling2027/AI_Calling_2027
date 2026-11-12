@@ -100,7 +100,7 @@ export function AuthNav() {
             open: !(current.pathname === pathname && current.open),
           }))
         }
-        className="flex items-center gap-1.5 rounded-xl border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-blue-tint"
+        className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-blue-tint"
       >
         <UserAvatar user={user} />
         <ChevronDown

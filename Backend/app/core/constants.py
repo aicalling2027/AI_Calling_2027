@@ -136,14 +136,125 @@ DEFAULT_LANGUAGE: Final[str] = "en-IN"
 
 #: Sarvam Bulbul speaker presets mapped to a gender label for the UI.
 SUPPORTED_VOICES: Final[dict[str, str]] = {
-    "anushka": "female",
-    "manisha": "female",
-    "vidya": "female",
-    "arya": "female",
-    "abhilash": "male",
-    "karun": "male",
-    "hitesh": "male",
+    "shubh": "male",
+    "tanya": "female",
+    "anand": "male",
+    "sunny": "male",
+    "mani": "male",
+    "kabir": "male",
+    "priya": "female",
+    "kavya": "female",
+    "ritu": "female",
 }
+
+#: The public voice catalogue - what the marketing site lists and what the
+#: preview endpoint synthesises. Every Bulbul speaker can speak every supported
+#: language; ``languages`` lists the ones this deployment actually uses the
+#: voice for, so the UI shows a short, honest set of chips rather than all 18.
+#:
+#: ``sample`` is fixed server-side: the preview endpoint reads it from here
+#: instead of accepting text from the caller, so it can never be used as a free
+#: text-to-speech proxy.
+VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
+    {
+        "id": "shubh",
+        "name": "Shubh",
+        "gender": "male",
+        "personality": "Confident & bold",
+        "use_case": "Sales",
+        "languages": ("en-IN", "hi-IN", "ta-IN"),
+        "preview_language": "en-IN",
+        "sample": (
+            "Hello, Shubh from AOTMS. I'm calling about the plan you asked "
+            "about - can I take two minutes of your time?"
+        ),
+        "featured": True,
+    },
+    {
+        "id": "tanya",
+        "name": "Tanya",
+        "gender": "female",
+        "personality": "Friendly & modern",
+        "use_case": "Support",
+        "languages": ("en-IN", "hi-IN", "bn-IN"),
+        "preview_language": "hi-IN",
+        "sample": (
+            "नमस्ते! मैं AOTMS से तान्या बोल रही हूँ। आपकी शिकायत दर्ज हो गई है "
+            "और हम आज ही समाधान भेज देंगे।"
+        ),
+        "featured": True,
+    },
+    {
+        "id": "anand",
+        "name": "Anand",
+        "gender": "male",
+        "personality": "Warm & reassuring",
+        "use_case": "Reminders",
+        "languages": ("en-IN", "hi-IN", "te-IN"),
+        "preview_language": "hi-IN",
+        "sample": (
+            "नमस्ते! आनंद बोल रहा हूँ AOTMS से। आपका अपॉइंटमेंट कल सुबह दस बजे "
+            "तय है।"
+        ),
+        "featured": True,
+    },
+    {
+        "id": "sunny",
+        "name": "Sunny",
+        "gender": "male",
+        "personality": "Cheerful & upbeat",
+        "use_case": "Marketing",
+        "languages": ("en-IN", "hi-IN", "ml-IN"),
+        "preview_language": "en-IN",
+        "sample": (
+            "Hi! Sunny from AOTMS with a quick update on this month's "
+            "offer - it takes under a minute."
+        ),
+        "featured": False,
+    },
+    {
+        "id": "mani",
+        "name": "Mani",
+        "gender": "male",
+        "personality": "Calm & composed",
+        "use_case": "Collections",
+        "languages": ("en-IN", "hi-IN", "kn-IN"),
+        "preview_language": "en-IN",
+        "sample": (
+            "Hello, Mani calling from AOTMS about the invoice due this week. "
+            "May I confirm the payment date?"
+        ),
+        "featured": False,
+    },
+    {
+        "id": "kabir",
+        "name": "Kabir",
+        "gender": "male",
+        "personality": "Steady & trustworthy",
+        "use_case": "Renewals",
+        "languages": ("en-IN", "hi-IN", "gu-IN"),
+        "preview_language": "en-IN",
+        "sample": (
+            "Good evening, Kabir from AOTMS. Your plan renews on Friday and "
+            "I wanted to check whether anything needs changing."
+        ),
+        "featured": False,
+    },
+    {
+        "id": "priya",
+        "name": "Priya",
+        "gender": "female",
+        "personality": "Clear & precise",
+        "use_case": "Surveys",
+        "languages": ("en-IN", "hi-IN", "mr-IN"),
+        "preview_language": "en-IN",
+        "sample": (
+            "Hello, this is Priya from AOTMS with a two-question feedback "
+            "call. Shall I continue?"
+        ),
+        "featured": False,
+    },
+)
 
 SUPPORTED_MODELS: Final[dict[str, dict[str, object]]] = {
     "sarvam-m": {
@@ -347,7 +458,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "returns or guarantees. Keep every turn under 40 words."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "ta-IN"],
-        "suggested_voice": "anushka",
+        "suggested_voice": "tanya",
         "conversation_guidelines": [
             "Confirm identity before discussing policy details.",
             "Capture name, city, product interest and preferred callback slot.",
@@ -368,7 +479,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "enthusiastic."
         ),
         "suggested_languages": ["hi-IN", "en-IN"],
-        "suggested_voice": "abhilash",
+        "suggested_voice": "shubh",
         "conversation_guidelines": [
             "Capture destination, dates, traveller count and budget.",
             "Confirm the WhatsApp number for sending the itinerary.",
@@ -389,7 +500,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "services immediately. Never give medical advice."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "te-IN", "kn-IN"],
-        "suggested_voice": "manisha",
+        "suggested_voice": "priya",
         "conversation_guidelines": [
             "Never provide medical advice or diagnosis.",
             "Escalate emergency descriptions immediately.",
@@ -409,7 +520,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "then explain the course structure briefly and invite them for a free demo class."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "mr-IN"],
-        "suggested_voice": "karun",
+        "suggested_voice": "anand",
         "conversation_guidelines": [
             "Collect student grade, course interest and parent contact.",
             "Offer a free demo class instead of quoting fees directly.",
@@ -428,7 +539,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "timeline, then offer a site visit and confirm a slot."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "gu-IN", "mr-IN"],
-        "suggested_voice": "vidya",
+        "suggested_voice": "kavya",
         "conversation_guidelines": [
             "Qualify budget, locality, configuration and timeline.",
             "Always offer a site visit with a concrete time slot.",
@@ -447,7 +558,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "technician will call before arriving."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "ta-IN", "ml-IN"],
-        "suggested_voice": "hitesh",
+        "suggested_voice": "mani",
         "conversation_guidelines": [
             "Capture issue, address, landmark and preferred service window.",
             "Confirm that the technician calls before arrival.",
@@ -466,7 +577,7 @@ EMPLOYEE_TEMPLATES: Final[list[dict[str, object]]] = [
             "invite them to the nearest store or share the catalogue on WhatsApp."
         ),
         "suggested_languages": ["hi-IN", "en-IN", "ta-IN", "te-IN"],
-        "suggested_voice": "arya",
+        "suggested_voice": "ritu",
         "conversation_guidelines": [
             "Identify occasion and budget range.",
             "Prefer store visit or WhatsApp catalogue over price negotiation.",

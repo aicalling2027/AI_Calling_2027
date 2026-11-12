@@ -4,23 +4,29 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowRight,
   BookOpen,
   ChevronRight,
   CircleHelp,
+  Code2,
+  ContactRound,
+  ExternalLink,
+  FileText,
+  Gavel,
+  GraduationCap,
   Megaphone,
-  Menu,
   Newspaper,
+  Package,
   PhoneIncoming,
   Scale,
-  X,
   Zap,
 } from "lucide-react";
 
 import { AuthNav, AuthNavMobile } from "@/components/auth/auth-nav";
 import { Container } from "@/components/layout/container";
+import { MenuToggleIcon } from "@/components/ui/menu-toggle-icon";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -31,7 +37,14 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { cta, primaryNav, site, type NavItem, type NavLink } from "@/lib/site";
+import {
+  cta,
+  groupProducts,
+  primaryNav,
+  site,
+  type NavItem,
+  type NavLink,
+} from "@/lib/site";
 
 /**
  * Icons are presentation, so they stay out of the nav data. Anything without an
@@ -47,47 +60,25 @@ const linkIcons: Record<string, LucideIcon> = {
   "/questions": CircleHelp,
 };
 
-/**
- * One promo card per panel keeps the menu from reading as a plain link list and
- * gives the current campaign a permanent home in the header. `tone` picks the
- * block colour: "grey" reads as a solid tile on the panel, "light" sits just
- * above it and needs its hairline to keep an edge.
- */
-const panelPromos: Record<
-  string,
-  {
-    eyebrow: string;
-    title: string;
-    body: string;
-    href: string;
-    cta: string;
-    tone: "grey" | "light";
-  }
-> = {
-  Product: {
-    eyebrow: "Free trial",
-    title: "Hear your own script",
-    body: "Upload a list, pick a voice and listen to the first call before you commit.",
-    href: "/free-trial",
-    cta: "Start free",
-    tone: "grey",
-  },
-  Resources: {
-    eyebrow: "Talk to a human",
-    title: "Map your first campaign",
-    body: "Twenty minutes with our team to size the list, the script and the numbers.",
-    href: "/contact",
-    cta: "Book a call",
-    tone: "light",
-  },
+/** The sibling AOTMS properties, keyed by label so the URLs stay in one file. */
+const groupIcons: Record<string, LucideIcon> = {
+  LMS: GraduationCap,
+  Auction: Gavel,
+  CRM: ContactRound,
+  ERP: Package,
 };
 
-const promoTones = {
-  grey: "bg-mist-deep",
-  light: "border border-line bg-mist-soft",
-} as const;
+/**
+ * API and Docs are buttons only: there is no page behind them yet, so they never
+ * navigate and stay labelled "Soon" until one exists.
+ */
+const toolLinks: { label: string; icon: LucideIcon }[] = [
+  { label: "API", icon: Code2 },
+  { label: "Docs", icon: FileText },
+];
 
 function linkIsActive(pathname: string, href: string) {
+  if (!href.startsWith("/")) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -96,20 +87,43 @@ function itemIsActive(pathname: string, item: NavItem) {
   return (item.children ?? []).some((child) => linkIsActive(pathname, child.href));
 }
 
-/** One row inside a desktop panel: icon tile, label and a one-line description. */
-function PanelLink({ link, pathname }: { link: NavLink; pathname: string }) {
-  const Icon = linkIcons[link.href];
-  const active = linkIsActive(pathname, link.href);
+/** Marks the API and Docs buttons that have no page behind them yet. */
+function SoonChip() {
+  return (
+    <span className="text-[0.55rem] font-semibold tracking-[0.12em] text-ink-soft uppercase">
+      Soon
+    </span>
+  );
+}
+
+/** One desktop panel row: icon tile, label and a one-line description. */
+function PanelRow({
+  label,
+  description,
+  href,
+  icon: Icon,
+  external,
+  pathname,
+}: {
+  label: string;
+  description?: string;
+  href: string;
+  icon?: LucideIcon;
+  external?: boolean;
+  pathname: string;
+}) {
+  const active = linkIsActive(pathname, href);
 
   return (
     <NavigationMenuLink asChild>
       <Link
-        href={link.href}
+        href={href}
         aria-current={active ? "page" : undefined}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noreferrer" : undefined}
         className={cn(
-          "flex items-start gap-3 rounded-xl p-3 outline-none focus-visible:ring-3 focus-visible:ring-ring/30",
-          // The selected page gets a white chip. On the grey panel that is the
-          // only highlight strong enough to read without a hover state.
+          "group/row flex cursor-pointer items-start gap-3 rounded-xl p-2.5 outline-none transition-colors",
+          "hover:bg-white/80 focus-visible:ring-3 focus-visible:ring-ring/30",
           active && "bg-white shadow-[0_1px_3px_rgba(13,42,107,0.12)]",
         )}
       >
@@ -117,27 +131,30 @@ function PanelLink({ link, pathname }: { link: NavLink; pathname: string }) {
           <span
             aria-hidden
             className={cn(
-              "grid size-11 shrink-0 place-items-center rounded-xl border",
+              "grid size-11 shrink-0 place-items-center rounded-xl border transition-colors",
               active
                 ? "border-cobalt bg-cobalt text-white"
-                : "border-line bg-white text-cobalt",
+                : "border-line bg-white text-cobalt group-hover/row:border-cobalt/30 group-hover/row:bg-cobalt-tint",
             )}
           >
-            <Icon className="size-5.5" />
+            <Icon className="size-5" />
           </span>
         ) : null}
         <span className="min-w-0">
           <span
             className={cn(
-              "block text-sm font-semibold",
+              "flex items-center gap-1.5 text-sm font-semibold",
               active ? "text-cobalt-deep" : "text-ink",
             )}
           >
-            {link.label}
+            {label}
+            {external ? (
+              <ExternalLink className="size-3 text-ink-soft" aria-hidden />
+            ) : null}
           </span>
-          {link.description ? (
-            <span className="mt-1 block text-xs leading-relaxed text-ink-soft">
-              {link.description}
+          {description ? (
+            <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
+              {description}
             </span>
           ) : null}
         </span>
@@ -146,72 +163,182 @@ function PanelLink({ link, pathname }: { link: NavLink; pathname: string }) {
   );
 }
 
-/** The promo tile that sits beside the link list — a quiet grey block, not a dark card. */
-function PanelPromo({
-  promo,
-}: {
-  promo: (typeof panelPromos)[string] | undefined;
-}) {
-  if (!promo) return null;
+function PanelLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-2.5 pt-1.5 pb-1 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Product panel: three narrow columns — the calling platform on the left, the
+ * sibling AOTMS properties as a 2x2 grid on the right. The sibling rows open in
+ * a new tab, which is why they keep the external glyph.
+ */
+function ProductPanel({ pathname }: { pathname: string }) {
+  const product = primaryNav.find((item) => item.label === "Product");
+  const platform = product?.children ?? [];
+
+  return (
+    <div className="w-[38rem] max-w-[calc(100vw-2rem)] p-2">
+      <div className="grid grid-cols-3 gap-x-3">
+        <div className="min-w-0">
+          <PanelLabel>Platform</PanelLabel>
+          <ul className="grid gap-1">
+            {platform.map((link) => (
+              <li key={link.href}>
+                <PanelRow
+                  label={link.label}
+                  description={link.description}
+                  href={link.href}
+                  icon={linkIcons[link.href]}
+                  pathname={pathname}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="col-span-2 min-w-0">
+          <PanelLabel>AOTMS products</PanelLabel>
+          <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
+            {groupProducts.map((link) => (
+              <li key={link.href} className="min-w-0">
+                <PanelRow
+                  label={link.label}
+                  description={link.description}
+                  href={link.href}
+                  icon={groupIcons[link.label]}
+                  external={link.external}
+                  pathname={pathname}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Resources panel: link rows on the left, the API / Docs buttons on the right. */
+function ResourcesPanel({ pathname }: { pathname: string }) {
+  const resources = primaryNav.find((item) => item.label === "Resources");
+  const links = resources?.children ?? [];
+
+  return (
+    <div className="grid w-[40rem] max-w-[calc(100vw-2rem)] gap-2 p-2 md:grid-cols-[minmax(0,24rem)_1fr]">
+      <ul className="grid content-start gap-1">
+        {links.map((link) => (
+          <li key={link.href}>
+            <PanelRow
+              label={link.label}
+              description={link.description}
+              href={link.href}
+              icon={linkIcons[link.href]}
+              pathname={pathname}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <div className="self-start rounded-xl border border-line bg-white p-2">
+        <PanelLabel>Developers</PanelLabel>
+        {toolLinks.map((tool) => (
+          <button
+            key={tool.label}
+            type="button"
+            title="Coming soon"
+            aria-label={`${tool.label} — coming soon`}
+            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-mist focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:outline-none"
+          >
+            <tool.icon aria-hidden className="size-4 text-cobalt" />
+            {tool.label}
+            <span className="ml-auto">
+              <SoonChip />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One row in the phone menu: the same tile and copy, sized for a thumb. */
+function MobileRow({ link, pathname }: { link: NavLink; pathname: string }) {
+  const Icon = linkIcons[link.href] ?? groupIcons[link.label];
+  const active = linkIsActive(pathname, link.href);
 
   return (
     <Link
-      href={promo.href}
+      href={link.href}
+      aria-current={active ? "page" : undefined}
+      target={link.external ? "_blank" : undefined}
+      rel={link.external ? "noreferrer" : undefined}
       className={cn(
-        "flex flex-col justify-between rounded-xl p-4",
-        promoTones[promo.tone],
+        "flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 transition-colors",
+        active ? "bg-cobalt-tint/60" : "hover:bg-mist",
       )}
     >
-      <span className="block">
-        <span className="block text-[0.65rem] font-semibold tracking-[0.18em] text-tangerine-ink uppercase">
-          {promo.eyebrow}
-        </span>
-        <span className="mt-2 block text-sm leading-snug font-semibold text-ink">
-          {promo.title}
-        </span>
-        <span className="mt-1 block text-xs leading-relaxed text-ink-soft">
-          {promo.body}
-        </span>
-      </span>
-      <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-cobalt">
-        {promo.cta}
-        <ArrowRight
+      {Icon ? (
+        <span
           aria-hidden
-          className="size-3.5"
-        />
+          className="grid size-10 shrink-0 place-items-center rounded-xl bg-cobalt-tint text-cobalt"
+        >
+          <Icon className="size-5" />
+        </span>
+      ) : null}
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          {link.label}
+          {link.external ? (
+            <ExternalLink className="size-3 text-ink-soft" aria-hidden />
+          ) : null}
+        </span>
+        {link.description ? (
+          <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
+            {link.description}
+          </span>
+        ) : null}
       </span>
     </Link>
   );
 }
 
-/** Desktop mega panel: link rows on the left, promo tile on the right. */
-function NavPanel({ item, pathname }: { item: NavItem; pathname: string }) {
-  const children = item.children ?? [];
-  const promo = panelPromos[item.label];
+/**
+ * The phone menu is portalled to the body: the header gains a backdrop filter
+ * once the page scrolls, and a filtered ancestor would otherwise become the
+ * containing block for this fixed panel.
+ */
+function MobileMenu({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: React.ReactNode;
+}) {
+  if (!open || typeof document === "undefined") return null;
 
-  return (
-    <div className="grid gap-2 p-2 md:grid-cols-[minmax(0,22rem)_15rem]">
-      <ul className="grid content-start gap-1">
-        {children.map((child) => (
-          <li key={child.href}>
-            <PanelLink link={child} pathname={pathname} />
-          </li>
-        ))}
-      </ul>
-      <PanelPromo promo={promo} />
-    </div>
+  return createPortal(
+    <div
+      id="mobile-nav"
+      className="fixed inset-x-0 top-16 bottom-0 z-40 overflow-y-auto border-y border-line bg-white/95 backdrop-blur-xl md:top-[4.5rem] xl:hidden"
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }
 
 export function SiteHeader() {
   const pathname = usePathname();
+  // The open state remembers the pathname it was opened on, so following a link
+  // inside a panel closes it as the new page renders.
   const [mobile, setMobile] = useState<{ pathname: string; open: boolean }>({
     pathname,
     open: false,
   });
-  // Same trick for the desktop panels: the open item remembers the pathname it
-  // was opened on, so following a link inside a panel collapses it as the new
-  // page renders — Radix's own value would otherwise outlive the navigation.
   const [openMenu, setOpenMenu] = useState<{ pathname: string; value: string }>({
     pathname,
     value: "",
@@ -231,30 +358,49 @@ export function SiteHeader() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // A shadow only once the page has moved, so the header reads as part of the
-  // hero at rest and lifts away from content on scroll.
+  // The overlay covers the viewport, so the page behind it must not scroll.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileOpen]);
+
+  // Transparent over the hero, a blurred white bar once the page moves. The
+  // effect also re-runs on navigation: a client-side route change lands at the
+  // top of the next page, and the bar has to drop its scrolled state with it.
   useEffect(() => {
     function onScroll() {
-      setScrolled(window.scrollY > 8);
+      setScrolled(window.scrollY > 10);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [pathname]);
+
+  // The home hero runs edge to edge behind the bar, so there the header is
+  // taken out of flow and the hero pays the space back with its own top
+  // padding. Every other page keeps a sticky bar that owns its row.
+  const overHero = pathname === "/";
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 border-b border-line bg-white text-ink transition-shadow duration-300",
-        scrolled && "shadow-[0_18px_40px_-34px_rgba(13,42,107,0.8)]",
+        "z-50 w-full border-b transition-[background-color,border-color,box-shadow] duration-300",
+        overHero ? "fixed inset-x-0 top-0" : "sticky top-0",
+        scrolled
+          ? "border-line bg-white/85 shadow-[0_18px_40px_-34px_rgba(13,42,107,0.8)] backdrop-blur-xl"
+          : "border-transparent bg-transparent",
       )}
     >
       <Container>
-        <div className="flex h-16 items-center justify-between gap-6 md:h-20">
+        <div className="flex h-16 items-center justify-between gap-6 md:h-[4.5rem]">
           <Link
             href="/"
             aria-label={`${site.legalName} home`}
-            className="flex shrink-0 items-center"
+            className="flex shrink-0 cursor-pointer items-center"
           >
             {/* The artwork carries a white box, so it sits on a white pill. */}
             <span className="brand-pill">
@@ -264,7 +410,7 @@ export function SiteHeader() {
                 width={site.logo.width}
                 height={site.logo.height}
                 priority
-                className="h-9 w-auto md:h-10"
+                className="h-8 w-auto md:h-9"
               />
             </span>
           </Link>
@@ -277,8 +423,7 @@ export function SiteHeader() {
             onValueChange={(value) => setOpenMenu({ pathname, value })}
             // self-stretch makes the menu as tall as the header bar, so the
             // shared viewport hangs from the header edge instead of the text
-            // baseline. The colour comes from the white bar through
-            // `text-current`, so the triggers stay ink on white.
+            // baseline. The colour comes from the bar through `text-current`.
             className="hidden self-stretch text-ink xl:flex"
           >
             <NavigationMenuList>
@@ -290,6 +435,7 @@ export function SiteHeader() {
                         itemIsActive(pathname, item) ? "page" : undefined
                       }
                       className={cn(
+                        "cursor-pointer hover:bg-mist/70 data-[state=open]:bg-mist",
                         itemIsActive(pathname, item) &&
                           "bg-cobalt-tint text-cobalt-deep",
                       )}
@@ -297,7 +443,11 @@ export function SiteHeader() {
                       {item.label}
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
-                      <NavPanel item={item} pathname={pathname} />
+                      {item.label === "Product" ? (
+                        <ProductPanel pathname={pathname} />
+                      ) : (
+                        <ResourcesPanel pathname={pathname} />
+                      )}
                     </NavigationMenuContent>
                   </NavigationMenuItem>
                 ) : (
@@ -313,6 +463,7 @@ export function SiteHeader() {
                         // so Tailwind order — not our intent — would decide.
                         className={cn(
                           navigationMenuTriggerStyle(),
+                          "cursor-pointer hover:bg-mist/70",
                           itemIsActive(pathname, item) &&
                             "bg-cobalt-tint text-cobalt-deep",
                         )}
@@ -323,132 +474,141 @@ export function SiteHeader() {
                   </NavigationMenuItem>
                 ),
               )}
+
+              {toolLinks.map((tool) => (
+                <NavigationMenuItem key={tool.label}>
+                  <button
+                    type="button"
+                    title="Coming soon"
+                    aria-label={`${tool.label} — coming soon`}
+                    className={cn(
+                      navigationMenuTriggerStyle(),
+                      "cursor-pointer gap-2 hover:bg-mist/70",
+                    )}
+                  >
+                    {tool.label}
+                    <SoonChip />
+                  </button>
+                </NavigationMenuItem>
+              ))}
             </NavigationMenuList>
           </NavigationMenu>
 
-          {/* The header corner holds two actions only: the cobalt CTA and the
-              account entry. The account control sits outside the xl-only cluster
-              on purpose — otherwise a signed-in visitor on a 1024-1279px screen
-              has no account entry at all. */}
+          {/* The header corner holds two actions: the cobalt CTA and the account
+              entry. The account control sits outside the xl-only cluster on
+              purpose — otherwise a visitor on a 1024-1279px screen has no
+              account entry at all. */}
           <div className="flex items-center gap-2">
             <div className="hidden xl:block">
-              {/* Filled cobalt, not an outline: on a white bar the account
-                  control is already an outline pill, and two identical pills
-                  would read as the same level of action. */}
               <Link
-                href={cta.secondary.href}
-                className="btn-fill inline-flex h-10 items-center justify-center rounded-xl bg-cobalt px-4 text-sm font-medium text-white hover:text-ink"
+                href={cta.primary.href}
+                className="btn-fill inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-cobalt px-4 text-sm font-medium text-white hover:text-ink"
               >
-                {cta.secondary.label}
+                {cta.primary.label}
               </Link>
             </div>
             <AuthNav />
 
             <button
               type="button"
-              className="btn-fill inline-flex size-10 items-center justify-center rounded-xl border border-line text-ink xl:hidden"
+              className="btn-fill inline-flex size-10 cursor-pointer items-center justify-center rounded-xl border border-line text-ink xl:hidden"
               aria-expanded={mobileOpen}
               aria-controls="mobile-nav"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobile({ pathname, open: !mobileOpen })}
             >
-              {mobileOpen ? (
-                <X className="size-5" />
-              ) : (
-                <Menu className="size-5" />
-              )}
+              <MenuToggleIcon open={mobileOpen} className="size-5" />
             </button>
           </div>
         </div>
       </Container>
 
-      {mobileOpen ? (
-        <div
-          id="mobile-nav"
-          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-line bg-white xl:hidden"
-        >
-          <Container className="py-5">
-            <nav aria-label="Mobile" className="flex flex-col gap-5">
-              {primaryNav.map((item) =>
-                item.children ? (
-                  <div key={item.label}>
-                    <p className="px-1 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">
-                      {item.label}
-                    </p>
-                    <ul className="grid gap-1">
-                      {item.children.map((child) => {
-                        const Icon = linkIcons[child.href];
-                        const active = linkIsActive(pathname, child.href);
-                        return (
-                          <li key={child.href}>
-                            <Link
-                              href={child.href}
-                              aria-current={active ? "page" : undefined}
-                              className={cn(
-                                "flex items-center gap-3 rounded-xl px-2 py-2.5",
-                                active && "bg-cobalt-tint/60",
-                              )}
-                            >
-                              {Icon ? (
-                                <span
-                                  aria-hidden
-                                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-cobalt-tint text-cobalt"
-                                >
-                                  <Icon className="size-5" />
-                                </span>
-                              ) : null}
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold text-ink">
-                                  {child.label}
-                                </span>
-                                {child.description ? (
-                                  <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
-                                    {child.description}
-                                  </span>
-                                ) : null}
-                              </span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={item.href ?? "#"}
-                    aria-current={
-                      itemIsActive(pathname, item) ? "page" : undefined
-                    }
-                    className={cn(
-                      "flex items-center justify-between border-b border-line px-1 pb-3 text-base font-medium transition-colors",
-                      itemIsActive(pathname, item)
-                        ? "text-cobalt-deep"
-                        : "text-ink",
-                    )}
-                  >
+      <MobileMenu open={mobileOpen}>
+        <Container className="flex min-h-full flex-col py-5">
+          <nav aria-label="Mobile" className="flex flex-col gap-5">
+            {primaryNav.map((item) =>
+              item.children ? (
+                <div key={item.label}>
+                  <p className="px-1 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">
                     {item.label}
-                    <ChevronRight
-                      aria-hidden
-                      className="size-4 text-ink-soft"
-                    />
-                  </Link>
-                ),
-              )}
-            </nav>
+                  </p>
+                  <ul className="grid gap-1">
+                    {item.children.map((child) => (
+                      <li key={child.href}>
+                        <MobileRow link={child} pathname={pathname} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href ?? "#"}
+                  aria-current={
+                    itemIsActive(pathname, item) ? "page" : undefined
+                  }
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between border-b border-line px-1 pb-3 text-base font-medium transition-colors",
+                    itemIsActive(pathname, item)
+                      ? "text-cobalt-deep"
+                      : "text-ink",
+                  )}
+                >
+                  {item.label}
+                  <ChevronRight
+                    aria-hidden
+                    className="size-4 text-ink-soft"
+                  />
+                </Link>
+              ),
+            )}
 
-            <div className="mt-6 flex flex-col gap-2">
-              <Link
-                href={cta.secondary.href}
-                className="btn-fill inline-flex h-11 w-full items-center justify-center rounded-xl bg-cobalt text-sm font-medium text-white hover:text-ink"
-              >
-                {cta.secondary.label}
-              </Link>
-              <AuthNavMobile />
+            <div>
+              <p className="px-1 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">
+                Other AOTMS products
+              </p>
+              <ul className="grid gap-1">
+                {groupProducts.map((link) => (
+                  <li key={link.href}>
+                    <MobileRow link={link} pathname={pathname} />
+                  </li>
+                ))}
+              </ul>
             </div>
-          </Container>
-        </div>
-      ) : null}
+
+            <div>
+              <p className="px-1 pb-2 text-[0.65rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">
+                Developers
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {toolLinks.map((tool) => (
+                  <button
+                    key={tool.label}
+                    type="button"
+                    title="Coming soon"
+                    aria-label={`${tool.label} — coming soon`}
+                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm font-medium text-ink"
+                  >
+                    <tool.icon aria-hidden className="size-4 text-cobalt" />
+                    {tool.label}
+                    <SoonChip />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-2 pt-8">
+            <Link
+              href={cta.primary.href}
+              className="btn-fill inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl bg-cobalt text-sm font-medium text-white hover:text-ink"
+            >
+              {cta.primary.label}
+            </Link>
+            <AuthNavMobile />
+          </div>
+        </Container>
+      </MobileMenu>
     </header>
   );
 }

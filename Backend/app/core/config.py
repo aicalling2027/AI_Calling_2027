@@ -83,9 +83,9 @@ class Settings(BaseSettings):
     sarvam_api_key: str = ""
     sarvam_base_url: str = "https://api.sarvam.ai"
     sarvam_stt_model: str = "saarika:v2"
-    sarvam_tts_model: str = "bulbul:v2"
+    sarvam_tts_model: str = "bulbul:v3"
     sarvam_chat_model: str = "sarvam-m"
-    sarvam_default_speaker: str = "anushka"
+    sarvam_default_speaker: str = "shubh"
     sarvam_timeout_seconds: int = 30
 
     # -- Telephony ---------------------------------------------------------

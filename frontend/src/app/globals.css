@@ -81,6 +81,10 @@
   /* Halo waves around the hero voice visualiser: rings peel outward and fade. */
   --animate-halo: aotms-halo 3.3s ease-out infinite;
 
+  /* Live-call waveform in the how-it-works phone mock: each bar breathes
+     between a third and its full height. */
+  --animate-wave: aotms-wave 1.05s ease-in-out infinite;
+
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
@@ -392,6 +396,16 @@
   100% {
     transform: scale(1.22);
     opacity: 0;
+  }
+}
+
+@keyframes aotms-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
   }
 }
 

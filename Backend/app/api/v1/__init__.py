@@ -28,6 +28,7 @@ from app.api.v1 import (
     organizations,
     phone_numbers,
     training,
+    voices,
     webhooks,
 )
 
@@ -35,6 +36,7 @@ api_router = APIRouter()
 
 # --- Platform -------------------------------------------------------------
 api_router.include_router(health.router)
+api_router.include_router(voices.router)
 
 # --- Identity & tenancy ---------------------------------------------------
 api_router.include_router(auth.router)

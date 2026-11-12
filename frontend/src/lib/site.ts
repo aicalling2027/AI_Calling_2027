@@ -40,6 +40,8 @@ export type NavLink = {
   label: string;
   href: string;
   description?: string;
+  /** A sibling AOTMS property: it opens in a new tab. */
+  external?: boolean;
 };
 
 export type NavItem = {
@@ -97,8 +99,37 @@ export const primaryNav: NavItem[] = [
       },
     ],
   },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
+];
+
+/**
+ * The other AOTMS properties listed in the Product menu. They live outside this
+ * app, so every row opens in a new tab and keeps the current funnel intact.
+ */
+export const groupProducts: NavLink[] = [
+  {
+    label: "LMS",
+    href: "https://lms.academyoftechmasters.com/",
+    description: "Learning portal for students.",
+    external: true,
+  },
+  {
+    label: "Auction",
+    href: "https://auction.aotms.com",
+    description: "Live listings and online bidding.",
+    external: true,
+  },
+  {
+    label: "CRM",
+    href: "https://crm.academyoftechmasters.com/",
+    description: "Leads, pipelines and follow-ups.",
+    external: true,
+  },
+  {
+    label: "ERP",
+    href: "https://www.biriyani-box.com/",
+    description: "Orders, stock and back office.",
+    external: true,
+  },
 ];
 
 export const footerNav: { title: string; links: NavLink[] }[] = [

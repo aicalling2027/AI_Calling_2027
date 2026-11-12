@@ -79,7 +79,7 @@ def employee(client: TestClient, auth: dict[str, str]) -> dict:
             "name": unique("Agent"),
             "business_category": "Education",
             "default_language": "en-IN",
-            "voice": "anushka",
+            "voice": "shubh",
             "first_message": "Hello, how can I help?",
             "system_prompt": "You are a helpful admissions counsellor.",
         },
