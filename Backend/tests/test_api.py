@@ -148,6 +148,79 @@ def employee_id_placeholder(client, auth) -> str:
     return rows["items"][0]["id"]
 
 
+def test_employee_creation_deploys_the_agent(client, auth, employee):
+    """Creating the employee is the trigger - the provider binding comes back."""
+    binding = employee["provider_agent"]
+    assert binding["provider"] == "sarvam-voice-agents"
+    assert binding["status"] == "active"
+    assert binding["simulated"] is True
+    assert binding["deployment_id"].startswith("dep-sim-")
+    assert binding["error"] is None
+
+
+def test_agent_can_be_redeployed_without_duplicating_it(client, auth, employee):
+    first = employee["provider_agent"]["deployment_id"]
+    again = client.post(f"{API}/employees/{employee['id']}/agent", headers=auth)
+    assert again.status_code == 200
+    assert again.json()["provider_agent"]["deployment_id"] == first
+
+
+def test_duplicate_employee_name_is_rejected(client, auth, employee):
+    response = client.post(
+        f"{API}/employees",
+        headers=auth,
+        json={"name": employee["name"].upper()},
+    )
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert error["code"] == "conflict"
+    assert employee["name"].lower() in error["message"].lower()
+
+
+def test_employee_cannot_be_renamed_onto_another(client, auth, employee):
+    other = client.post(
+        f"{API}/employees",
+        headers=auth,
+        json={"name": unique("Collision")},
+    )
+    assert other.status_code == 201, other.text
+    created = other.json()
+
+    response = client.patch(
+        f"{API}/employees/{created['id']}", headers=auth, json={"name": employee["name"]}
+    )
+    assert response.status_code == 409
+    assert employee["name"] in response.json()["error"]["message"]
+
+    # The freshly created row is archived so it does not eat the plan quota.
+    client.delete(f"{API}/employees/{created['id']}", headers=auth)
+
+
+def test_dedupe_is_a_no_op_on_a_clean_workspace(client, auth, employee):
+    body = client.post(f"{API}/employees/dedupe", headers=auth).json()
+    assert body["scanned"] >= 1
+    assert body["duplicates"] == 0
+    assert body["archived_ids"] == []
+
+
+def test_redeploying_a_paused_employee_keeps_the_agent_paused(client, auth):
+    """A re-deploy must not put a stopped employee back on the phone."""
+    created = client.post(f"{API}/employees", headers=auth, json={"name": unique("Paused")})
+    assert created.status_code == 201, created.text
+    employee_id = created.json()["id"]
+
+    paused = client.post(
+        f"{API}/employees/{employee_id}/status", headers=auth, json={"status": "paused"}
+    )
+    assert paused.json()["provider_agent"]["status"] == "paused"
+
+    again = client.post(f"{API}/employees/{employee_id}/agent", headers=auth)
+    assert again.status_code == 200, again.text
+    assert again.json()["provider_agent"]["status"] == "paused"
+
+    client.delete(f"{API}/employees/{employee_id}", headers=auth)
+
+
 # ---------------------------------------------------------------------------
 # Leads
 # ---------------------------------------------------------------------------

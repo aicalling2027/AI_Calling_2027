@@ -33,6 +33,7 @@ from app.database.models.employee import (
     ActionExecution,
     Employee,
     EmployeeAction,
+    EmployeeAgentBinding,
     EmployeeLanguage,
     EmployeePromptVersion,
 )
@@ -87,6 +88,7 @@ __all__ = [
     "EmployeeLanguage",
     "EmployeePromptVersion",
     "EmployeeAction",
+    "EmployeeAgentBinding",
     "ActionExecution",
     # Training
     "TrainingSource",

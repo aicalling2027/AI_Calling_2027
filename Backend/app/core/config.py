@@ -88,6 +88,17 @@ class Settings(BaseSettings):
     sarvam_default_speaker: str = "shubh"
     sarvam_timeout_seconds: int = 30
 
+    # -- Sarvam Voice Agents (Samvaad deployments) --------------------------
+    #: Agents are authored in the Sarvam workspace; the API deploys them. These
+    #: identifiers tell the service which agent to deploy and where.
+    sarvam_agents_base_url: str = "https://apps.sarvam.ai/api/app-authoring"
+    sarvam_org_id: str = ""
+    sarvam_workspace_id: str = ""
+    sarvam_agent_app_id: str = ""
+    sarvam_agent_app_version: int = 1
+    sarvam_connection_id: str = ""
+    sarvam_agent_phone_number: str = ""
+
     # -- Telephony ---------------------------------------------------------
     telephony_provider: str = "sarvam"
     telephony_webhook_secret: str = "change-me"

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import * as React from "react";
 import {
   ArrowLeft,
@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
   AGENT_ACTIONS,
+  type Agent,
   type AgentStatus,
   LANGUAGES,
   MODELS,
@@ -68,9 +69,42 @@ const SENTIMENT_DOT: Record<string, string> = {
 
 export default function EmployeeWorkspacePage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const store = useWorkspace();
   const agent = store.agents.find((item) => item.id === params.id);
+
+  if (store.agentsStatus === "loading") {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-xl border border-line bg-surface p-6 text-sm text-ink-soft">
+        <Loader2 className="size-4 animate-spin" />
+        Loading this employee…
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        <EmptyState
+          icon={<Sparkles className="size-5" />}
+          title="Employee not found"
+          description="It may have been archived, or this link is stale. Open My employees to pick another one."
+          action={
+            <Link href="/dashboard/employees" className={buttonVariants({ size: "lg" })}>
+              Back to employees
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  // Mounted per employee so the editable fields below start from the record
+  // that was actually loaded instead of an empty first render.
+  return <EmployeeWorkspace key={agent.id} agent={agent} />;
+}
+
+function EmployeeWorkspace({ agent }: { agent: Agent }) {
+  const store = useWorkspace();
 
   const [tab, setTab] = React.useState<TabId>("overview");
   const [greeting, setGreeting] = React.useState(agent?.greeting ?? "");
@@ -99,25 +133,25 @@ export default function EmployeeWorkspacePage() {
     timers.current.push(setTimeout(fn, ms));
   };
 
-  if (!agent) {
-    return (
-      <div className="mx-auto w-full max-w-3xl">
-        <EmptyState
-          icon={<Sparkles className="size-5" />}
-          title="Employee not found"
-          description="It may have been deleted. Build a new employee or open another one from the list."
-          action={
-            <Link href="/dashboard/employees" className={buttonVariants({ size: "lg" })}>
-              Back to employees
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
   const calls = store.conversations.filter((item) => item.agentId === agent.id);
   const active = agent.status === "Active";
+
+  const [deploying, setDeploying] = React.useState(false);
+  const [deployError, setDeployError] = React.useState<string | null>(null);
+
+  const redeploy = async () => {
+    setDeploying(true);
+    setDeployError(null);
+    try {
+      await store.redeployAgent(agent.id);
+    } catch (error) {
+      setDeployError(
+        error instanceof Error ? error.message : "The agent could not be deployed.",
+      );
+    } finally {
+      setDeploying(false);
+    }
+  };
 
   const startInstantLead = () => {
     if (!contact.trim()) {
@@ -286,6 +320,59 @@ export default function EmployeeWorkspacePage() {
             <StatTile label="Knowledge" value={String(agent.knowledge.length)} hint="Sources ready" />
             <StatTile label="Last active" value={agent.lastActive} hint={agent.defaultLanguage} />
           </div>
+
+          <section className="rounded-xl border border-line bg-surface p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Voice agent</h2>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  Deployed on Sarvam the moment this employee was created. Pausing it never
+                  deletes the agent, so call history and the number stay intact.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void redeploy()}
+                disabled={deploying}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-mist px-2.5 text-xs font-medium text-ink-soft transition-colors hover:text-ink disabled:opacity-60"
+              >
+                {deploying ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {agent.providerAgent ? "Deploy again" : "Deploy now"}
+              </button>
+            </div>
+
+            <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+              <div className="rounded-lg bg-mist-soft p-2">
+                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Provider</dt>
+                <dd className="mt-0.5 font-semibold text-ink">
+                  {agent.providerAgent?.provider ?? "Not deployed yet"}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-mist-soft p-2">
+                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Deployment</dt>
+                <dd className="mt-0.5 truncate font-mono text-[11px] text-ink">
+                  {agent.providerAgent?.deploymentId ?? "—"}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-mist-soft p-2">
+                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Status</dt>
+                <dd className="mt-0.5 font-semibold text-ink">
+                  {agent.providerAgent?.status ?? "pending"}
+                  {agent.providerAgent?.simulated ? " · simulated" : ""}
+                </dd>
+              </div>
+            </dl>
+
+            {deployError || agent.providerAgent?.error ? (
+              <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {deployError ?? agent.providerAgent?.error}
+              </p>
+            ) : null}
+          </section>
 
           <div className="grid gap-4 xl:grid-cols-3">
             <section className="xl:col-span-2 rounded-xl border border-line bg-surface">
@@ -801,19 +888,10 @@ export default function EmployeeWorkspacePage() {
                 })
               }
             />
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm(`Delete ${agent.name}? This cannot be undone.`)) {
-                  store.deleteAgent(agent.id);
-                  router.push("/dashboard/employees");
-                }
-              }}
-              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 className="size-3.5" />
-              Delete employee
-            </button>
+            <p className="ml-auto max-w-[40ch] text-right text-[11px] text-ink-soft">
+              Employees are never deleted. Pause one instead - its Sarvam agent, call history
+              and phone number are kept.
+            </p>
           </div>
           <p className="mt-3 text-[11px] text-ink-soft">
             Voice: {voiceById(agent.voiceId).name} · Languages: {agent.languages.join(", ")} ·

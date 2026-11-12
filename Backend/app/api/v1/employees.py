@@ -12,6 +12,7 @@ from app.modules import employees
 from app.schemas.common import MessageResponse, Page
 from app.schemas.employee import (
     EmployeeCreate,
+    EmployeeDedupeOut,
     EmployeeDetail,
     EmployeeOut,
     EmployeeStatusUpdate,
@@ -64,6 +65,16 @@ def create_employee(
     return employees.employee_detail(db, employee)
 
 
+@router.post(
+    "/dedupe",
+    response_model=EmployeeDedupeOut,
+    summary="Archive employees that repeat a name",
+)
+def deduplicate(principal: Writer, db: DbSession) -> EmployeeDedupeOut:
+    """Maintenance pass: keep the oldest of each repeated name, archive the rest."""
+    return employees.deduplicate(db, principal.organization_id, user_id=principal.user_id)
+
+
 @router.get("/{employee_id}", response_model=EmployeeDetail, summary="Get an AI employee")
 def get_employee(employee_id: str, principal: Reader, db: DbSession) -> EmployeeDetail:
     employee = employees.get_employee(db, principal.organization_id, employee_id)
@@ -95,6 +106,17 @@ def archive_employee(employee_id: str, principal: Writer, db: DbSession) -> Mess
     employee = employees.get_employee(db, principal.organization_id, employee_id)
     employees.archive_employee(db, employee, user_id=principal.user_id)
     return MessageResponse(message="The AI employee was archived.")
+
+
+@router.post(
+    "/{employee_id}/agent",
+    response_model=EmployeeDetail,
+    summary="Deploy (or re-deploy) the Sarvam agent for this employee",
+)
+def sync_agent(employee_id: str, principal: Writer, db: DbSession) -> EmployeeDetail:
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    employees.sync_agent(db, employee, user_id=principal.user_id)
+    return employees.employee_detail(db, employee)
 
 
 @router.get(

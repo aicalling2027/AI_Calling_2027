@@ -54,6 +54,20 @@ class EmployeeActionOut(ORMModel):
     is_active: bool
 
 
+class ProviderAgentOut(APIModel):
+    """The voice-provider deployment that runs this employee's conversations."""
+
+    provider: str
+    deployment_id: str | None = None
+    app_id: str | None = None
+    app_version: int = 1
+    #: pending | active | paused | failed
+    status: str
+    simulated: bool = False
+    synced_at: datetime | None = None
+    error: str | None = None
+
+
 class EmployeeBase(APIModel):
     name: str = Field(min_length=2, max_length=120)
     description: str | None = None
@@ -190,10 +204,21 @@ class EmployeeOut(ORMModel):
 
     languages: list[EmployeeLanguageOut] = Field(default_factory=list)
 
+    #: Present once the Sarvam deployment behind this employee is known.
+    provider_agent: ProviderAgentOut | None = None
+
 
 class EmployeeDetail(EmployeeOut):
     actions: list[EmployeeActionOut] = Field(default_factory=list)
     knowledge_source_ids: list[str] = Field(default_factory=list)
+
+
+class EmployeeDedupeOut(APIModel):
+    """Result of collapsing employees that repeat an existing name."""
+
+    scanned: int
+    duplicates: int
+    archived_ids: list[str] = Field(default_factory=list)
 
 
 class EmployeeStatusUpdate(APIModel):

@@ -23,17 +23,19 @@ from app.database.base import utcnow
 from app.database.models.employee import (
     Employee,
     EmployeeAction,
+    EmployeeAgentBinding,
     EmployeeLanguage,
     EmployeePromptVersion,
 )
 from app.database.models.organization import Organization
 from app.database.models.training import EmployeeKnowledgeSource
-from app.integrations import sarvam
+from app.integrations import sarvam, sarvam_agents
 from app.modules import audit, billing
-from app.modules.common import as_dict, scoped
+from app.modules.common import as_dict, ensure_unique, scoped
 from app.schemas.employee import (
     EmployeeActionIn,
     EmployeeCreate,
+    EmployeeDedupeOut,
     EmployeeDetail,
     EmployeeLanguageIn,
     EmployeeOut,
@@ -44,8 +46,12 @@ from app.schemas.employee import (
     EmployeeUpdate,
     LanguageCatalogItem,
     PromptVersionOut,
+    ProviderAgentOut,
     VoiceCatalogItem,
 )
+
+# Lifecycle states in which the provider deployment must stay down.
+_STOPPED_STATES = (str(EmployeeStatus.PAUSED), str(EmployeeStatus.ARCHIVED))
 
 PROMPT_FIELDS = (
     "system_prompt",
@@ -75,6 +81,11 @@ def list_employees(
     stmt = select(Employee).where(Employee.organization_id == organization_id)
     if status:
         stmt = stmt.where(Employee.status == status)
+    else:
+        # Archiving is a soft delete: the row stays for audit and call history
+        # but drops out of the workspace list, so a de-duplicated name cannot
+        # reappear as a second card. ``?status=archived`` still finds them.
+        stmt = stmt.where(Employee.status != str(EmployeeStatus.ARCHIVED))
     if category:
         stmt = stmt.where(Employee.business_category == category)
     if search:
@@ -89,7 +100,12 @@ def list_employees(
     stmt = apply_sorting(stmt, params, Employee, default_column="created_at")
     stmt = stmt.options(selectinload(Employee.languages))
     rows, total = paginate(db, stmt, params)
-    return [EmployeeOut.model_validate(row) for row in rows], total
+
+    items = [EmployeeOut.model_validate(row) for row in rows]
+    bindings = _bindings_for(db, [item.id for item in items])
+    for item in items:
+        item.provider_agent = _provider_agent(bindings.get(item.id))
+    return items, total
 
 
 def get_employee(db: Session, organization_id: str, employee_id: str) -> Employee:
@@ -118,6 +134,7 @@ def employee_detail(db: Session, employee: Employee) -> EmployeeDetail:
     )
     detail = EmployeeDetail.model_validate(employee)
     detail.knowledge_source_ids = knowledge_ids
+    detail.provider_agent = _provider_agent(_bindings_for(db, [employee.id]).get(employee.id))
     return detail
 
 
@@ -131,6 +148,11 @@ def create_employee(
     *,
     user_id: str | None,
 ) -> Employee:
+    # A repeat of a name the workspace already has is a data-entry mistake, not
+    # a plan problem, so say that before the quota is mentioned.
+    name = payload.name.strip()
+    _assert_name_is_free(db, organization.id, name)
+
     limits = billing.plan_limits(db, organization.id)
     current = int(
         db.execute(
@@ -194,6 +216,11 @@ def create_employee(
     )
     db.commit()
     db.refresh(employee)
+
+    # Creating the employee is the trigger: the Sarvam deployment is created
+    # straight away so the workspace never holds an agent the provider has not
+    # heard of. A provider failure is recorded on the binding, not raised.
+    sync_agent(db, employee, user_id=user_id)
     return employee
 
 
@@ -203,6 +230,12 @@ def update_employee(
     data = payload.model_dump(exclude_unset=True, exclude_none=True)
     languages = data.pop("languages", None)
     change_note = data.pop("change_note", None)
+
+    new_name = data.get("name")
+    if new_name and new_name.strip().lower() != (employee.name or "").strip().lower():
+        _assert_name_is_free(
+            db, employee.organization_id, new_name.strip(), exclude_id=employee.id
+        )
 
     prompt_before = {field: getattr(employee, field) for field in PROMPT_FIELDS}
     changed_fields: list[str] = []
@@ -250,6 +283,8 @@ def set_status(
                 details={"employee_id": employee.id},
             )
 
+    _follow_status(db, employee)
+
     audit.log_action(
         db,
         action="employee.status_changed",
@@ -265,9 +300,21 @@ def set_status(
 
 
 def archive_employee(db: Session, employee: Employee, *, user_id: str | None) -> Employee:
-    """Soft delete: keeps call history and audit references intact."""
+    """Soft delete: keeps call history and audit references intact.
+
+    The provider deployment is *paused*, never deleted, so the number binding
+    and everything Sarvam recorded about past calls survive; the frontend does
+    not offer this as a user-facing action any more.
+    """
     employee.status = str(EmployeeStatus.ARCHIVED)
     employee.is_active = False
+
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+    if binding is not None and binding.status != "paused":
+        sarvam_agents.set_status(binding.deployment_id or "", action="pause")
+        binding.status = "paused"
+        binding.synced_at = utcnow()
+
     audit.log_action(
         db,
         action="employee.archived",
@@ -279,6 +326,111 @@ def archive_employee(db: Session, employee: Employee, *, user_id: str | None) ->
     db.commit()
     db.refresh(employee)
     return employee
+
+
+# ---------------------------------------------------------------------------
+# Sarvam deployment binding
+# ---------------------------------------------------------------------------
+def sync_agent(
+    db: Session, employee: Employee, *, user_id: str | None = None
+) -> EmployeeAgentBinding:
+    """Create (or re-create) the Sarvam deployment for this employee.
+
+    Called automatically on create and on demand from the workspace. A provider
+    failure is stored on the binding so the employee stays usable and the UI can
+    show why the agent is not live yet.
+    """
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+    if binding is None:
+        binding = EmployeeAgentBinding(
+            organization_id=employee.organization_id,
+            employee_id=employee.id,
+            provider=sarvam_agents.PROVIDER,
+            status="pending",
+        )
+        db.add(binding)
+        db.flush()
+
+    result = sarvam_agents.provision(
+        employee_name=employee.name,
+        employee_id=employee.id,
+        description=employee.description or employee.purpose,
+    )
+
+    binding.synced_at = utcnow()
+    if result.ok:
+        binding.deployment_id = str(result.data.get("deployment_id") or "") or None
+        binding.app_id = str(result.data.get("app_id") or "") or None
+        binding.app_version = int(
+            result.data.get("app_version") or settings.sarvam_agent_app_version
+        )
+        binding.simulated = bool(result.simulated)
+        binding.status = "active"
+        binding.last_error = None
+
+        # A new deployment always comes back live, so re-deploying a paused or
+        # archived employee would quietly put it back on the phone behind a
+        # "Paused" badge. Send it straight back down instead.
+        if employee.status in _STOPPED_STATES:
+            stopped = sarvam_agents.set_status(
+                binding.deployment_id or "", action="pause"
+            )
+            if stopped.ok:
+                binding.status = "paused"
+            else:
+                binding.last_error = (
+                    stopped.error or "The provider rejected the pause after deploying."
+                )[:500]
+    else:
+        binding.status = "failed"
+        binding.last_error = (
+            result.error or "The voice provider rejected this deployment."
+        )[:500]
+
+    audit.log_action(
+        db,
+        action="employee.agent_provisioned",
+        organization_id=employee.organization_id,
+        user_id=user_id,
+        resource_type="employee",
+        resource_id=employee.id,
+        changes={
+            "status": binding.status,
+            "deployment_id": binding.deployment_id,
+            "simulated": binding.simulated,
+        },
+    )
+    db.commit()
+    db.refresh(binding)
+    return binding
+
+
+def _follow_status(db: Session, employee: Employee) -> None:
+    """Mirror a pause/resume onto the provider deployment."""
+    if employee.status == str(EmployeeStatus.ARCHIVED):
+        return
+
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+    if binding is None or binding.status == "failed":
+        if employee.status == str(EmployeeStatus.ACTIVE):
+            sync_agent(db, employee)
+        return
+
+    if binding.deployment_id is None:
+        return
+
+    action = "resume" if employee.status == str(EmployeeStatus.ACTIVE) else "pause"
+    wanted = "active" if action == "resume" else "paused"
+    if binding.status == wanted:
+        return
+
+    result = sarvam_agents.set_status(binding.deployment_id, action=action)
+    binding.synced_at = utcnow()
+    if result.ok:
+        binding.status = wanted
+        binding.last_error = None
+    else:
+        binding.last_error = (result.error or "The provider rejected the status change.")[:500]
 
 
 # ---------------------------------------------------------------------------
@@ -468,8 +620,97 @@ def apply_template(
 
 
 # ---------------------------------------------------------------------------
+# Duplicates
+# ---------------------------------------------------------------------------
+def deduplicate(
+    db: Session, organization_id: str, *, user_id: str | None = None
+) -> EmployeeDedupeOut:
+    """Collapse employees that repeat a name, keeping the oldest of each group.
+
+    Nothing is deleted: a repeat is archived and its provider deployment is
+    paused, so a mistaken import leaves neither duplicate rows in the workspace
+    nor duplicate agents on the provider. Running this twice is harmless.
+    """
+    rows = list(
+        db.execute(
+            select(Employee)
+            .where(
+                Employee.organization_id == organization_id,
+                Employee.status != str(EmployeeStatus.ARCHIVED),
+            )
+            .order_by(Employee.created_at.asc(), Employee.id.asc())
+        ).scalars()
+    )
+
+    seen: set[str] = set()
+    archived: list[str] = []
+    for employee in rows:
+        key = (employee.name or "").strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            continue
+        archive_employee(db, employee, user_id=user_id)
+        archived.append(employee.id)
+
+    return EmployeeDedupeOut(
+        scanned=len(rows), duplicates=len(archived), archived_ids=archived
+    )
+
+
+# ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
+def _bindings_for(db: Session, employee_ids: list[str]) -> dict[str, EmployeeAgentBinding]:
+    """Fetch every binding for a page of employees in one query."""
+    if not employee_ids:
+        return {}
+    rows = db.execute(
+        select(EmployeeAgentBinding).where(
+            EmployeeAgentBinding.employee_id.in_(employee_ids)
+        )
+    ).scalars()
+    return {row.employee_id: row for row in rows}
+
+
+def _provider_agent(binding: EmployeeAgentBinding | None) -> ProviderAgentOut | None:
+    if binding is None:
+        return None
+    return ProviderAgentOut(
+        provider=binding.provider,
+        deployment_id=binding.deployment_id,
+        app_id=binding.app_id,
+        app_version=binding.app_version,
+        status=binding.status,
+        simulated=binding.simulated,
+        synced_at=binding.synced_at,
+        error=binding.last_error,
+    )
+
+
+def _assert_name_is_free(
+    db: Session, organization_id: str, name: str, *, exclude_id: str | None = None
+) -> None:
+    """Two employees sharing one name are indistinguishable in the workspace."""
+    conditions: list[Any] = [
+        Employee.organization_id == organization_id,
+        func.lower(func.trim(Employee.name)) == name.strip().lower(),
+        Employee.status != str(EmployeeStatus.ARCHIVED),
+    ]
+    if exclude_id:
+        conditions.append(Employee.id != exclude_id)
+    ensure_unique(
+        db,
+        Employee,
+        *conditions,
+        message=(
+            f"An AI employee called '{name}' already exists in this workspace. "
+            "Open that one, or give this employee a different name."
+        ),
+        field="name",
+        value=name,
+    )
+
+
 def _template(key: str | None) -> dict[str, Any] | None:
     if not key:
         return None

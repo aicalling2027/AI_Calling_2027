@@ -11,6 +11,22 @@ export type AgentStatus = "Active" | "Paused" | "Draft";
 export type ModelId = "sarvam-24b" | "sarvam-2b" | "sarvam-105b";
 export type VoiceId = string;
 
+/**
+ * The voice-provider deployment behind an employee. The backend creates it the
+ * moment the employee is created and only ever pauses it, so this mirrors a
+ * real Sarvam deployment rather than a local flag.
+ */
+export type ProviderAgent = {
+  provider: string;
+  deploymentId: string | null;
+  appId: string | null;
+  appVersion: number;
+  status: "pending" | "active" | "paused" | "failed" | string;
+  simulated: boolean;
+  syncedAt: string | null;
+  error: string | null;
+};
+
 export type KnowledgeSource = {
   id: string;
   name: string;
@@ -41,6 +57,7 @@ export type Agent = {
   actions: string[];
   outcomes: string[];
   createdAt: string;
+  providerAgent?: ProviderAgent | null;
 };
 
 export type LeadStatus =
@@ -188,6 +205,31 @@ export const LANGUAGE_META: Record<string, LanguageMeta> = {
   Konkani: { native: "कोंकणी", badge: "कों", accent: "#9a3412" },
 };
 
+/** Backend language codes (BCP-47). The UI shows the display name, the API
+ * only accepts the code, so both directions go through these two helpers. */
+export const LANGUAGE_CODES: Record<string, string> = {
+  Hindi: "hi-IN",
+  English: "en-IN",
+  Marathi: "mr-IN",
+  Tamil: "ta-IN",
+  Telugu: "te-IN",
+  Kannada: "kn-IN",
+  Malayalam: "ml-IN",
+  Gujarati: "gu-IN",
+  Bengali: "bn-IN",
+  Punjabi: "pa-IN",
+  Odia: "or-IN",
+  Assamese: "as-IN",
+  Urdu: "ur-IN",
+  Nepali: "ne-IN",
+  Konkani: "kok-IN",
+};
+
+export const languageCode = (name: string) => LANGUAGE_CODES[name] ?? "en-IN";
+
+export const languageFromCode = (code: string) =>
+  Object.keys(LANGUAGE_CODES).find((name) => LANGUAGE_CODES[name] === code) ?? code;
+
 export const BUSINESS_CATEGORIES = [
   "Insurance & Finance",
   "Travel & Tourism",
@@ -235,14 +277,15 @@ export const VOICES: {
   language: string;
   tone: string;
 }[] = [
-  { id: "anushka", name: "Anushka", gender: "Female", language: "Hindi", tone: "Warm" },
+  { id: "shubh", name: "Shubh", gender: "Male", language: "English, Hindi, Tamil", tone: "Confident" },
+  { id: "tanya", name: "Tanya", gender: "Female", language: "English, Hindi, Bengali", tone: "Friendly" },
+  { id: "anand", name: "Anand", gender: "Male", language: "English, Hindi, Telugu", tone: "Warm" },
+  { id: "sunny", name: "Sunny", gender: "Male", language: "English, Hindi, Malayalam", tone: "Cheerful" },
+  { id: "mani", name: "Mani", gender: "Male", language: "English, Hindi, Kannada", tone: "Calm" },
+  { id: "kabir", name: "Kabir", gender: "Male", language: "English, Hindi, Gujarati", tone: "Steady" },
+  { id: "priya", name: "Priya", gender: "Female", language: "English, Hindi, Marathi", tone: "Precise" },
   { id: "kavya", name: "Kavya", gender: "Female", language: "Hindi, Marathi", tone: "Calm" },
-  { id: "arjun", name: "Arjun", gender: "Male", language: "Hindi, Tamil", tone: "Confident" },
-  { id: "megha", name: "Megha", gender: "Female", language: "English", tone: "Bright" },
-  { id: "vikram", name: "Vikram", gender: "Male", language: "Hindi, English", tone: "Authoritative" },
-  { id: "ishita", name: "Ishita", gender: "Female", language: "Bengali", tone: "Friendly" },
-  { id: "raghav", name: "Raghav", gender: "Male", language: "Telugu", tone: "Steady" },
-  { id: "nandini", name: "Nandini", gender: "Female", language: "Kannada", tone: "Soft" },
+  { id: "ritu", name: "Ritu", gender: "Female", language: "Hindi, English", tone: "Warm" },
 ];
 
 export const TEMPLATES: {
@@ -260,7 +303,7 @@ export const TEMPLATES: {
     category: "Insurance & Finance",
     role: "Renewal specialist",
     languages: ["Hindi", "English"],
-    voiceId: "anushka",
+    voiceId: "kabir",
     prompt:
       "You are a renewal specialist for a health insurer. Confirm the customer's policy number, explain the renewal amount, handle price objections, and offer a callback slot if they are not ready to pay today. Never quote a discount you were not given.",
   },
@@ -270,7 +313,7 @@ export const TEMPLATES: {
     category: "Travel & Tourism",
     role: "Travel consultant",
     languages: ["English", "Hindi"],
-    voiceId: "megha",
+    voiceId: "tanya",
     prompt:
       "You are a travel consultant. Understand destination, travel dates, number of travellers and budget, then suggest two packages. Offer to email the itinerary and book a follow-up call.",
   },
@@ -280,7 +323,7 @@ export const TEMPLATES: {
     category: "Hospital & Clinic",
     role: "Front-desk receptionist",
     languages: ["Hindi", "Marathi", "English"],
-    voiceId: "kavya",
+    voiceId: "priya",
     prompt:
       "You are the front desk for a multi-specialty clinic. Capture the patient name, complaint and preferred doctor, then book the earliest slot. Escalate emergencies to a human immediately.",
   },
@@ -290,7 +333,7 @@ export const TEMPLATES: {
     category: "Coaching & Tuitions",
     role: "Admissions counsellor",
     languages: ["English", "Hindi"],
-    voiceId: "arjun",
+    voiceId: "shubh",
     prompt:
       "You are an admissions counsellor. Ask about the student's grade and subjects, explain the batch schedule and fee, and invite them to a free demo class.",
   },
@@ -300,7 +343,7 @@ export const TEMPLATES: {
     category: "Real Estate",
     role: "Sales associate",
     languages: ["Hindi", "English"],
-    voiceId: "vikram",
+    voiceId: "shubh",
     prompt:
       "You are a real estate sales associate. Qualify budget and locality, describe two matching projects, and book a site visit with the project name and time confirmed.",
   },
@@ -310,7 +353,7 @@ export const TEMPLATES: {
     category: "Local Services",
     role: "Booking agent",
     languages: ["Hindi", "Marathi"],
-    voiceId: "kavya",
+    voiceId: "anand",
     prompt:
       "You are a booking agent for a home services company. Capture the service needed, address and preferred slot, confirm the visit charge and send the booking confirmation.",
   },
@@ -320,7 +363,7 @@ export const TEMPLATES: {
     category: "Jewellery & Fashion",
     role: "Showroom concierge",
     languages: ["English", "Hindi"],
-    voiceId: "anushka",
+    voiceId: "kavya",
     prompt:
       "You are a jewellery showroom concierge. Understand the occasion and budget, describe two collections, and invite the customer to a private viewing at the nearest showroom.",
   },

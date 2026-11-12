@@ -132,7 +132,7 @@ export default function NewEmployeePage() {
     event.target.value = "";
   };
 
-  const build = () => {
+  const build = async () => {
     if (building) return;
     if (!name.trim()) {
       setError("Give your employee a name.");
@@ -144,10 +144,15 @@ export default function NewEmployeePage() {
     }
     setError(null);
     setBuilding(true);
-    later(() => {
-      const id = addAgent({
+
+    try {
+      // One call creates the record and its Sarvam deployment, so the employee
+      // the dashboard opens below already has an agent behind it.
+      const agent = await addAgent({
         name: name.trim(),
         purpose,
+        category,
+        templateKey: templateId,
         languages,
         defaultLanguage,
         voice: voice.name,
@@ -159,16 +164,25 @@ export default function NewEmployeePage() {
           `Namaste, main ${name.trim()} bol raha hoon. Aap kaise hain?`,
         prompt,
       });
+
       files.forEach((file) => {
         const kind = file.name.toLowerCase().endsWith(".pdf")
           ? "PDF"
           : file.name.toLowerCase().endsWith(".docx")
             ? "DOCX"
             : "TXT";
-        addKnowledge(id, { name: file.name, kind, status: "Processing" });
+        addKnowledge(agent.id, { name: file.name, kind, status: "Processing" });
       });
-      router.push(`/dashboard/employees/${id}`);
-    }, 900);
+
+      router.push(`/dashboard/employees/${agent.id}`);
+    } catch (failure) {
+      // The backend refuses a repeated name; show that message verbatim rather
+      // than a generic failure.
+      setError(
+        failure instanceof Error ? failure.message : "The employee could not be created.",
+      );
+      setBuilding(false);
+    }
   };
 
   return (

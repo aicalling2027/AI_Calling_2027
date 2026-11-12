@@ -4,11 +4,10 @@ import Link from "next/link";
 import * as React from "react";
 import {
   ArrowUpRight,
-  Copy,
+  Loader2,
   Pause,
   Play,
   Plus,
-  Trash2,
   Users,
   Zap,
 } from "lucide-react";
@@ -38,10 +37,12 @@ const STATUS_VARIANT: Record<Agent["status"], "success" | "warning" | "secondary
 };
 
 export default function EmployeesPage() {
-  const { agents, updateAgent, deleteAgent, addAgent } = useWorkspace();
+  const { agents, agentsStatus, updateAgent, dedupeAgents } = useWorkspace();
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("All");
   const [language, setLanguage] = React.useState("All");
+  const [checking, setChecking] = React.useState(false);
+  const [notice, setNotice] = React.useState<string | null>(null);
 
   const filtered = agents.filter((agent) => {
     const matchesQuery =
@@ -64,19 +65,21 @@ export default function EmployeesPage() {
           agents.reduce((sum, agent) => sum + agent.successRate, 0) / agents.length,
         );
 
-  const duplicate = (agent: Agent) => {
-    addAgent({
-      name: `${agent.name} copy`,
-      purpose: agent.purpose,
-      languages: agent.languages,
-      defaultLanguage: agent.defaultLanguage,
-      voice: agent.voice,
-      voiceId: agent.voiceId,
-      model: agent.model,
-      modelId: agent.modelId,
-      greeting: agent.greeting,
-      prompt: agent.prompt,
-    });
+  const removeDuplicates = async () => {
+    setChecking(true);
+    setNotice(null);
+    try {
+      const archived = await dedupeAgents();
+      setNotice(
+        archived === 0
+          ? "Every employee has a unique name."
+          : `${archived} repeated ${archived === 1 ? "employee was" : "employees were"} archived.`,
+      );
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The duplicate check failed.");
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -145,14 +148,53 @@ export default function EmployeesPage() {
             placeholder="All languages"
             dividerAfter={0}
           />
+          <button
+            type="button"
+            onClick={removeDuplicates}
+            disabled={checking || agentsStatus !== "ready"}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-medium text-ink-soft transition-colors hover:bg-mist disabled:opacity-60"
+          >
+            {checking ? <Loader2 className="size-3.5 animate-spin" /> : <Users className="size-3.5" />}
+            Remove duplicates
+          </button>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {notice ? (
+        <p className="rounded-lg bg-mist-soft px-3 py-2 text-xs text-ink-soft" role="status">
+          {notice}
+        </p>
+      ) : null}
+
+      {agentsStatus === "loading" ? (
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-surface p-6 text-sm text-ink-soft">
+          <Loader2 className="size-4 animate-spin" />
+          Loading your employees from the database…
+        </div>
+      ) : agentsStatus === "error" ? (
         <EmptyState
           icon={<Users className="size-5" />}
-          title="No employees match these filters"
-          description="Clear the search, choose another language, or build a new employee from a template."
+          title="Could not load your employees"
+          description="The employee service did not answer. Check that the backend is running and try again."
+          action={
+            <button
+              type="button"
+              onClick={() => void window.location.reload()}
+              className={buttonVariants({ size: "lg" })}
+            >
+              Try again
+            </button>
+          }
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<Users className="size-5" />}
+          title={agents.length === 0 ? "No employees yet" : "No employees match these filters"}
+          description={
+            agents.length === 0
+              ? "Build your first AI employee. The Sarvam agent is deployed automatically when you save it."
+              : "Clear the search, choose another language, or build a new employee from a template."
+          }
           action={
             <Link href="/dashboard/employees/new" className={buttonVariants({ size: "lg" })}>
               <Plus aria-hidden />
@@ -231,6 +273,17 @@ export default function EmployeesPage() {
                 <Badge variant="outline">
                   {MODELS.find((model) => model.id === agent.modelId)?.name ?? agent.model}
                 </Badge>
+                {agent.providerAgent ? (
+                  <Badge
+                    variant={agent.providerAgent.status === "failed" ? "danger" : "secondary"}
+                    title={
+                      agent.providerAgent.error ??
+                      `Sarvam deployment ${agent.providerAgent.deploymentId ?? "pending"}`
+                    }
+                  >
+                    Sarvam · {agent.providerAgent.status}
+                  </Badge>
+                ) : null}
               </div>
 
               <p className="mt-3 text-[11px] text-ink-soft">
@@ -260,26 +313,6 @@ export default function EmployeesPage() {
                     <Play className="size-3" />
                   )}
                   {agent.status === "Active" ? "Pause" : "Activate"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => duplicate(agent)}
-                  className="inline-flex h-7 items-center gap-1 rounded-md bg-mist px-2 text-[11px] font-medium text-ink-soft transition-colors hover:bg-mist/70"
-                >
-                  <Copy className="size-3" />
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Delete ${agent.name}? Its training is removed too.`)) {
-                      deleteAgent(agent.id);
-                    }
-                  }}
-                  className="ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-soft transition-colors hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="size-3" />
-                  Delete
                 </button>
               </div>
             </article>

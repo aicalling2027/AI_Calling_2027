@@ -145,6 +145,40 @@ class EmployeeAction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     employee: Mapped[Employee] = relationship(back_populates="actions")
 
 
+class EmployeeAgentBinding(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
+    """The voice-provider deployment that runs this employee's calls.
+
+    ``Employee`` is the definition authored here; the provider only deploys an
+    agent it already knows, so this row is the proof the trigger ran and the
+    place a retry reads from. It is never deleted - archiving pauses it, which
+    keeps the provider's call history and phone binding addressable.
+    """
+
+    __tablename__ = "employee_agent_bindings"
+    __table_args__ = (
+        UniqueConstraint("employee_id", name="uq_employee_agent_bindings_employee_id"),
+    )
+
+    employee_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider: Mapped[str] = mapped_column(
+        String(48), default="sarvam-voice-agents", nullable=False
+    )
+    deployment_id: Mapped[str | None] = mapped_column(String(80))
+    app_id: Mapped[str | None] = mapped_column(String(80))
+    app_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    #: pending | active | paused | failed
+    status: Mapped[str] = mapped_column(
+        String(24), default="pending", nullable=False, index=True
+    )
+    simulated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    employee: Mapped[Employee] = relationship()
+
+
 class ActionExecution(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     """Audit record of an action the agent executed during a call."""
 

@@ -3,10 +3,11 @@
 /**
  * One client store for every dashboard module.
  *
- * State lives in React (so a reload returns to the demo seed) and every screen
- * reads and writes through these actions. The shapes match the /api/v1
- * responses, so replacing this provider with SWR calls is the only change
- * needed when the frontend is wired to the FastAPI service.
+ * AI employees are read from and written to the FastAPI database through the
+ * `/api/employees` Route Handlers; the rest of the modules still render the
+ * demo content in `@/content/workspace` until they are wired the same way.
+ * The shapes match the /api/v1 responses, so replacing the remaining seeds is
+ * the same data-source change.
  */
 
 import * as React from "react";
@@ -25,8 +26,6 @@ import {
   type WebhookRecord,
   type WorkspaceSettings,
   billing,
-  initialsOf,
-  seedAgents,
   seedApiKeys,
   seedCampaigns,
   seedConversations,
@@ -36,11 +35,13 @@ import {
   seedSettings,
   seedTeam,
   seedWebhooks,
-  toneForIndex,
 } from "@/content/workspace";
+
+type AgentsStatus = "loading" | "ready" | "error";
 
 type WorkspaceState = {
   agents: Agent[];
+  agentsStatus: AgentsStatus;
   leads: Lead[];
   campaigns: Campaign[];
   numbers: PhoneNumberRecord[];
@@ -57,6 +58,8 @@ type WorkspaceState = {
 export type NewAgentInput = {
   name: string;
   purpose: string;
+  category?: string;
+  templateKey?: string;
   languages: string[];
   defaultLanguage: string;
   voice: string;
@@ -69,9 +72,13 @@ export type NewAgentInput = {
 };
 
 type WorkspaceActions = {
-  addAgent: (input: NewAgentInput) => string;
+  /** Creates the employee in the database; the backend deploys its Sarvam agent. */
+  addAgent: (input: NewAgentInput) => Promise<Agent>;
   updateAgent: (id: string, patch: Partial<Agent>) => void;
-  deleteAgent: (id: string) => void;
+  /** Re-read every employee. Call after a duplicate pass or a failed save. */
+  refreshAgents: () => Promise<void>;
+  redeployAgent: (id: string) => Promise<Agent>;
+  dedupeAgents: () => Promise<number>;
   addLead: (input: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   addCampaign: (input: {
@@ -104,7 +111,8 @@ type WorkspaceActions = {
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
 
 const initialState: WorkspaceState = {
-  agents: seedAgents,
+  agents: [],
+  agentsStatus: "loading",
   leads: seedLeads,
   campaigns: seedCampaigns,
   numbers: seedNumbers,
@@ -123,56 +131,140 @@ const WorkspaceContext = React.createContext<WorkspaceStore | null>(null);
 const uid = (prefix: string) =>
   `${prefix}-${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-3)}`;
 
+/**
+ * Knowledge sources, actions and outcomes still live only in the browser -
+ * they have no column yet - so a server round-trip must not wipe them.
+ */
+function mergeLocal(current: Agent | undefined, next: Agent): Agent {
+  if (!current) return next;
+  return {
+    ...next,
+    knowledge: current.knowledge,
+    actions: current.actions,
+    outcomes: current.outcomes,
+  };
+}
+
+type AgentPayload = { agent?: Agent; items?: Agent[]; error?: { message?: string } };
+
+async function readAgent(response: Response, fallback: string): Promise<Agent> {
+  const body = (await response.json().catch(() => null)) as AgentPayload | null;
+  if (!response.ok || !body?.agent) throw new Error(body?.error?.message ?? fallback);
+  return body.agent;
+}
+
+async function fetchAgents(): Promise<Agent[]> {
+  const response = await fetch("/api/employees", { cache: "no-store" });
+  const body = (await response.json().catch(() => null)) as AgentPayload | null;
+  if (!response.ok) throw new Error(body?.error?.message ?? "Could not load employees.");
+  return body?.items ?? [];
+}
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<WorkspaceState>(initialState);
 
-  const addAgent = React.useCallback((input: NewAgentInput) => {
-    const id = uid("agent");
-    const agent: Agent = {
-      id,
-      name: input.name,
-      purpose: input.purpose,
-      initials: initialsOf(input.name),
-      tone: toneForIndex(id.length),
-      status: "Draft",
-      languages: input.languages,
-      defaultLanguage: input.defaultLanguage,
-      voice: input.voice,
-      voiceId: input.voiceId,
-      model: input.model,
-      modelId: input.modelId,
-      calls: 0,
-      successRate: 0,
-      lastActive: "Never",
-      greeting: input.greeting,
-      prompt: input.prompt,
-      knowledge: [],
-      actions: [],
-      outcomes: [],
-      createdAt: "Today",
+  const applyAgents = React.useCallback((items: Agent[]) => {
+    setState((prev) => {
+      const known = new Map(prev.agents.map((agent) => [agent.id, agent]));
+      return {
+        ...prev,
+        agents: items.map((item) => mergeLocal(known.get(item.id), item)),
+        agentsStatus: "ready",
+      };
+    });
+  }, []);
+
+  // The list is read once when the shell mounts; `refreshAgents` is what the
+  // screens call afterwards (after a duplicate pass, or a refused save).
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchAgents()
+      .then((items) => {
+        if (!cancelled) applyAgents(items);
+      })
+      .catch((error: unknown) => {
+        console.error("[workspace] load employees", error);
+        if (!cancelled) setState((prev) => ({ ...prev, agentsStatus: "error" }));
+      });
+    return () => {
+      cancelled = true;
     };
+  }, [applyAgents]);
+
+  const refreshAgents = React.useCallback(async () => {
+    try {
+      applyAgents(await fetchAgents());
+    } catch (error) {
+      console.error("[workspace] load employees", error);
+      setState((prev) => ({ ...prev, agentsStatus: "error" }));
+    }
+  }, [applyAgents]);
+
+  const addAgent = React.useCallback(async (input: NewAgentInput): Promise<Agent> => {
+    const response = await fetch("/api/employees", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const agent = await readAgent(response, "The employee could not be created.");
     setState((prev) => ({ ...prev, agents: [agent, ...prev.agents] }));
-    return id;
+    return agent;
   }, []);
 
-  const updateAgent = React.useCallback((id: string, patch: Partial<Agent>) => {
+  const updateAgent = React.useCallback(
+    (id: string, patch: Partial<Agent>) => {
+      setState((prev) => ({
+        ...prev,
+        agents: prev.agents.map((agent) =>
+          agent.id === id ? { ...agent, ...patch } : agent,
+        ),
+      }));
+
+      // Fire and forget: the row is already updated on screen, and a refusal
+      // re-reads the server so the UI never keeps an edit that was rejected.
+      void fetch(`/api/employees/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+        .then(async (response) => {
+          const agent = await readAgent(response, "The change could not be saved.");
+          setState((prev) => ({
+            ...prev,
+            agents: prev.agents.map((current) =>
+              current.id === id ? mergeLocal(current, agent) : current,
+            ),
+          }));
+        })
+        .catch((error: unknown) => {
+          console.error("[workspace] save employee", error);
+          void refreshAgents();
+        });
+    },
+    [refreshAgents],
+  );
+
+  const redeployAgent = React.useCallback(async (id: string): Promise<Agent> => {
+    const response = await fetch(`/api/employees/${id}`, { method: "POST" });
+    const agent = await readAgent(response, "The agent could not be deployed.");
     setState((prev) => ({
       ...prev,
-      agents: prev.agents.map((agent) =>
-        agent.id === id ? { ...agent, ...patch } : agent,
+      agents: prev.agents.map((current) =>
+        current.id === id ? mergeLocal(current, agent) : current,
       ),
     }));
+    return agent;
   }, []);
 
-  const deleteAgent = React.useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      agents: prev.agents.filter((agent) => agent.id !== id),
-      numbers: prev.numbers.map((record) =>
-        record.agentId === id ? { ...record, agentId: null } : record,
-      ),
-    }));
-  }, []);
+  const dedupeAgents = React.useCallback(async (): Promise<number> => {
+    const response = await fetch("/api/employees/dedupe", { method: "POST" });
+    const body = (await response.json().catch(() => null)) as
+      | { duplicates?: number; error?: { message?: string } }
+      | null;
+    if (!response.ok) throw new Error(body?.error?.message ?? "The duplicate check failed.");
+    await refreshAgents();
+    return Number(body?.duplicates ?? 0);
+  }, [refreshAgents]);
 
   const addLead = React.useCallback((input: Omit<Lead, "id">) => {
     setState((prev) => ({
@@ -398,7 +490,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       ...state,
       addAgent,
       updateAgent,
-      deleteAgent,
+      refreshAgents,
+      redeployAgent,
+      dedupeAgents,
       addLead,
       updateLead,
       addCampaign,
@@ -422,7 +516,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       state,
       addAgent,
       updateAgent,
-      deleteAgent,
+      refreshAgents,
+      redeployAgent,
+      dedupeAgents,
       addLead,
       updateLead,
       addCampaign,
