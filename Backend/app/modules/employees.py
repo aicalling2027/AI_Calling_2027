@@ -671,9 +671,9 @@ def deduplicate(
 def import_deployments(
     db: Session, organization_id: str, *, user_id: str | None = None
 ) -> EmployeeImportOut:
-    """Pull the agents that already exist on Sarvam into this workspace.
+    """Pull the agents that already exist on the voice platform into this workspace.
 
-    Voice Agents has no "list agents" call: an agent only becomes addressable
+    The provider has no "list agents" call: an agent only becomes addressable
     through the deployment that binds it to a phone number, so one deployment
     becomes one AI employee. The pull *links* to what is already there - it
     never provisions a deployment and never deletes one - so running it twice
@@ -682,15 +682,23 @@ def import_deployments(
     missing = sarvam_agents.missing_workspace_settings()
     if missing:
         raise ProviderNotConfiguredError(
-            "Sarvam is not addressed yet. Set "
-            f"{', '.join(missing)} in the backend environment, then import again.",
+            "The voice agent workspace is not connected yet. Add the missing "
+            "settings to the backend environment, then import again.",
             details={"missing": missing},
         )
 
     result = sarvam_agents.list_deployments()
     if not result.ok:
+        if result.status_code in (401, 403):
+            # A bare "(401) Unauthorized" reaches the dashboard, which is no
+            # help to whoever is clicking Import - say what to change.
+            raise ProviderNotConfiguredError(
+                "The voice agent workspace rejected the API key. Replace it with a "
+                "key created in the voice agent dashboard, then import again.",
+                details={"status_code": result.status_code},
+            )
         raise ProviderError(
-            result.error or "Sarvam did not return its deployments.",
+            result.error or "The voice platform did not return its agents.",
             details={
                 "provider": sarvam_agents.PROVIDER,
                 "status_code": result.status_code,
@@ -887,10 +895,10 @@ def _create_from_deployment(
     employee = Employee(
         organization_id=organization_id,
         name=_free_name(
-            str(deployment.get("name") or app_id or "Sarvam agent"), taken_names
+            str(deployment.get("name") or app_id or "Imported agent"), taken_names
         ),
-        description=description or f"Imported from Sarvam - deployment {deployment_id}",
-        purpose=(f"Sarvam agent {app_id}" if app_id else "Imported Sarvam agent")[:255],
+        description=description or "Imported from your connected voice platform.",
+        purpose=(f"Voice agent {app_id}" if app_id else "Imported voice agent")[:255],
         default_language="en-IN",
         voice=_default_voice(),
         model=DEFAULT_MODEL,
@@ -909,7 +917,7 @@ def _create_from_deployment(
         employee,
         [EmployeeLanguageIn(language_code="en-IN", is_default=True)],
     )
-    _snapshot_prompt(db, employee, user_id=user_id, note="Imported from Sarvam")
+    _snapshot_prompt(db, employee, user_id=user_id, note="Imported agent")
 
     binding = EmployeeAgentBinding(
         organization_id=organization_id,
@@ -966,7 +974,7 @@ def _refresh_binding(
 
 def _free_name(base: str, taken: set[str]) -> str:
     """A workspace-unique display name, so an import cannot fight the guard."""
-    cleaned = " ".join(str(base).split())[:120] or "Sarvam agent"
+    cleaned = " ".join(str(base).split())[:120] or "Imported agent"
     candidate = cleaned
     counter = 2
     while candidate.lower() in taken:

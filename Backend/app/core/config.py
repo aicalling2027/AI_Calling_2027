@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     #: Agents are authored in the Sarvam workspace; the API deploys them. These
     #: identifiers tell the service which agent to deploy and where.
     sarvam_agents_base_url: str = "https://apps.sarvam.ai/api/app-authoring"
+    #: Workspace key from the voice agent dashboard (Settings -> API Key). It is
+    #: not the same credential as ``sarvam_api_key``, which pays for chat and TTS.
+    sarvam_agents_api_key: str = ""
     sarvam_org_id: str = ""
     sarvam_workspace_id: str = ""
     sarvam_agent_app_id: str = ""

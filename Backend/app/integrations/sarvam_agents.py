@@ -26,19 +26,24 @@ PROVIDER = "sarvam-voice-agents"
 _UNSAFE_NAME = re.compile(r"[^A-Za-z0-9 _-]+")
 
 
+def _api_key() -> str:
+    """The workspace key, falling back to the account key for single-key setups."""
+    return str(settings.sarvam_agents_api_key or settings.sarvam_api_key or "").strip()
+
+
 def configured() -> bool:
     """True when the workspace can be addressed and the deployed agent is known."""
     return settings.enabled(
-        settings.sarvam_api_key,
+        _api_key(),
         settings.sarvam_org_id,
         settings.sarvam_workspace_id,
         settings.sarvam_agent_app_id,
     )
 
 
-#: Reading the workspace needs an API key and the two ids - but no agent id,
-#: because the agents are what the call returns.
-_WORKSPACE_FIELDS = ("sarvam_api_key", "sarvam_org_id", "sarvam_workspace_id")
+#: Reading the workspace needs the workspace key and the two ids - but no agent
+#: id, because the agents are what the call returns.
+_WORKSPACE_FIELDS = ("sarvam_agents_api_key", "sarvam_org_id", "sarvam_workspace_id")
 
 
 def missing_workspace_settings() -> list[str]:
@@ -52,7 +57,7 @@ def missing_workspace_settings() -> list[str]:
 
 def _headers() -> dict[str, str]:
     return {
-        "X-API-Key": settings.sarvam_api_key,
+        "X-API-Key": _api_key(),
         "Content-Type": "application/json",
     }
 
@@ -148,7 +153,7 @@ def list_deployments(*, page_size: int = 100, max_pages: int = 10) -> ProviderRe
         return ProviderResponse(
             ok=False,
             error=(
-                "Sarvam is not addressed yet - set "
+                "The voice agent workspace is not addressed yet - set "
                 f"{', '.join(missing)} in the backend environment."
             ),
             status_code=503,

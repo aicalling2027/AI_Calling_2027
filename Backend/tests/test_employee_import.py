@@ -88,7 +88,9 @@ def test_import_explains_which_settings_are_missing(client, auth, monkeypatch):
     assert response.status_code == 503, response.text
     error = response.json()["error"]
     assert error["code"] == "provider_not_configured"
-    assert "SARVAM_ORG_ID" in error["message"]
+    # The operator needs the variable names; the end user just needs the gist.
+    assert error["details"]["missing"] == ["SARVAM_ORG_ID", "SARVAM_WORKSPACE_ID"]
+    assert "workspace" in error["message"].lower()
 
 
 def test_import_creates_one_employee_per_deployment(client, auth, seats, monkeypatch):
@@ -184,3 +186,21 @@ def test_import_stops_at_the_plan_limit(client, auth, employee, monkeypatch):
 
     imported = [item["employee_id"] for item in body["items"] if item["action"] == "created"]
     _archive(client, auth, *imported)
+
+
+def test_import_turns_a_rejected_key_into_a_sentence(client, auth, monkeypatch):
+    """A 401 from the workspace is read by a person, not a log file."""
+    monkeypatch.setattr(employees.sarvam_agents, "missing_workspace_settings", lambda: [])
+    monkeypatch.setattr(
+        employees.sarvam_agents,
+        "list_deployments",
+        lambda **_: ProviderResponse(ok=False, error="(401) Unauthorized", status_code=401),
+    )
+
+    response = client.post(f"{API}/employees/import", headers=auth)
+
+    assert response.status_code == 503, response.text
+    error = response.json()["error"]
+    assert error["code"] == "provider_not_configured"
+    assert "api key" in error["message"].lower()
+    assert "401" not in error["message"]

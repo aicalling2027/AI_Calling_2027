@@ -326,7 +326,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
               <div>
                 <h2 className="text-sm font-semibold text-ink">Voice agent</h2>
                 <p className="mt-0.5 text-xs text-ink-soft">
-                  Deployed on Sarvam the moment this employee was created. Pausing it never
+                  Deployed the moment this employee was created. Pausing it never
                   deletes the agent, so call history and the number stay intact.
                 </p>
               </div>
@@ -349,7 +349,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
               <div className="rounded-lg bg-mist-soft p-2">
                 <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Provider</dt>
                 <dd className="mt-0.5 font-semibold text-ink">
-                  {agent.providerAgent?.provider ?? "Not deployed yet"}
+                  {agent.providerAgent ? "Voice platform" : "Not deployed yet"}
                 </dd>
               </div>
               <div className="rounded-lg bg-mist-soft p-2">
@@ -889,7 +889,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
               }
             />
             <p className="ml-auto max-w-[40ch] text-right text-[11px] text-ink-soft">
-              Employees are never deleted. Pause one instead - its Sarvam agent, call history
+              Employees are never deleted. Pause one instead - its agent, call history
               and phone number are kept.
             </p>
           </div>

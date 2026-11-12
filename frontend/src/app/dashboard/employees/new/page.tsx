@@ -416,7 +416,7 @@ export default function NewEmployeePage() {
           <Panel
             step="4"
             title="AI model"
-            hint="All three are Sarvam models, billed per minute of conversation."
+            hint="All three are Indic conversation models, billed per minute of conversation."
           >
             <div className="grid gap-3 sm:grid-cols-3">
               {MODELS.map((item) => (

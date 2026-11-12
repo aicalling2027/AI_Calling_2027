@@ -80,7 +80,7 @@ type WorkspaceActions = {
   refreshAgents: () => Promise<void>;
   redeployAgent: (id: string) => Promise<Agent>;
   dedupeAgents: () => Promise<number>;
-  /** Pull the agents that already exist on Sarvam in as employees. */
+  /** Pull the agents that already exist in your connected account in as employees. */
   importAgents: () => Promise<ImportSummary>;
   addLead: (input: Omit<Lead, "id">) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
@@ -274,7 +274,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const body = (await response.json().catch(() => null)) as
       | (ImportSummary & { error?: { message?: string } })
       | null;
-    if (!response.ok) throw new Error(body?.error?.message ?? "Sarvam could not be read.");
+    if (!response.ok) throw new Error(body?.error?.message ?? "Your connected account could not be read.");
     await refreshAgents();
     return {
       fetched: Number(body?.fetched ?? 0),

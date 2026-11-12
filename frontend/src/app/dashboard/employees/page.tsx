@@ -84,15 +84,15 @@ export default function EmployeesPage() {
     }
   };
 
-  // Pulls the deployments that already live in the Sarvam workspace, so an
-  // agent built there shows up here without being built a second time.
-  const importFromSarvam = async () => {
+  // Pulls the agents that already live in your connected account, so one built
+  // there shows up here without being built a second time.
+  const importFromAccount = async () => {
     setImporting(true);
     setNotice(null);
     try {
       const summary = await importAgents();
       if (summary.fetched === 0) {
-        setNotice("Sarvam has no deployments yet. Deploy an agent there, then import again.");
+        setNotice("No agents found in your connected account yet. Create one there, then import again.");
         return;
       }
 
@@ -110,11 +110,11 @@ export default function EmployeesPage() {
       );
       setNotice(
         parts.length === 0
-          ? "Everything on Sarvam is already here."
+          ? "Everything is already here."
           : `${parts.join(", ")}.${reasons.length ? ` ${reasons.join("; ")}.` : ""}`,
       );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Sarvam could not be read.");
+      setNotice(error instanceof Error ? error.message : "Your connected account could not be read.");
     } finally {
       setImporting(false);
     }
@@ -147,7 +147,7 @@ export default function EmployeesPage() {
         <StatTile label="Employees" value={String(agents.length)} hint={`${active} active`} />
         <StatTile label="Calls handled" value={totalCalls.toLocaleString("en-IN")} hint="All time" />
         <StatTile label="Average success" value={`${average}%`} hint="Across employees" />
-        <StatTile label="Models in use" value={String(new Set(agents.map((a) => a.modelId)).size)} hint="Sarvam M series" />
+        <StatTile label="Models in use" value={String(new Set(agents.map((a) => a.modelId)).size)} hint="M series" />
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3 lg:flex-row lg:items-center">
@@ -188,12 +188,12 @@ export default function EmployeesPage() {
           />
           <button
             type="button"
-            onClick={importFromSarvam}
+            onClick={importFromAccount}
             disabled={importing || agentsStatus === "loading"}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-medium text-ink-soft transition-colors hover:bg-mist disabled:opacity-60"
           >
             {importing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-            Import from Sarvam
+            Import agents
           </button>
           <button
             type="button"
@@ -239,7 +239,7 @@ export default function EmployeesPage() {
           title={agents.length === 0 ? "No employees yet" : "No employees match these filters"}
           description={
             agents.length === 0
-              ? "Build your first AI employee - or import the agents you already have on Sarvam."
+              ? "Build your first AI employee - or import the agents you already have in your account."
               : "Clear the search, choose another language, or build a new employee from a template."
           }
           action={
@@ -325,10 +325,10 @@ export default function EmployeesPage() {
                     variant={agent.providerAgent.status === "failed" ? "danger" : "secondary"}
                     title={
                       agent.providerAgent.error ??
-                      `Sarvam deployment ${agent.providerAgent.deploymentId ?? "pending"}`
+                      `Agent deployment ${agent.providerAgent.deploymentId ?? "pending"}`
                     }
                   >
-                    Sarvam · {agent.providerAgent.status}
+                    Agent · {agent.providerAgent.status}
                   </Badge>
                 ) : null}
               </div>
