@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { OverviewAgents } from "@/components/dashboard/overview-agents";
 import { OverviewAttention } from "@/components/dashboard/overview-attention";
@@ -28,6 +29,10 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
+  // Layouts and pages render in parallel, so this page claims the request too:
+  // the greeting needs the session, and the auth client reads the wall clock.
+  await connection();
+
   if (!isSupabaseConfigured) {
     redirect("/login?next=/dashboard");
   }

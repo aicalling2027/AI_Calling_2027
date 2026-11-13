@@ -44,6 +44,7 @@ import {
   VOICES,
   initialsOf,
   voiceById,
+  voicePreviewUrl,
   voiceSampleSources,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
@@ -798,10 +799,14 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
                 meta={voice.language}
                 icon={<Mic className="size-4" />}
               >
-                <VoicePreview
-                  sources={voiceSampleSources(voice, index + 1)}
-                  label="Preview"
-                />
+                {/* Same rule as the creation step: no speaker name, no sample. */}
+                {voice.slug ? (
+                  <VoicePreview
+                    sources={voiceSampleSources(voice, index + 1)}
+                    apiUrl={voicePreviewUrl(voice)}
+                    label="Preview"
+                  />
+                ) : null}
               </SelectCard>
             ))}
           </div>

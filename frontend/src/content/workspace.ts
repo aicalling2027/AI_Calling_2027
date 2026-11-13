@@ -292,30 +292,35 @@ export const MODELS: {
 /** `Unspecified` is used where the catalogue does not label the voice. */
 export type VoiceGender = "Female" | "Male" | "Unspecified";
 
+/** One entry of the voice picker. */
+export type Voice = {
+  id: VoiceId;
+  /** Speaker name a sample is synthesised from; empty when none is known. */
+  slug: string;
+  name: string;
+  gender: VoiceGender;
+  language: string;
+  tone: string;
+};
+
 /**
- * The voice catalogue, in catalogue order.
+ * The voices the catalogue publishes a name for, in catalogue order.
  *
  * Three rules shape this list:
  *
  * - `id` is the identifier the catalogue issues and the only value stored on an
  *   employee. It is never rendered: the card shows `name`, so the customer sees
  *   a colleague, not a provider object.
- * - `slug` is a stable handle for templates, which are written by name.
+ * - `slug` is a stable handle for templates, which are written by name, and it
+ *   is the speaker name the live preview is synthesised from.
  * - `gender` says "Unspecified" when the catalogue does not label the voice.
  *   The nine original presets keep their labels so existing employees read the
  *   same as before.
  *
  * Audio samples live in `public/voices`; see `voiceSampleSources` for the
- * filenames that are accepted.
+ * filenames that are accepted, and `voicePreviewUrl` for the live fallback.
  */
-export const VOICES: {
-  id: VoiceId;
-  slug: string;
-  name: string;
-  gender: VoiceGender;
-  language: string;
-  tone: string;
-}[] = [
+const NAMED_VOICES: Voice[] = [
   { id: "01a0cf16-7021-76f7-a0cc-9d065cdb30a8", slug: "shubh", name: "Shubh", gender: "Male", language: "English, Hindi, Tamil", tone: "Confident" },
   { id: "01a0cf16-5726-7055-8622-322e53f6bc77", slug: "tanya", name: "Tanya", gender: "Female", language: "English, Hindi, Bengali", tone: "Friendly" },
   { id: "01a0cf16-73d4-78aa-a416-c593287484db", slug: "anand", name: "Anand", gender: "Male", language: "English, Hindi, Telugu", tone: "Warm" },
@@ -325,11 +330,150 @@ export const VOICES: {
   { id: "01a0cf16-6ecd-7a97-b86b-f91eeadd5bd7", slug: "priya", name: "Priya", gender: "Female", language: "English, Hindi, Marathi", tone: "Precise" },
   { id: "01a0cf16-6b54-7b44-8dff-e67586a9762a", slug: "kavya", name: "Kavya", gender: "Female", language: "Hindi, Marathi", tone: "Calm" },
   { id: "01a0cf16-5a52-747d-8900-0a77b9f5402c", slug: "ritu", name: "Ritu", gender: "Female", language: "Hindi, English", tone: "Warm" },
-  { id: "01a0cf16-68c6-7341-8408-bceec24a6a06", slug: "aarav", name: "Aarav", gender: "Unspecified", language: "All supported languages", tone: "Clear" },
-  { id: "01a0cf16-5c61-787d-a83f-ae54ce8c0f96", slug: "meera", name: "Meera", gender: "Unspecified", language: "All supported languages", tone: "Bright" },
-  { id: "01a0cf16-7179-7472-b7df-b7b432d5faa5", slug: "ishaan", name: "Ishaan", gender: "Unspecified", language: "All supported languages", tone: "Assured" },
-  { id: "01a0cf16-6c54-746b-815a-2e1cf51a473a", slug: "ananya", name: "Ananya", gender: "Unspecified", language: "All supported languages", tone: "Gentle" },
-  { id: "01a0cf16-6a07-7cee-b592-494b2d213be1", slug: "diya", name: "Diya", gender: "Unspecified", language: "All supported languages", tone: "Lively" },
+  // The catalogue issues ids, but a sample is synthesised from a speaker name,
+  // so these five are named after the speaker that can actually be heard.
+  { id: "01a0cf16-68c6-7341-8408-bceec24a6a06", slug: "aditya", name: "Aditya", gender: "Male", language: "All supported languages", tone: "Clear" },
+  { id: "01a0cf16-5c61-787d-a83f-ae54ce8c0f96", slug: "simran", name: "Simran", gender: "Female", language: "All supported languages", tone: "Bright" },
+  { id: "01a0cf16-7179-7472-b7df-b7b432d5faa5", slug: "rahul", name: "Rahul", gender: "Male", language: "All supported languages", tone: "Assured" },
+  { id: "01a0cf16-6c54-746b-815a-2e1cf51a473a", slug: "neha", name: "Neha", gender: "Female", language: "All supported languages", tone: "Gentle" },
+  { id: "01a0cf16-6a07-7cee-b592-494b2d213be1", slug: "shreya", name: "Shreya", gender: "Female", language: "All supported languages", tone: "Lively" },
+];
+
+/**
+ * Catalogue ids that arrive without a name or a speaker.
+ *
+ * The speech API only knows speaker names, so nothing can be synthesised from
+ * an id alone: these voices are selectable and storable, but they have no
+ * sample. They are labelled by position (`Voice 15` ...) because inventing a
+ * name for a voice nobody has heard would be a claim the product cannot
+ * support.
+ */
+const UNNAMED_VOICE_IDS: VoiceId[] = [
+  "01a0cf16-c8fa-7c70-a30e-0896e4695e86",
+  "01a0cf16-8d27-75e7-a4f8-f71f57f86443",
+  "01a0cf16-944c-78eb-9f80-81eb02c4bcb9",
+  "01a0cf16-90ae-7470-941d-2c1f17b37528",
+  "01a0e8fc-b042-7326-a139-e97058ab7c50",
+  "01a0cf16-e8b3-7f97-909b-27be790e7330",
+  "01a0cf16-98e5-7477-b1c4-73db8ad8ba82",
+  "01a0cf16-8c17-7394-a54d-d11431e8a13a",
+  "01a0e8fc-a461-75e4-b7d4-43e84745eee6",
+  "01a0cf16-97b2-72b5-bdc4-4785b7a334ed",
+  "01a0e8fc-9b0d-7595-b5b6-4ba0d403c566",
+  "01a0cf16-b5cd-7a8b-a0f5-f3889c932e82",
+  "01a0e8fc-8c7f-7a29-ad18-34060dd8bac2",
+  "01a0e8fc-aee0-7e7b-9dd9-11c12bbe2bcd",
+  "01a0e8fc-865c-715e-993e-3478d3a1fc1c",
+  "01a0cf1a-7d5a-7bca-a22b-f36f7c6c1bbe",
+  "01a0e8fc-87f8-73ff-bbc9-2b8b802b2b13",
+  "01a0cf16-8e7d-72c5-9a8b-e3c431253630",
+  "01a0cf16-955f-71e1-b1b6-68bf2fcf2172",
+  "01a0cf16-96aa-7c19-89c0-2978daac5737",
+  "01a0cf16-b371-767c-b137-81a1cd4d9eed",
+  "01a0e8fc-b332-7ea8-9f1d-4f5495aff777",
+  "01a0cf16-ecd8-7d99-8aab-265fd11bc871",
+  "01a0e8fc-b0f1-72a6-ad04-96656a0d28d2",
+  "01a0cf16-eba8-7528-a44c-eb42d4b2b5d9",
+  "01a0cf16-e9ab-77e9-9953-2238f05c7110",
+  "01a0cf16-b252-7218-996b-1d4902aae830",
+  "01a0cf16-eddc-7cb3-823b-88731b6cbe29",
+  "01a0cf17-0b6e-79f0-b8ab-7392cabc497b",
+  "01a0e8fc-b2bb-781b-a7fa-f5b43f946f03",
+  "01a0cf16-eabc-779c-a266-b37c1967acb3",
+  "01a0e8fc-b168-741f-87a9-3ba15a7628ec",
+  "01a0cf16-b474-782d-9743-13bdfc4c9a25",
+  "01a0cf16-897b-76f8-8de9-34f27e861df6",
+  "01a0cf16-8ac9-7d36-866f-b19d0c05a72d",
+  "01a0cf17-17b8-7952-ab5c-ed9ea97a6925",
+  "01a0cf17-1650-73b7-ac23-aad040439447",
+  "01a0cf16-ef1b-7525-91f7-03bca0da8bf4",
+  "01a0cf16-9a05-79b1-8110-4b923c936015",
+  "01a0cf16-aff2-7919-b06c-9c03433f2ffd",
+  "01a0cf17-07ec-7e82-976c-1115f36dda1b",
+  "01a0cf16-ad8b-762d-8e12-73ddbae38db8",
+  "01a0cf16-aee5-7a59-981c-e4e7b8b148a0",
+  "01a0cf17-154d-7cc0-b5c3-b11b350d519b",
+  "01a0cf16-da10-74b6-a33b-9640d0f046fd",
+  "01a0cf16-d697-7eb3-b04f-79641a0aaef2",
+  "01a0cf16-d30b-796e-b775-e33f383b004b",
+  "01a0cf16-d447-7a70-a2a0-4dc350038a24",
+  "01a0e8fc-aa0e-78f5-96a4-b4640a6446f9",
+  "01a0e8fc-ab43-77e8-ab9d-2cec9ec5dfac",
+  "01a0cf16-d8d6-70e3-8282-7494b008cb37",
+  "01a0cf16-db1d-7fa1-b803-6c76b70c2917",
+  "01a0cf16-dc66-7811-a129-ac6855ef5ca9",
+  "01a0cf17-0200-70eb-86af-68c0147d2351",
+  "01a0e8fc-accd-7171-b0e6-e952a20fc408",
+  "01a0e8fc-abc0-7c93-aa6a-174eb836a648",
+  "01a0e8fc-86d1-72b5-89d8-37018dd049b4",
+  "01a0cf16-de84-785d-b91b-7b47965d373d",
+  "01a0cf16-df9b-76dc-a9e1-e3981efacba0",
+  "01a0cf16-dd5f-77fa-8a45-4a6c01663eb1",
+  "01a0cf16-d541-7554-a9ad-1e8964aeb427",
+  "01a0cf16-d7da-7f22-b00b-b454c7a709ba",
+  "01a0e8fc-b801-7a88-a9c6-7c4dc2755a01",
+  "01a0cf16-e562-7c39-a3fb-24ec65422292",
+  "01a0e8fc-b777-79fe-be74-548740a07d96",
+  "01a0cf16-f693-7823-b244-369096928e66",
+  "01a0cf16-f569-72ca-b0a6-e1e973c00ae7",
+  "01a0cf16-f486-7d5c-b1cc-7f6a3eef52e3",
+  "01a0e8fc-b87f-7efc-a4a0-908a32674ffb",
+  "01a0cf16-ca3d-739c-aaa2-2a9d61f94abf",
+  "01a0cf16-cc50-70f1-a3c2-fc8b0afff87e",
+  "01a0e8fc-a176-70dc-8444-4043e6271041",
+  "01a0cf16-c7f5-7248-8cf6-4eb9a5bb264d",
+  "01a0cf16-cb52-7d7d-b708-4ae241366ee1",
+  "01a0cf16-cd9f-7de5-b8e3-7d438ebb57cd",
+  "01a0e8fc-a296-7e2c-a431-b055396bb790",
+  "01a0cf16-cfd4-71b3-9254-b921720f3ed0",
+  "01a0e8fc-a31d-7e65-a508-8b62a5d45639",
+  "01a0cf16-c6b0-74a8-93b8-0f8fbd35a74d",
+  "01a0cf16-cea3-70e6-931b-9dc276d6675f",
+  "01a0cf16-d0cd-7e3a-a054-2bb4a1310538",
+  "01a0e8fc-a5ba-71fe-abcc-5543b864c9fb",
+  "01a0cf16-a1c6-7d20-8675-7b4941347f1e",
+  "01a0cf16-a0c0-76f9-8d2e-79635434a78a",
+  "01a0cf16-d212-7f69-b4e0-60b1b45d8c29",
+  "01a0e8fc-ba8b-79c2-83f9-f64f06fa03f1",
+  "01a0e8fc-9a2a-76d9-b143-e250fa1d6be1",
+  "01a0cf16-beba-74d5-b4e1-fa97f11587f6",
+  "01a0e8fc-9d8f-7ba3-9397-3c0443e9f918",
+  "01a0cf16-b718-7896-89b7-f64266beb2c8",
+  "01a0cf16-b828-78d4-819d-0ec6fc85b3f0",
+  "01a0cf16-b98a-7203-8697-5e09e2b95a62",
+  "01a0cf16-bba3-7c6d-a76d-b866f9063987",
+  "01a0cf16-bc9f-724e-a450-37b605a509f8",
+  "01a0cf16-bdbf-7e26-bdc5-0235e462d043",
+  "01a0cf16-ba80-7ea3-9e61-8e5a0381560b",
+  "01a0e8fc-afcd-77b6-acfe-4c0341856ee6",
+  "01a0cf16-c013-7907-8311-4977d02f37f5",
+  "01a0cf16-c153-7c18-bee4-b599f3a8f423",
+  "01a0cf16-c253-72de-a0e3-d99c8127a4bd",
+  "01a0cf16-c38c-7c6c-8e6a-f0bd7af56a16",
+  "01a0cf16-c494-7231-b33d-fc186090959f",
+  "01a0cf17-12bd-7de3-9df0-f607db604d52",
+  "01a0e8fc-9b80-7cb2-aaec-6a9b030b4d36",
+  "01a0cf1a-7e84-7b02-af0f-cc692f99bcc3",
+  "01a0cf16-e0d7-7870-a832-83bdd785052c",
+  "01a0cf16-e219-74ee-8e6c-a1e3d5df8d11",
+  "01a0e8fc-9f41-7d10-9f15-1720a4b077d0",
+  "01a0e8fc-a540-7db8-b919-feda80526484",
+  "01a0cf16-a32a-730c-9800-0451f3f6598e",
+  "01a0cf16-e455-7887-b274-77f1c903825f",
+  "01a0cf16-fec7-72d5-8803-5ea3ea7b5e8a",
+];
+
+/** Everything the voice picker shows: named voices first, then the rest. */
+export const VOICES: Voice[] = [
+  ...NAMED_VOICES,
+  ...UNNAMED_VOICE_IDS.map((id, index) => ({
+    id,
+    slug: "",
+    name: `Voice ${NAMED_VOICES.length + index + 1}`,
+    gender: "Unspecified" as VoiceGender,
+    language: "",
+    tone: "",
+  })),
 ];
 
 /** The id behind a stable slug, for templates written against a voice name. */
@@ -352,6 +496,15 @@ export function voiceSampleSources(
     `/voices/${voice.id}.wav`,
   ];
 }
+
+/**
+ * Live sample for a voice, used when no file has been uploaded yet.
+ *
+ * The speech API knows speakers by name, not by the id an employee stores, so
+ * the slug is what goes on the wire.
+ */
+export const voicePreviewUrl = (voice: { slug: string }) =>
+  `/api/voices/${voice.slug}/preview`;
 
 export const TEMPLATES: {
   id: string;

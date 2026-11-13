@@ -112,6 +112,53 @@ def test_voice_preview_with_rejected_key_is_503(client, live_credentials):
     assert "api key" in error["message"].lower()
 
 
+def test_voice_preview_unknown_id_is_404(client):
+    """Only catalogue speakers are synthesised, so this cannot probe others."""
+    response = client.get(f"{API}/voices/01a0cf16-0000-0000-0000-000000000000/preview")
+
+    assert response.status_code == 404, response.text
+    assert response.json()["error"]["code"] == "voice_not_found"
+
+
+@pytest.mark.parametrize("voice_id", ["shubh", "ritu", "aditya"])
+def test_voice_preview_accepts_every_catalogue_speaker(client, voice_id, monkeypatch):
+    """`ritu` and `aditya` have no marketing profile: validation must pass anyway.
+
+    A 503 means the id cleared validation and stopped at the missing key, which
+    is the point - the dashboard previews those speakers live.
+    """
+    monkeypatch.setattr(sarvam, "configured", lambda: False)
+
+    response = client.get(f"{API}/voices/{voice_id}/preview")
+
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "provider_not_configured"
+
+
+def test_voice_preview_unnamed_catalogue_id_is_404(client, monkeypatch):
+    """A selectable voice with no speaker name must not reach the provider.
+
+    Synthesis is requested by speaker name, so forwarding such an id produced a
+    provider error that looked like an outage. The catalogue now answers 404 and
+    says which of the two cases it is.
+    """
+    called = False
+
+    def explode(*args, **kwargs):  # pragma: no cover - must never run
+        nonlocal called
+        called = True
+        raise AssertionError("unnamed voice reached the provider")
+
+    monkeypatch.setattr(sarvam, "synthesize", explode)
+    monkeypatch.setattr(sarvam, "configured", lambda: True)
+
+    response = client.get(f"{API}/voices/01a0cf16-fec7-72d5-8803-5ea3ea7b5e8a/preview")
+
+    assert response.status_code == 404, response.text
+    assert response.json()["error"]["code"] == "voice_sample_unavailable"
+    assert called is False
+
+
 # ---------------------------------------------------------------------------
 # Predicate and redaction
 # ---------------------------------------------------------------------------

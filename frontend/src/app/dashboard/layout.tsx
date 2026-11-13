@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -20,6 +21,12 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // The session read below goes through the Supabase auth client, which reads
+  // the wall clock to decide whether a token has expired. Prerendering treats
+  // that as an unstable value and aborts the whole route, so the layout claims
+  // the request first - this tree is per-user and can never be prerendered.
+  await connection();
+
   if (!isSupabaseConfigured) {
     redirect("/login?next=/dashboard");
   }

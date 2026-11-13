@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Selection card with a radial "flood" on hover/selection, adapted from the
- * ColourFill pattern to this theme: the flood is a light tangerine tint, so
- * the card stays inside the quiet palette instead of turning into a dark tile.
+ * Selection card.
+ *
+ * Only selection changes the colour. Hover used to flood the card with a
+ * tangerine tint, which made a pointer crossing the grid look like a choice
+ * that had already been made - on a step with a long list of voices that reads
+ * as a state, not as a hint. The cursor and the focus ring are the only hover
+ * affordances now.
  */
 
 import * as React from "react";
@@ -30,24 +34,8 @@ export function SelectCard({
   children?: React.ReactNode;
   className?: string;
 }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [hovered, setHovered] = React.useState(false);
-  const [origin, setOrigin] = React.useState({ x: 50, y: 100 });
-
-  const track = (event: React.PointerEvent<HTMLDivElement>) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    setOrigin({
-      x: Math.round(((event.clientX - rect.left) / rect.width) * 100),
-      y: Math.round(((event.clientY - rect.top) / rect.height) * 100),
-    });
-  };
-
-  const filled = hovered || selected;
-
   return (
     <div
-      ref={ref}
       role="button"
       tabIndex={0}
       aria-pressed={selected}
@@ -58,29 +46,21 @@ export function SelectCard({
           onSelect();
         }
       }}
-      onPointerEnter={(event) => {
-        track(event);
-        setHovered(true);
-      }}
-      onPointerMove={track}
-      onPointerLeave={() => setHovered(false)}
       className={cn(
         "relative isolate cursor-pointer overflow-hidden rounded-xl border bg-surface p-4 text-left outline-none transition-[border-color,box-shadow,transform] duration-300",
         "focus-visible:ring-3 focus-visible:ring-cobalt/25",
         selected
           ? "border-cobalt/60 shadow-[0_8px_24px_-16px_rgba(24,90,219,0.6)]"
-          : "border-line hover:border-cobalt/35",
+          : "border-line",
         className,
       )}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-tangerine-tint/60 transition-[clip-path] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]"
-        style={{
-          clipPath: filled
-            ? `circle(150% at ${origin.x}% ${origin.y}%)`
-            : `circle(0% at ${origin.x}% ${origin.y}%)`,
-        }}
+        className={cn(
+          "pointer-events-none absolute inset-0 z-0 bg-tangerine-tint/60 transition-opacity duration-300",
+          selected ? "opacity-100" : "opacity-0",
+        )}
       />
       <span className="relative z-10 block">
         <span className="flex items-start justify-between gap-2">

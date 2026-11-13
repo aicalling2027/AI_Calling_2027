@@ -3,17 +3,29 @@
 The catalogue itself is static reference data (``VOICE_PROFILES``). The only
 work here that reaches a provider is :func:`preview`, which asks Sarvam to
 synthesise a fixed sentence per voice. Samples are cached in-process because
-every visitor to the landing page plays the same handful of clips, and the
-preview text never comes from the caller.
+every visitor plays the same handful of clips, and the preview text never comes
+from the caller.
+
+``catalog()`` lists only the marketing voices, but ``preview()`` also answers for
+the dashboard speakers in ``PREVIEW_SPEAKERS``: an operator choosing a voice has
+to hear it before committing. A catalogue id whose speaker is unknown is refused
+before it reaches the provider - synthesis is requested by speaker name, so
+forwarding the id could only ever produce a provider error.
 """
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from collections.abc import Iterable
 
-from app.core.constants import SUPPORTED_LANGUAGES, VOICE_PROFILES
+from app.core.constants import (
+    PREVIEW_SPEAKERS,
+    SUPPORTED_LANGUAGES,
+    SUPPORTED_VOICES,
+    VOICE_PROFILES,
+)
 from app.core.exceptions import (
     NotFoundError,
     ProviderError,
@@ -56,19 +68,53 @@ def catalog() -> list[VoiceOut]:
     ]
 
 
-def _profile(voice_id: str) -> dict[str, object]:
-    for profile in VOICE_PROFILES:
-        if profile["id"] == voice_id:
-            return profile
-    raise NotFoundError(
-        f"Unknown voice '{voice_id}'.",
-        code="voice_not_found",
-    )
+#: Speakers an operator can pick in the dashboard have no marketing profile,
+#: so their sample is a neutral line rather than a curated one. The point of a
+#: preview is hearing the speaker, not the copy.
+_FALLBACK_SAMPLE = "Hello, this is a short sample of how this voice sounds."
+_FALLBACK_LANGUAGE = "en-IN"
 
 
-def preview(voice_id: str, language: str | None = None) -> VoicePreview:
-    """Return a short base64 sample of ``voice_id`` in ``language``."""
-    profile = _profile(voice_id)
+#: Catalogue ids are UUIDs; speaker names are words. That shape is the line
+#: between "a voice we can hear" and "an entry we can only store".
+_CATALOGUE_ID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+
+
+def _sample_text(voice_id: str, language: str | None) -> tuple[str, str]:
+    """Resolve the sentence and language to synthesise for ``voice_id``.
+
+    A sample can only be made from a speaker name, so three answers follow:
+    an id with a profile or listed in ``PREVIEW_SPEAKERS`` is synthesised, an
+    id the catalogue knows but that is not a speaker is a 404 saying so, and
+    anything else is a plain 404. Nothing unvetted is forwarded, so this cannot
+    be turned into a probe for arbitrary provider speakers.
+    """
+    profile = next((item for item in VOICE_PROFILES if item["id"] == voice_id), None)
+
+    if profile is None:
+        if voice_id not in SUPPORTED_VOICES and voice_id not in PREVIEW_SPEAKERS:
+            raise NotFoundError(
+                f"Unknown voice '{voice_id}'.",
+                code="voice_not_found",
+            )
+        if _CATALOGUE_ID.match(voice_id):
+            # The voice is selectable, but the catalogue publishes no speaker
+            # for it. Forwarding the id would come back as a provider error and
+            # read as an outage; "no sample yet" is the truth.
+            raise NotFoundError(
+                f"No sample is available for voice '{voice_id}' yet.",
+                code="voice_sample_unavailable",
+            )
+        chosen = language or _FALLBACK_LANGUAGE
+        if chosen not in SUPPORTED_LANGUAGES:
+            raise ValidationError(
+                f"'{chosen}' is not a supported language.",
+                details={"languages": sorted(SUPPORTED_LANGUAGES)},
+            )
+        return _FALLBACK_SAMPLE, chosen
+
     offered = [str(code) for code in profile["languages"]]  # type: ignore[union-attr]
     chosen = language or str(profile["preview_language"])
     if chosen not in offered:
@@ -76,6 +122,12 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
             f"'{voice_id}' is not offered in {chosen}.",
             details={"languages": offered},
         )
+    return str(profile["sample"]), chosen
+
+
+def preview(voice_id: str, language: str | None = None) -> VoicePreview:
+    """Return a short base64 sample of ``voice_id`` in ``language``."""
+    sample_text, chosen = _sample_text(voice_id, language)
 
     key = (voice_id, chosen)
     now = time.monotonic()
@@ -90,7 +142,7 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
             details={"provider": "sarvam"},
         )
 
-    result = sarvam.synthesize(str(profile["sample"]), speaker=voice_id, language=chosen)
+    result = sarvam.synthesize(sample_text, speaker=voice_id, language=chosen)
 
     # A rejected key is a configuration problem, not a synthesis failure: it has
     # to reach the operator as 503 rather than a generic 502.

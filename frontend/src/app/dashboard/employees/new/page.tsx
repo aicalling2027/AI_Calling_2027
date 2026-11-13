@@ -6,7 +6,6 @@ import * as React from "react";
 import {
   ArrowLeft,
   Building2,
-  Cpu,
   FileText,
   Loader2,
   Mic,
@@ -26,26 +25,29 @@ import {
 } from "@/components/dashboard/ui/kit";
 import { LanguageDropdown } from "@/components/dashboard/ui/language-dropdown";
 import { SelectCard } from "@/components/dashboard/ui/select-card";
-import { VoicePreview } from "@/components/dashboard/ui/voice-preview";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
   BUSINESS_CATEGORIES,
   MODELS,
-  type ModelId,
   TEMPLATES,
-  VOICES,
   type VoiceId,
   initialsOf,
   templateById,
   voiceById,
-  voiceSampleSources,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_DICTATION =
   " Always stay polite, confirm the customer's name at the start, and never promise a discount without approval.";
+
+/**
+ * The AI model is not a step in this form any more, but every employee still
+ * stores one. The catalogue is ordered with the balanced default first, which
+ * is the same model the form used to preselect.
+ */
+const DEFAULT_MODEL = MODELS[0];
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -59,7 +61,6 @@ export default function NewEmployeePage() {
   const [defaultLanguage, setDefaultLanguage] = React.useState(
     TEMPLATES[0].languages[0],
   );
-  const [modelId, setModelId] = React.useState<ModelId>("sarvam-24b");
   const [voiceId, setVoiceId] = React.useState<VoiceId>(TEMPLATES[0].voiceId);
   const [greeting, setGreeting] = React.useState("");
   const [prompt, setPrompt] = React.useState(TEMPLATES[0].prompt);
@@ -84,7 +85,6 @@ export default function NewEmployeePage() {
 
   const template = templateById(templateId);
   const voice = voiceById(voiceId);
-  const model = MODELS.find((item) => item.id === modelId) ?? MODELS[0];
 
   const applyTemplate = (id: string) => {
     const next = templateById(id);
@@ -93,6 +93,8 @@ export default function NewEmployeePage() {
     setCategory(next.category);
     setLanguages(next.languages);
     setDefaultLanguage(next.languages[0]);
+    // The template also fixes the voice. It is no longer a step in this form,
+    // but every employee still needs one - the workspace can change it later.
     setVoiceId(next.voiceId);
     setPrompt(next.prompt);
   };
@@ -152,8 +154,8 @@ export default function NewEmployeePage() {
         defaultLanguage,
         voice: voice.name,
         voiceId: voice.id,
-        model: model.name,
-        modelId: model.id,
+        model: DEFAULT_MODEL.name,
+        modelId: DEFAULT_MODEL.id,
         greeting:
           greeting.trim() ||
           `Namaste, main ${name.trim()} bol raha hoon. Aap kaise hain?`,
@@ -277,7 +279,7 @@ export default function NewEmployeePage() {
           <Panel
             step="1"
             title="Pick a starting point"
-            hint="Templates pre-fill the role, languages, voice and instruction block."
+            hint="Templates pre-fill the role, languages and instruction block."
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {TEMPLATES.map((item) => (
@@ -407,57 +409,9 @@ export default function NewEmployeePage() {
             </div>
           </Panel>
 
-          {/* Model --------------------------------------------------------- */}
-          <Panel
-            step="4"
-            title="AI model"
-            hint="All three are Indic conversation models, billed per minute of conversation."
-          >
-            <div className="grid gap-3 sm:grid-cols-3">
-              {MODELS.map((item) => (
-                <SelectCard
-                  key={item.id}
-                  selected={modelId === item.id}
-                  onSelect={() => setModelId(item.id)}
-                  title={item.name}
-                  description={item.note}
-                  meta={item.speed}
-                  icon={<Cpu className="size-4" />}
-                />
-              ))}
-            </div>
-          </Panel>
-
-          {/* Voice --------------------------------------------------------- */}
-          <Panel
-            step="5"
-            title="Voice"
-            hint="Preview a voice before you commit. You can change it later in the workspace."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              {VOICES.map((item, index) => (
-                <SelectCard
-                  key={item.id}
-                  selected={voiceId === item.id}
-                  onSelect={() => setVoiceId(item.id)}
-                  title={item.name}
-                  description={
-                    item.gender === "Unspecified"
-                      ? item.tone
-                      : `${item.gender} · ${item.tone}`
-                  }
-                  meta={item.language}
-                  icon={<Mic className="size-4" />}
-                >
-                  <VoicePreview sources={voiceSampleSources(item, index + 1)} />
-                </SelectCard>
-              ))}
-            </div>
-          </Panel>
-
           {/* Instruction --------------------------------------------------- */}
           <Panel
-            step="6"
+            step="4"
             title="Instruction block"
             hint="Rules, objection handling and what the employee must never say."
             action={<Badge variant="outline">{template.name}</Badge>}
@@ -511,8 +465,6 @@ export default function NewEmployeePage() {
                 label="Languages"
                 value={`${languages.length} · ${languages.slice(0, 2).join(", ")}`}
               />
-              <Row label="Model" value={model.name} />
-              <Row label="Voice" value={`${voice.name} (${voice.gender})`} />
               <Row
                 label="Knowledge"
                 value={files.length ? `${files.length} file(s)` : "Add later"}

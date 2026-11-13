@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountPage() {
+  // Same rule as the dashboard: the Supabase session read consults the clock,
+  // and a prerender pass would abort the page on it.
+  await connection();
+
   if (!isSupabaseConfigured) {
     redirect("/login");
   }
