@@ -152,7 +152,10 @@ class ProviderSyncJob(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     operation: Mapped[str] = mapped_column(String(48), nullable=False, index=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(120), index=True)
     payload_hash: Mapped[str | None] = mapped_column(String(64))
-    #: pending | running | succeeded | failed | dead_letter
+    #: Ties every log line for this job together. Also the only join back from
+    #: ``provider_sync_logs``, which records history rather than a foreign key.
+    correlation_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    #: pending | running | succeeded | failed | dead_letter | blocked
     status: Mapped[str] = mapped_column(
         String(24), default="pending", nullable=False, index=True
     )

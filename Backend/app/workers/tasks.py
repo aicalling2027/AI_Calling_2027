@@ -27,7 +27,7 @@ from app.database.models import (
     TrainingSource,
 )
 from app.database.session import session_scope
-from app.modules import campaigns, conversations, integrations, training
+from app.modules import campaigns, conversations, integrations, provider_sync, training
 from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
@@ -153,6 +153,59 @@ def ingest_training_source(
             raise
 
         return {"source_id": source_id, "job_id": job.id, "status": job.status}
+
+
+# ---------------------------------------------------------------------------
+# Provider synchronisation
+# ---------------------------------------------------------------------------
+@celery_app.task(name="workers.run_provider_sync_job", bind=True, max_retries=0)
+def run_provider_sync_job(
+    self: Any,  # noqa: ARG001 - bound task keeps Celery's handle
+    job_id: str,
+    correlation_id: str | None = None,
+) -> dict[str, Any]:
+    """Run one attempt of a provider sync job.
+
+    The task does not raise for a provider failure: ``execute_job`` records the
+    outcome and schedules the next attempt in ``next_retry_at``, which is the
+    only retry clock. ``max_retries=0`` is asked for here, but the app-wide
+    ``task_annotations`` in ``celery_app`` lifts it to 3, so a broker retry can
+    still happen. That is harmless rather than useful: ``claim_job`` is a
+    conditional update that returns nothing while the row is ``running`` and
+    inside its lease, so a duplicate delivery is a no-op and the attempt count
+    and backoff stay in the database either way.
+    """
+    with session_scope() as db:
+        outcome = provider_sync.execute_job(db, job_id, correlation_id=correlation_id)
+        return {
+            "job_id": outcome.job_id,
+            "status": outcome.status,
+            "attempt": outcome.attempt,
+            "error_code": outcome.error_code,
+        }
+
+
+@celery_app.task(name="workers.sweep_provider_sync_jobs", bind=True)
+def sweep_provider_sync_jobs(self: Any, limit: int = 50) -> dict[str, int]:  # noqa: ARG001
+    """Dispatch every provider job that is due.
+
+    Beat calls this; the per-job task does the work. ``due_jobs`` also returns a
+    job whose worker died mid-attempt, so a lost message is recovered rather than
+    stranded in ``running`` forever.
+    """
+    with session_scope() as db:
+        job_ids = provider_sync.due_jobs(db, limit=limit)
+
+    dispatched = 0
+    for job_id in job_ids:
+        run_provider_sync_job.delay(job_id)
+        dispatched += 1
+
+    if dispatched:
+        logger.info(
+            "provider_sync_swept", extra={"due": len(job_ids), "dispatched": dispatched}
+        )
+    return {"due": len(job_ids), "dispatched": dispatched}
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +347,8 @@ __all__ = [
     "nightly_maintenance",
     "release_stale_calls",
     "retry_notifications",
+    "run_provider_sync_job",
     "send_whatsapp_task",
     "summarize_call",
+    "sweep_provider_sync_jobs",
 ]

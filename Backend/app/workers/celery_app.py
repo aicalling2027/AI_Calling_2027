@@ -63,6 +63,12 @@ celery_app.conf.update(
             "task": "workers.retry_notifications",
             "schedule": crontab(minute="*/15"),
         },
+        # Every job carries its own retry clock, so a short sweep is enough to
+        # pick up a due retry without holding a worker in sleep.
+        "provider-sync-sweep": {
+            "task": "workers.sweep_provider_sync_jobs",
+            "schedule": crontab(minute="*/2"),
+        },
         "nightly-maintenance": {
             "task": "workers.nightly_maintenance",
             "schedule": crontab(hour=19, minute=30),  # 01:00 IST
