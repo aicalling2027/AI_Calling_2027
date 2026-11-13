@@ -1,0 +1,462 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "AOTMS Global Pvt. Ltd. home" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "AOTMS Global Pvt. Ltd." [ref=e7]
+      - navigation "Main" [ref=e9]:
+        - list [ref=e11]:
+          - listitem [ref=e12]:
+            - button "Product" [ref=e13] [cursor=pointer]
+          - listitem [ref=e16]:
+            - link "Voices" [ref=e17] [cursor=pointer]:
+              - /url: /voices
+          - listitem [ref=e18]:
+            - link "Pricing" [ref=e19] [cursor=pointer]:
+              - /url: /pricing
+          - listitem [ref=e20]:
+            - link "Solutions" [ref=e21] [cursor=pointer]:
+              - /url: /solutions
+          - listitem [ref=e22]:
+            - button "Resources" [ref=e23] [cursor=pointer]
+          - listitem [ref=e26]:
+            - button "Developers" [expanded] [ref=e27] [cursor=pointer]
+            - generic "Developers" [ref=e840]:
+              - list [ref=e842]:
+                - listitem [ref=e843]:
+                  - button "API — coming soon" [ref=e844] [cursor=pointer]:
+                    - generic [ref=e850]:
+                      - generic [ref=e851]:
+                        - text: API
+                        - generic [ref=e852]: Soon
+                      - generic [ref=e853]: Call the platform from your own stack.
+                - listitem [ref=e854]:
+                  - button "Docs — coming soon" [ref=e855] [cursor=pointer]:
+                    - generic [ref=e860]:
+                      - generic [ref=e861]:
+                        - text: Docs
+                        - generic [ref=e862]: Soon
+                      - generic [ref=e863]: Endpoints, webhooks and integration guides.
+      - generic [ref=e30]:
+        - link "Start free" [ref=e32] [cursor=pointer]:
+          - /url: /free-trial
+        - link "Sign in" [ref=e836] [cursor=pointer]:
+          - /url: /login
+  - main [ref=e34]:
+    - generic [ref=e36]:
+      - heading [level=1] [ref=e37]:
+        - text: AI voice calling, built for your
+        - generic [ref=e38]: business
+        - text: .
+      - paragraph [ref=e43]:
+        - generic [ref=e44]: AOTMS Global runs multilingual AI voice agents for inbound and outbound calls, so your team spends its time on the conversations that need a human.
+        - generic [aria-hidden] [ref=e46]: AOTMS
+        - generic [aria-hidden] [ref=e48]: Global
+        - generic [aria-hidden] [ref=e50]: runs
+        - generic [aria-hidden] [ref=e52]: multilingual
+        - generic [aria-hidden] [ref=e54]: AI
+        - generic [aria-hidden] [ref=e56]: voice
+        - generic [aria-hidden] [ref=e58]: agents
+        - generic [aria-hidden] [ref=e60]: for
+        - generic [aria-hidden] [ref=e62]: inbound
+        - generic [aria-hidden] [ref=e64]: and
+        - generic [aria-hidden] [ref=e66]: outbound
+        - generic [aria-hidden] [ref=e68]: calls,
+        - generic [aria-hidden] [ref=e70]: so
+        - generic [aria-hidden] [ref=e72]: your
+        - generic [aria-hidden] [ref=e74]: team
+        - generic [aria-hidden] [ref=e76]: spends
+        - generic [aria-hidden] [ref=e78]: its
+        - generic [aria-hidden] [ref=e80]: time
+        - generic [aria-hidden] [ref=e82]: "on"
+        - generic [aria-hidden] [ref=e84]: the
+        - generic [aria-hidden] [ref=e86]: conversations
+        - generic [aria-hidden] [ref=e88]: that
+        - generic [aria-hidden] [ref=e90]: need
+        - generic [aria-hidden] [ref=e92]: a
+        - generic [aria-hidden] [ref=e94]: human.
+      - paragraph [ref=e95]: Inbound answering, outbound campaigns and instant lead callbacks — one system, on the numbers you already own.
+      - generic [ref=e96]:
+        - link "Start free" [ref=e97] [cursor=pointer]:
+          - /url: /free-trial
+        - link "See pricing" [ref=e98] [cursor=pointer]:
+          - /url: /pricing
+      - generic [ref=e99]:
+        - img "The AOTMS AI calling app open on a phone held in one hand." [ref=e101]
+        - list:
+          - listitem [ref=e102]:
+            - generic [ref=e108]: Multilingual voice agents
+          - listitem [ref=e109]:
+            - generic [ref=e115]: Inbound and outbound calls
+          - listitem [ref=e116]:
+            - generic [ref=e122]: Human handover when needed
+    - generic [ref=e124]:
+      - generic [ref=e125]:
+        - paragraph [ref=e126]: Integrations
+        - heading "Connects to the tools your team already runs on." [level=2] [ref=e127]
+        - paragraph [ref=e128]: Leads arrive from WhatsApp, Meta or your own product, and every call outcome flows back into the sheet, the CRM or the calendar your team already works in. Nothing has to be copied by hand.
+      - list [ref=e129]:
+        - listitem [ref=e130]:
+          - generic [ref=e135]: WhatsApp
+        - listitem [ref=e136]:
+          - generic [ref=e143]: n8n
+        - listitem [ref=e144]:
+          - generic [ref=e149]: Meta
+        - listitem [ref=e150]:
+          - generic [ref=e155]: Google Sheets
+        - listitem [ref=e156]:
+          - generic [ref=e161]: Google Calendar
+        - listitem [ref=e162]:
+          - generic [ref=e168]: AiSensy
+        - listitem [ref=e169]:
+          - generic [ref=e176]: Custom API
+      - generic [ref=e177]:
+        - link "More integrations" [ref=e178] [cursor=pointer]:
+          - /url: /contact
+        - paragraph [ref=e179]: n8n, AiSensy and any REST endpoint or webhook you own are supported too.
+    - generic [ref=e182]:
+      - generic [ref=e183]:
+        - paragraph [ref=e184]: How it works
+        - heading "Three steps from a list to a conversation." [level=2] [ref=e185]
+        - paragraph [ref=e186]: You bring the list and the brief. The dialling, the language and the follow-up run on their own.
+      - generic [ref=e192]:
+        - generic [ref=e194]: 9:41
+        - generic [ref=e204]:
+          - paragraph [ref=e213]: AI voice agent
+          - paragraph [ref=e214]: English · Lead from WhatsApp
+          - generic [ref=e215]: Auto-dialling
+        - paragraph [ref=e228]: 00:42
+        - generic [ref=e229]:
+          - paragraph [ref=e230]: Live transcript
+          - paragraph [ref=e231]: Hello, this is the AOTMS assistant. Is now a good time?
+          - paragraph [ref=e232]: “I am interested — please call me after 6.”
+      - list [ref=e246]:
+        - listitem [ref=e247]:
+          - generic [ref=e254]:
+            - paragraph [ref=e255]: Step 1
+            - heading "Add your leads" [level=3] [ref=e256]
+            - paragraph [ref=e257]: Upload a list or connect a lead source. Duplicates and invalid numbers are filtered before anything is dialled.
+        - listitem [ref=e258]:
+          - generic [ref=e263]:
+            - paragraph [ref=e264]: Step 2
+            - heading "Choose an AI employee" [level=3] [ref=e265]
+            - paragraph [ref=e266]: Pick the language, voice and instructions for the conversation. Each employee keeps its own script and knowledge.
+        - listitem [ref=e267]:
+          - generic [ref=e273]:
+            - paragraph [ref=e274]: Step 3
+            - heading "Review every outcome" [level=3] [ref=e275]
+            - paragraph [ref=e276]: Each call returns a transcript, a summary and a recorded outcome, so follow-up starts from context instead of guesswork.
+    - generic [ref=e278]:
+      - generic [ref=e279]:
+        - generic [ref=e280]:
+          - paragraph [ref=e281]: Hear our voices
+          - heading "Voices your customers can follow." [level=2] [ref=e282]
+        - generic [ref=e283]:
+          - paragraph [ref=e284]: Real Bulbul speakers, generated for your language and your script - not stock recordings. Play any voice below and keep the one your customers trust.
+          - generic [ref=e285]: Live catalogue
+      - generic [ref=e287]:
+        - generic [ref=e288]:
+          - generic [ref=e289]: Search voices
+          - searchbox "Search voices" [ref=e290]
+        - generic [ref=e291]:
+          - generic [ref=e292]:
+            - generic [ref=e293]: Use case
+            - combobox "Use case" [ref=e294]:
+              - option "All use cases" [selected]
+              - option "Sales"
+              - option "Support"
+              - option "Reminders"
+              - option "Marketing"
+              - option "Collections"
+              - option "Renewals"
+              - option "Surveys"
+          - generic [ref=e295]:
+            - generic [ref=e296]: Gender
+            - combobox "Gender" [ref=e297]:
+              - option "All voices" [selected]
+              - option "Female"
+              - option "Male"
+        - paragraph [ref=e298]: 7 of 7 voices
+      - list [ref=e299]:
+        - listitem [ref=e300]:
+          - article [ref=e301]:
+            - generic [ref=e302]:
+              - generic [aria-hidden] [ref=e303]: S
+              - generic [ref=e304]:
+                - heading "Shubh" [level=3] [ref=e305]
+                - paragraph [ref=e306]: Confident & bold
+              - generic [ref=e307]: Featured
+              - button "Save Shubh to favourites" [ref=e308]
+            - paragraph [ref=e311]: Hello, Shubh from AOTMS. I'm calling about the plan you asked about - can I take two minutes of your time?
+            - generic [ref=e312]:
+              - generic [ref=e313]: Sales
+              - generic [ref=e314]: male
+              - generic [ref=e315]: English (India) +2
+            - generic [ref=e316]:
+              - button "Play Shubh's sample" [ref=e317]
+              - link "Use voice" [ref=e351] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e352]:
+          - article [ref=e353]:
+            - generic [ref=e354]:
+              - generic [aria-hidden] [ref=e355]: T
+              - generic [ref=e356]:
+                - heading "Tanya" [level=3] [ref=e357]
+                - paragraph [ref=e358]: Friendly & modern
+              - generic [ref=e359]: Featured
+              - button "Save Tanya to favourites" [ref=e360]
+            - paragraph [ref=e363]: नमस्ते! मैं AOTMS से तान्या बोल रही हूँ। आपकी शिकायत दर्ज हो गई है और हम आज ही समाधान भेज देंगे।
+            - generic [ref=e364]:
+              - generic [ref=e365]: Support
+              - generic [ref=e366]: female
+              - generic [ref=e367]: English (India) +2
+            - generic [ref=e368]:
+              - button "Play Tanya's sample" [ref=e369]
+              - link "Use voice" [ref=e403] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e404]:
+          - article [ref=e405]:
+            - generic [ref=e406]:
+              - generic [aria-hidden] [ref=e407]: A
+              - generic [ref=e408]:
+                - heading "Anand" [level=3] [ref=e409]
+                - paragraph [ref=e410]: Warm & reassuring
+              - generic [ref=e411]: Featured
+              - button "Save Anand to favourites" [ref=e412]
+            - paragraph [ref=e415]: नमस्ते! आनंद बोल रहा हूँ AOTMS से। आपका अपॉइंटमेंट कल सुबह दस बजे तय है।
+            - generic [ref=e416]:
+              - generic [ref=e417]: Reminders
+              - generic [ref=e418]: male
+              - generic [ref=e419]: English (India) +2
+            - generic [ref=e420]:
+              - button "Play Anand's sample" [ref=e421]
+              - link "Use voice" [ref=e455] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e456]:
+          - article [ref=e457]:
+            - generic [ref=e458]:
+              - generic [aria-hidden] [ref=e459]: S
+              - generic [ref=e460]:
+                - heading "Sunny" [level=3] [ref=e461]
+                - paragraph [ref=e462]: Cheerful & upbeat
+              - button "Save Sunny to favourites" [ref=e463]
+            - paragraph [ref=e466]: Hi! Sunny from AOTMS with a quick update on this month's offer - it takes under a minute.
+            - generic [ref=e467]:
+              - generic [ref=e468]: Marketing
+              - generic [ref=e469]: male
+              - generic [ref=e470]: English (India) +2
+            - generic [ref=e471]:
+              - button "Play Sunny's sample" [ref=e472]
+              - link "Use voice" [ref=e506] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e507]:
+          - article [ref=e508]:
+            - generic [ref=e509]:
+              - generic [aria-hidden] [ref=e510]: M
+              - generic [ref=e511]:
+                - heading "Mani" [level=3] [ref=e512]
+                - paragraph [ref=e513]: Calm & composed
+              - button "Save Mani to favourites" [ref=e514]
+            - paragraph [ref=e517]: Hello, Mani calling from AOTMS about the invoice due this week. May I confirm the payment date?
+            - generic [ref=e518]:
+              - generic [ref=e519]: Collections
+              - generic [ref=e520]: male
+              - generic [ref=e521]: English (India) +2
+            - generic [ref=e522]:
+              - button "Play Mani's sample" [ref=e523]
+              - link "Use voice" [ref=e557] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e558]:
+          - article [ref=e559]:
+            - generic [ref=e560]:
+              - generic [aria-hidden] [ref=e561]: K
+              - generic [ref=e562]:
+                - heading "Kabir" [level=3] [ref=e563]
+                - paragraph [ref=e564]: Steady & trustworthy
+              - button "Save Kabir to favourites" [ref=e565]
+            - paragraph [ref=e568]: Good evening, Kabir from AOTMS. Your plan renews on Friday and I wanted to check whether anything needs changing.
+            - generic [ref=e569]:
+              - generic [ref=e570]: Renewals
+              - generic [ref=e571]: male
+              - generic [ref=e572]: English (India) +2
+            - generic [ref=e573]:
+              - button "Play Kabir's sample" [ref=e574]
+              - link "Use voice" [ref=e608] [cursor=pointer]:
+                - /url: /free-trial
+        - listitem [ref=e609]:
+          - article [ref=e610]:
+            - generic [ref=e611]:
+              - generic [aria-hidden] [ref=e612]: P
+              - generic [ref=e613]:
+                - heading "Priya" [level=3] [ref=e614]
+                - paragraph [ref=e615]: Clear & precise
+              - button "Save Priya to favourites" [ref=e616]
+            - paragraph [ref=e619]: Hello, this is Priya from AOTMS with a two-question feedback call. Shall I continue?
+            - generic [ref=e620]:
+              - generic [ref=e621]: Surveys
+              - generic [ref=e622]: female
+              - generic [ref=e623]: English (India) +2
+            - generic [ref=e624]:
+              - button "Play Priya's sample" [ref=e625]
+              - link "Use voice" [ref=e659] [cursor=pointer]:
+                - /url: /free-trial
+      - paragraph [ref=e660]: Samples are synthesised on demand by Sarvam Bulbul, each in the voice's own language. Every voice also speaks the rest of our Indic set.
+      - status [ref=e661]
+    - generic [ref=e663]:
+      - paragraph [ref=e664]: Where it fits
+      - heading "New leads, old lists, incoming calls. One system." [level=2] [ref=e665]
+      - tablist "Use cases" [ref=e666]:
+        - tab "New leads" [selected] [ref=e667]
+        - tab "Old lists" [ref=e668]
+        - tab "Incoming calls" [ref=e669]
+      - tabpanel "New leads" [ref=e670]:
+        - generic [ref=e671]:
+          - heading "Reach a new lead while the interest is still warm." [level=3] [ref=e672]
+          - paragraph [ref=e673]: Leads that arrive from a form or an advertisement can be called by an AI employee without waiting for a free human.
+        - generic [ref=e674]:
+          - paragraph [ref=e675]: Industry templates
+          - list [ref=e676]:
+            - listitem [ref=e677]: Real estate
+            - listitem [ref=e678]: Education
+            - listitem [ref=e679]: Healthcare
+            - listitem [ref=e680]: Automobile
+            - listitem [ref=e681]: Financial services
+            - listitem [ref=e682]: Local services
+    - generic [ref=e684]:
+      - paragraph [ref=e685]: Built in
+      - heading "The operational pieces, included." [level=2] [ref=e686]
+      - list [ref=e687]:
+        - listitem [ref=e688]:
+          - heading "Number provisioning" [level=3] [ref=e692]
+          - paragraph [ref=e693]: Connect the phone numbers you call from and route each one to the right employee.
+        - listitem [ref=e694]:
+          - heading "Automatic retries" [level=3] [ref=e699]
+          - paragraph [ref=e700]: Set how many times an unanswered call is retried, and when, without touching a spreadsheet.
+        - listitem [ref=e701]:
+          - heading "Trust and compliance" [level=3] [ref=e706]
+          - paragraph [ref=e707]: Calling rules, consent checks and retention settings are applied before a call is placed.
+        - listitem [ref=e708]:
+          - heading "Follow-through" [level=3] [ref=e713]
+          - paragraph [ref=e714]: Outcomes feed follow-ups, notifications and your team handover automatically.
+    - generic [ref=e718]:
+      - generic [ref=e719]:
+        - paragraph [ref=e720]: Developers
+        - heading "Build on the AOTMS API." [level=2] [ref=e721]
+        - paragraph [ref=e722]: Trigger calls, receive outcomes and sync conversations into your own systems. API documentation will be published alongside the first release.
+        - link "Request API access" [ref=e723] [cursor=pointer]:
+          - /url: /contact
+      - list [ref=e724]:
+        - listitem [ref=e725]:
+          - generic [ref=e728]: Create a call from your own application
+        - listitem [ref=e729]:
+          - generic [ref=e732]: Receive outcomes and transcripts on a webhook
+        - listitem [ref=e733]:
+          - generic [ref=e736]: Keep your CRM as the place your team works
+    - generic [ref=e739]:
+      - paragraph [ref=e740]: Pricing
+      - heading "Pricing is being finalised." [level=2] [ref=e741]
+      - paragraph [ref=e742]: AOTMS plans are not published yet. Talk to the team for a quote based on your call volume and languages.
+      - generic [ref=e743]:
+        - link "Request a quote" [ref=e744] [cursor=pointer]:
+          - /url: /contact
+        - link "Pricing overview" [ref=e745] [cursor=pointer]:
+          - /url: /pricing
+      - paragraph [ref=e746]: No prices are shown here because none have been approved.
+    - generic [ref=e750]:
+      - heading "Put an AI employee on your next call." [level=2] [ref=e751]
+      - paragraph [ref=e752]: Start with one use case, measure the outcome, then expand.
+      - generic [ref=e753]:
+        - link "Start free" [ref=e754] [cursor=pointer]:
+          - /url: /free-trial
+        - link "Talk to us" [ref=e755] [cursor=pointer]:
+          - /url: /contact
+  - contentinfo [ref=e756]:
+    - generic [ref=e757]:
+      - generic [ref=e758]:
+        - generic [ref=e759]:
+          - link "AOTMS Global Pvt. Ltd. home" [ref=e760] [cursor=pointer]:
+            - /url: /
+            - img "AOTMS Global Pvt. Ltd." [ref=e762]
+          - paragraph [ref=e763]: AI voice calling for growing businesses.
+          - generic [ref=e764]:
+            - link "ameen@aotms.com" [ref=e765] [cursor=pointer]:
+              - /url: mailto:ameen@aotms.com
+            - link "+91 80199 52233" [ref=e769] [cursor=pointer]:
+              - /url: tel:+918019952233
+        - generic [ref=e772]:
+          - paragraph [ref=e773]: Product
+          - list [ref=e774]:
+            - listitem [ref=e775]:
+              - link "Inbound" [ref=e776] [cursor=pointer]:
+                - /url: /product/inbound
+            - listitem [ref=e777]:
+              - link "Campaigns" [ref=e778] [cursor=pointer]:
+                - /url: /product/campaigns
+            - listitem [ref=e779]:
+              - link "Instant Leads" [ref=e780] [cursor=pointer]:
+                - /url: /product/instant-leads
+            - listitem [ref=e781]:
+              - link "Voices" [ref=e782] [cursor=pointer]:
+                - /url: /voices
+            - listitem [ref=e783]:
+              - link "Pricing" [ref=e784] [cursor=pointer]:
+                - /url: /pricing
+        - generic [ref=e785]:
+          - paragraph [ref=e786]: Solutions
+          - list [ref=e787]:
+            - listitem [ref=e788]:
+              - link "Solutions" [ref=e789] [cursor=pointer]:
+                - /url: /solutions
+            - listitem [ref=e790]:
+              - link "Revenue systems" [ref=e791] [cursor=pointer]:
+                - /url: /revenue-systems
+            - listitem [ref=e792]:
+              - link "Industries" [ref=e793] [cursor=pointer]:
+                - /url: /ai-voice-agents/for/real-estate
+            - listitem [ref=e794]:
+              - link "Languages" [ref=e795] [cursor=pointer]:
+                - /url: /ai-voice-agents/language/hindi
+            - listitem [ref=e796]:
+              - link "Questions" [ref=e797] [cursor=pointer]:
+                - /url: /questions
+        - generic [ref=e798]:
+          - paragraph [ref=e799]: Resources
+          - list [ref=e800]:
+            - listitem [ref=e801]:
+              - link "Blog" [ref=e802] [cursor=pointer]:
+                - /url: /blog
+            - listitem [ref=e803]:
+              - link "Glossary" [ref=e804] [cursor=pointer]:
+                - /url: /glossary
+            - listitem [ref=e805]:
+              - link "Comparisons" [ref=e806] [cursor=pointer]:
+                - /url: /compare
+            - listitem [ref=e807]:
+              - link "City coverage" [ref=e808] [cursor=pointer]:
+                - /url: /fastest-employee/mumbai
+        - generic [ref=e809]:
+          - paragraph [ref=e810]: Company
+          - list [ref=e811]:
+            - listitem [ref=e812]:
+              - link "About" [ref=e813] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e814]:
+              - link "Contact" [ref=e815] [cursor=pointer]:
+                - /url: /contact
+            - listitem [ref=e816]:
+              - link "Start free" [ref=e817] [cursor=pointer]:
+                - /url: /free-trial
+      - generic [ref=e818]:
+        - paragraph [ref=e819]: © 2026 AOTMS Global Pvt. Ltd.. All rights reserved.
+        - list [ref=e820]:
+          - listitem [ref=e821]:
+            - link "Privacy policy" [ref=e822] [cursor=pointer]:
+              - /url: /legal/privacy-policy
+          - listitem [ref=e823]:
+            - link "Terms and conditions" [ref=e824] [cursor=pointer]:
+              - /url: /legal/terms-and-conditions
+          - listitem [ref=e825]:
+            - link "Refund policy" [ref=e826] [cursor=pointer]:
+              - /url: /legal/refund-policy
+  - button "Open Next.js Dev Tools" [ref=e832] [cursor=pointer]
+  - alert [ref=e838]

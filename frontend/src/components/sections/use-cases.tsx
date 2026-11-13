@@ -34,10 +34,13 @@ export function UseCases() {
               aria-controls={`panel-${tab.id}`}
               onClick={() => setActive(tab.id)}
               className={cn(
-                "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                // Same glass pill as the rest of the page. Without a fill to
+                // switch, the selected tab brightens and takes a cobalt
+                // hairline instead.
+                "btn-glass cursor-pointer px-4 py-2 text-sm font-medium",
                 active === tab.id
-                  ? "border-blue bg-blue text-white shadow-button"
-                  : "border-line bg-ivory-light text-ink-soft hover:border-blue-line hover:text-blue",
+                  ? "btn-glass-selected font-semibold text-ink"
+                  : "text-ink-soft hover:text-ink",
               )}
             >
               {tab.label}

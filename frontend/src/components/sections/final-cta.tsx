@@ -27,13 +27,13 @@ export function FinalCta() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href={cta.primary.href}
-                className="btn-fill btn-accent h-12 px-7 text-sm [--btn-fill-color:var(--cobalt-night)] hover:text-white"
+                className="btn-glass btn-glass-night inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-semibold"
               >
                 {cta.primary.label}
               </Link>
               <Link
                 href={cta.secondary.href}
-                className="btn-fill btn-on-night h-12 px-7 text-sm hover:text-ink"
+                className="btn-glass btn-glass-night inline-flex h-12 items-center justify-center rounded-full px-7 text-sm font-medium text-ink-soft"
               >
                 {cta.secondary.label}
               </Link>

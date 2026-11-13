@@ -16,7 +16,10 @@ const FAVOURITES_KEY = "aotms.voice-favourites";
  * Math.random(), so the server HTML and the hydrated client render the same
  * markup and the bars do not reshuffle on every re-render.
  */
-const WAVE_HEIGHTS = Array.from({ length: 30 }, (_, index) => 6 + ((index * 53) % 19));
+const WAVE_HEIGHTS = Array.from(
+  { length: 30 },
+  (_, index) => 6 + ((index * 53) % 19),
+);
 
 /** One avatar tint per card, in order. There are no portraits, so the initial carries the identity. */
 const AVATAR_TINTS = [
@@ -46,8 +49,14 @@ export function VoiceSamples() {
       try {
         const response = await fetch("/api/voices");
         if (!response.ok) return;
-        const payload: { items: VoiceSample[] | null; source: string } = await response.json();
-        if (cancelled || !Array.isArray(payload.items) || payload.items.length === 0) return;
+        const payload: { items: VoiceSample[] | null; source: string } =
+          await response.json();
+        if (
+          cancelled ||
+          !Array.isArray(payload.items) ||
+          payload.items.length === 0
+        )
+          return;
         setCatalog(payload.items);
         setSource("live");
       } catch {
@@ -86,7 +95,12 @@ export function VoiceSamples() {
       if (gender !== "all" && voice.gender !== gender) return false;
       if (useCase !== "all" && voice.use_case !== useCase) return false;
       if (!term) return true;
-      return [voice.name, voice.personality, voice.use_case, ...voice.languages.map((item) => item.label)]
+      return [
+        voice.name,
+        voice.personality,
+        voice.use_case,
+        ...voice.languages.map((item) => item.label),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(term);
@@ -95,7 +109,9 @@ export function VoiceSamples() {
 
   const toggleFavourite = useCallback((id: string) => {
     setFavourites((current) => {
-      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+      const next = current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id];
       try {
         window.localStorage.setItem(FAVOURITES_KEY, JSON.stringify(next));
       } catch {
@@ -119,7 +135,8 @@ export function VoiceSamples() {
       try {
         const response = await fetch(`/api/voices/${voice.id}/preview`);
         if (!response.ok) throw new Error(`preview ${response.status}`);
-        const payload: { audio_base64?: string; encoding?: string } = await response.json();
+        const payload: { audio_base64?: string; encoding?: string } =
+          await response.json();
         if (!payload.audio_base64) throw new Error("empty preview");
 
         const audio = new Audio(
@@ -131,7 +148,9 @@ export function VoiceSamples() {
         setPlayingId(voice.id);
       } catch {
         setPlayingId(null);
-        setNotice("That sample could not be played. Try another voice, or listen again in a moment.");
+        setNotice(
+          "That sample could not be played. Try another voice, or listen again in a moment.",
+        );
       } finally {
         setLoadingId(null);
       }
@@ -150,11 +169,16 @@ export function VoiceSamples() {
             </h2>
           </div>
           <div className="flex max-w-sm flex-col items-start gap-3">
-            <p className="text-sm leading-relaxed text-ink-soft">{voices.body}</p>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              {voices.body}
+            </p>
             <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-soft">
               <span
                 aria-hidden
-                className={cn("size-1.5 rounded-full", source === "live" ? "bg-cobalt" : "bg-tangerine")}
+                className={cn(
+                  "size-1.5 rounded-full",
+                  source === "live" ? "bg-cobalt" : "bg-tangerine",
+                )}
               />
               {source === "live" ? voices.sourceLive : voices.sourceBundled}
             </span>
@@ -198,7 +222,10 @@ export function VoiceSamples() {
               ]}
             />
           </div>
-          <p className="shrink-0 text-xs text-ink-soft md:pl-1" aria-live="polite">
+          <p
+            className="shrink-0 text-xs text-ink-soft md:pl-1"
+            aria-live="polite"
+          >
             {visible.length} of {catalog.length} voices
           </p>
         </div>
@@ -225,8 +252,12 @@ export function VoiceSamples() {
                       {voice.name.slice(0, 1)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-semibold text-ink">{voice.name}</h3>
-                      <p className="mt-0.5 truncate text-xs text-ink-soft">{voice.personality}</p>
+                      <h3 className="truncate text-sm font-semibold text-ink">
+                        {voice.name}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-ink-soft">
+                        {voice.personality}
+                      </p>
                     </div>
                     {voice.featured ? (
                       <span className="shrink-0 rounded-full bg-tangerine-tint px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-tangerine-ink">
@@ -240,7 +271,9 @@ export function VoiceSamples() {
                       aria-label={`${saved ? "Remove" : "Save"} ${voice.name} ${saved ? "from" : "to"} favourites`}
                       className={cn(
                         "-mr-1.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-mist",
-                        saved ? "text-tangerine-deep" : "text-ink-soft/60 hover:text-cobalt",
+                        saved
+                          ? "text-tangerine-deep"
+                          : "text-ink-soft/60 hover:text-cobalt",
                       )}
                     >
                       <Heart
@@ -274,7 +307,7 @@ export function VoiceSamples() {
                       type="button"
                       onClick={() => void togglePreview(voice)}
                       aria-label={`${playing ? "Pause" : "Play"} ${voice.name}'s sample`}
-                      className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface text-cobalt ring-1 ring-line transition-colors hover:bg-cobalt hover:text-white"
+                      className="btn-glass inline-flex size-9 shrink-0 items-center justify-center rounded-full text-cobalt"
                     >
                       {busy ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -328,9 +361,15 @@ export function VoiceSamples() {
           </p>
         ) : null}
 
-        <p className="mt-5 text-xs leading-relaxed text-ink-soft">{voices.footnote}</p>
+        <p className="mt-5 text-xs leading-relaxed text-ink-soft">
+          {voices.footnote}
+        </p>
 
-        <p role="status" aria-live="polite" className="mt-2 min-h-5 text-xs text-tangerine-ink">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-2 min-h-5 text-xs text-tangerine-ink"
+        >
           {notice}
         </p>
       </Container>

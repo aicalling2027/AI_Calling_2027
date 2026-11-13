@@ -72,7 +72,7 @@ export function AuthNav() {
         href="/login"
         aria-label="Sign in"
         className={cn(
-          buttonVariants({ variant: "outline", size: "lg" }),
+          buttonVariants({ variant: "glass", size: "lg" }),
           "h-10 gap-2 px-3 text-sm xl:px-4",
         )}
       >
@@ -100,7 +100,7 @@ export function AuthNav() {
             open: !(current.pathname === pathname && current.open),
           }))
         }
-        className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-blue-tint"
+        className="btn-glass flex cursor-pointer items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1"
       >
         <UserAvatar user={user} />
         <ChevronDown
@@ -175,7 +175,7 @@ export function AuthNavMobile() {
       <Link
         href="/login"
         className={cn(
-          buttonVariants({ variant: "outline", size: "lg" }),
+          buttonVariants({ variant: "glass", size: "lg" }),
           "h-11 w-full gap-2 text-sm",
         )}
       >
@@ -201,8 +201,8 @@ export function AuthNavMobile() {
       <Link
         href="/dashboard"
         className={cn(
-          buttonVariants({ variant: "default", size: "lg" }),
-          "mt-3 h-10 w-full gap-2 text-sm",
+          buttonVariants({ variant: "glass", size: "lg" }),
+          "mt-3 h-10 w-full gap-2 text-sm font-semibold",
         )}
       >
         <LayoutGrid className="size-4" />
@@ -212,7 +212,7 @@ export function AuthNavMobile() {
         <Link
           href="/account"
           className={cn(
-            buttonVariants({ variant: "outline", size: "lg" }),
+            buttonVariants({ variant: "glass", size: "lg" }),
             "h-10 text-sm",
           )}
         >
@@ -222,8 +222,8 @@ export function AuthNavMobile() {
           type="button"
           onClick={() => void signOut()}
           className={cn(
-            buttonVariants({ variant: "secondary", size: "lg" }),
-            "h-10 text-sm",
+            buttonVariants({ variant: "glass", size: "lg" }),
+            "h-10 text-sm text-ink-soft",
           )}
         >
           Sign out

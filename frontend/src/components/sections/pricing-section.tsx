@@ -19,13 +19,13 @@ export function PricingSection() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/contact"
-              className="inline-flex h-11 items-center rounded-full bg-blue px-6 text-sm font-semibold text-white shadow-button transition-colors hover:bg-blue-deep"
+              className="btn-glass inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold"
             >
               Request a quote
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex h-11 items-center rounded-full border border-blue-line bg-surface px-6 text-sm font-semibold text-blue transition-colors hover:bg-blue-tint"
+              className="btn-glass inline-flex h-11 items-center rounded-full px-6 text-sm font-medium text-ink-soft"
             >
               Pricing overview
             </Link>
