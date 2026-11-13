@@ -73,12 +73,13 @@ export type NewAgentInput = {
 };
 
 type WorkspaceActions = {
-  /** Creates the employee in the database; the backend deploys its Sarvam agent. */
+  /** Creates the employee in the database; calls stay off until enabled. */
   addAgent: (input: NewAgentInput) => Promise<Agent>;
   updateAgent: (id: string, patch: Partial<Agent>) => void;
   /** Re-read every employee. Call after a duplicate pass or a failed save. */
   refreshAgents: () => Promise<void>;
-  redeployAgent: (id: string) => Promise<Agent>;
+  /** Turn calls on for an employee, deploying the line if there is none. */
+  enableCalling: (id: string) => Promise<Agent>;
   dedupeAgents: () => Promise<number>;
   /** Pull the agents that already exist in your connected account in as employees. */
   importAgents: () => Promise<ImportSummary>;
@@ -247,9 +248,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     [refreshAgents],
   );
 
-  const redeployAgent = React.useCallback(async (id: string): Promise<Agent> => {
+  const enableCalling = React.useCallback(async (id: string): Promise<Agent> => {
     const response = await fetch(`/api/employees/${id}`, { method: "POST" });
-    const agent = await readAgent(response, "The agent could not be deployed.");
+    const agent = await readAgent(response, "Calls could not be enabled.");
     setState((prev) => ({
       ...prev,
       agents: prev.agents.map((current) =>
@@ -510,7 +511,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       addAgent,
       updateAgent,
       refreshAgents,
-      redeployAgent,
+      enableCalling,
       dedupeAgents,
       importAgents,
       addLead,
@@ -537,7 +538,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       addAgent,
       updateAgent,
       refreshAgents,
-      redeployAgent,
+      enableCalling,
       dedupeAgents,
       importAgents,
       addLead,

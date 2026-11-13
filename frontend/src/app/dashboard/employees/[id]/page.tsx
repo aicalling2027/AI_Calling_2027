@@ -139,14 +139,17 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
   const [deploying, setDeploying] = React.useState(false);
   const [deployError, setDeployError] = React.useState<string | null>(null);
 
-  const redeploy = async () => {
+  const callsEnabled = agent.calling?.enabled ?? false;
+  const callingState = (agent.calling?.state ?? "not_configured").replaceAll("_", " ");
+
+  const enableCalls = async () => {
     setDeploying(true);
     setDeployError(null);
     try {
-      await store.redeployAgent(agent.id);
+      await store.enableCalling(agent.id);
     } catch (error) {
       setDeployError(
-        error instanceof Error ? error.message : "The agent could not be deployed.",
+        error instanceof Error ? error.message : "Calls could not be enabled.",
       );
     } finally {
       setDeploying(false);
@@ -324,16 +327,16 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
           <section className="rounded-xl border border-line bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold text-ink">Voice agent</h2>
+                <h2 className="text-sm font-semibold text-ink">Calls</h2>
                 <p className="mt-0.5 text-xs text-ink-soft">
-                  Deployed the moment this employee was created. Pausing it never
-                  deletes the agent, so call history and the number stay intact.
+                  Nothing answers until you turn calls on. Turning them off keeps
+                  the number, so call history survives and they can come back.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => void redeploy()}
-                disabled={deploying}
+                onClick={() => void enableCalls()}
+                disabled={deploying || callsEnabled}
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-mist px-2.5 text-xs font-medium text-ink-soft transition-colors hover:text-ink disabled:opacity-60"
               >
                 {deploying ? (
@@ -341,35 +344,39 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
                 ) : (
                   <Sparkles className="size-3.5" />
                 )}
-                {agent.providerAgent ? "Deploy again" : "Deploy now"}
+                {callsEnabled ? "Calls are on" : "Turn on calls"}
               </button>
             </div>
 
             <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
               <div className="rounded-lg bg-mist-soft p-2">
-                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Provider</dt>
-                <dd className="mt-0.5 font-semibold text-ink">
-                  {agent.providerAgent ? "Voice platform" : "Not deployed yet"}
-                </dd>
-              </div>
-              <div className="rounded-lg bg-mist-soft p-2">
-                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Deployment</dt>
-                <dd className="mt-0.5 truncate font-mono text-[11px] text-ink">
-                  {agent.providerAgent?.deploymentId ?? "—"}
-                </dd>
-              </div>
-              <div className="rounded-lg bg-mist-soft p-2">
                 <dt className="text-[10px] uppercase tracking-wide text-ink-soft">Status</dt>
                 <dd className="mt-0.5 font-semibold text-ink">
-                  {agent.providerAgent?.status ?? "pending"}
-                  {agent.providerAgent?.simulated ? " · simulated" : ""}
+                  {callingState}
+                  {agent.calling?.simulated ? " · simulated" : ""}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-mist-soft p-2">
+                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">
+                  Configuration
+                </dt>
+                <dd className="mt-0.5 font-semibold text-ink">
+                  v{agent.configurationVersion ?? 1}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-mist-soft p-2">
+                <dt className="text-[10px] uppercase tracking-wide text-ink-soft">
+                  Next step
+                </dt>
+                <dd className="mt-0.5 font-semibold text-ink">
+                  {agent.calling?.actionRequired?.replaceAll("_", " ") ?? "—"}
                 </dd>
               </div>
             </dl>
 
-            {deployError || agent.providerAgent?.error ? (
+            {deployError ? (
               <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {deployError ?? agent.providerAgent?.error}
+                {deployError}
               </p>
             ) : null}
           </section>

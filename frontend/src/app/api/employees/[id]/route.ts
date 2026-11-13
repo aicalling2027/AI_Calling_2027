@@ -2,7 +2,7 @@ import { connection, NextResponse } from "next/server";
 
 import { type Agent } from "@/content/workspace";
 import {
-  deployEmployeeAgent,
+  enableEmployeeCalling,
   getEmployee,
   setEmployeeStatus,
   updateEmployee,
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
 /**
  * Save an edit. A status change goes to its own endpoint because the backend
- * mirrors activation onto the Sarvam deployment; everything else is a patch.
+ * takes an existing line down with it; everything else is a patch.
  */
 export async function PATCH(request: Request, { params }: RouteContext) {
   await connection();
@@ -65,7 +65,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
-/** Deploy (or re-deploy) the Sarvam agent behind this employee. */
+/** Turn calls on for this employee, deploying the line if there is none. */
 export async function POST(_request: Request, { params }: RouteContext) {
   await connection();
 
@@ -74,7 +74,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   const { id } = await params;
   try {
-    return NextResponse.json({ agent: await deployEmployeeAgent(id) });
+    return NextResponse.json({ agent: await enableEmployeeCalling(id) });
   } catch (error) {
     return failure(error);
   }

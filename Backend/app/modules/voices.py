@@ -91,10 +91,15 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
         )
 
     result = sarvam.synthesize(str(profile["sample"]), speaker=voice_id, language=chosen)
-    audios = result.data.get("audios") if result.ok else None
+
+    # A rejected key is a configuration problem, not a synthesis failure: it has
+    # to reach the operator as 503 rather than a generic 502.
+    sarvam.raise_for_failure(result, action="synthesise a voice sample")
+
+    audios = result.data.get("audios")
     if not audios:
         raise ProviderError(
-            "Sarvam could not synthesise this sample right now.",
+            "Sarvam accepted the request but returned no audio.",
             details={"provider": "sarvam", "status_code": result.status_code},
         )
 

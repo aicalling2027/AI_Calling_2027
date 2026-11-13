@@ -54,18 +54,26 @@ class EmployeeActionOut(ORMModel):
     is_active: bool
 
 
-class ProviderAgentOut(APIModel):
-    """The voice-provider deployment that runs this employee's conversations."""
+class CallingStatusOut(APIModel):
+    """Whether this employee can answer a call, in the customer's vocabulary.
 
-    provider: str
-    deployment_id: str | None = None
-    app_id: str | None = None
-    app_version: int = 1
-    #: pending | active | paused | failed
-    status: str
+    Deliberately holds no provider identifier: no deployment id, no agent id, no
+    workspace. A customer buys a phone line that works, not a vendor object - and
+    exposing the object would hand them a way to address it out of band.
+    """
+
+    enabled: bool = False
+    #: not_configured | configuration_pending | syncing | ready_for_testing |
+    #: test_failed | ready_to_deploy | live | paused | sync_failed
+    state: str = "not_configured"
+    #: True when nothing is actually answering: the configuration exists in OWN
+    #: AI but no live number is behind it yet.
     simulated: bool = False
-    synced_at: datetime | None = None
-    error: str | None = None
+    #: True only for a real deployment that is currently answering calls.
+    connected: bool = False
+    last_checked_at: datetime | None = None
+    #: Neutral next-step code (missing_instructions, provider_unavailable, ...).
+    action_required: str | None = None
 
 
 class EmployeeBase(APIModel):
@@ -204,8 +212,13 @@ class EmployeeOut(ORMModel):
 
     languages: list[EmployeeLanguageOut] = Field(default_factory=list)
 
-    #: Present once the Sarvam deployment behind this employee is known.
-    provider_agent: ProviderAgentOut | None = None
+    #: Which save of the configuration this is. Bumped on every change that a
+    #: caller would notice, so the UI can say "v3" without naming a provider.
+    configuration_version: int = 1
+
+    #: Everything the customer may know about the phone line behind this
+    #: employee. Provider objects stay internal.
+    calling: CallingStatusOut = Field(default_factory=CallingStatusOut)
 
 
 class EmployeeDetail(EmployeeOut):

@@ -13,6 +13,7 @@ Design rules that keep ``python app.py`` working with zero configuration:
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -133,24 +134,50 @@ def _as_dict(response: httpx.Response) -> dict[str, Any]:
     return {"raw": response.text[:2000]}
 
 
+#: Vendor bodies occasionally echo the credential they rejected; never let one
+#: travel into a log line or an API response.
+_SECRET_PATTERNS = (
+    (re.compile(r"\bsk_[A-Za-z0-9_\-]{6,}"), "sk_***"),
+    (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{8,}"), r"\1 ***"),
+    (re.compile(r"(?i)\b(x-api-key|api-subscription-key)\b\s*[:=]\s*\S+"), r"\1: ***"),
+)
+
+
+def sanitize(text: str | None) -> str:
+    """Strip anything credential-shaped out of vendor-supplied text."""
+    cleaned = str(text or "")
+    for pattern, replacement in _SECRET_PATTERNS:
+        cleaned = pattern.sub(replacement, cleaned)
+    return cleaned
+
+
 def _extract_error(response: httpx.Response) -> str:
-    """Pull the most useful message out of a vendor error body."""
+    """Pull the most useful message out of a vendor error body.
+
+    The machine-readable ``error.code`` is kept next to the message: Sarvam uses
+    ``invalid_api_key_error`` to separate a bad credential from a permission
+    problem, and losing the code would erase that distinction.
+    """
     try:
         payload = response.json()
     except ValueError:
         text = (response.text or "").strip()
-        return text[:300] or f"HTTP {response.status_code}"
+        return sanitize(text)[:300] or f"HTTP {response.status_code}"
 
     if isinstance(payload, dict):
         detail = payload.get("error")
         if isinstance(detail, dict):
+            code = detail.get("code")
             message = detail.get("message") or detail.get("description")
             if message:
-                return str(message)[:300]
+                text = f"{code}: {message}" if code else str(message)
+                return sanitize(text)[:300]
+            if code:
+                return sanitize(str(code))[:300]
         for key in ("message", "detail", "error_description", "error"):
             value = payload.get(key)
             if isinstance(value, str) and value:
-                return value[:300]
+                return sanitize(value)[:300]
     return f"HTTP {response.status_code}"
 
 

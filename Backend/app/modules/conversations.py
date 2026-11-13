@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.exceptions import NotFoundError
+from app.core.logging import get_logger
 from app.core.pagination import PageParams, paginate
 from app.database.base import utcnow
 from app.database.models.call import (
@@ -29,6 +30,8 @@ _TERMINAL_SUMMARY_PROMPT = (
     "You are a call-quality analyst. Summarise the conversation in 3 sentences, "
     "then list the agreed next steps. Be factual and concise."
 )
+
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +201,26 @@ def _generate(
         if response.ok and response.data.get("content"):
             text = str(response.data["content"]).strip()
             return text, _bullet_points(text), _action_items(conversation), "sarvam-m"
+
+        # The heuristic below is kept so a summary always exists, but a rejected
+        # key must be visible in the logs - a silent downgrade looks like a
+        # model-quality problem instead of a configuration one. Only the status
+        # and the sanitised provider error are logged: never the transcript.
+        if sarvam.auth_failed(response):
+            logger.warning(
+                "sarvam_summary_auth_rejected",
+                provider="sarvam",
+                status_code=response.status_code,
+                fallback="offline-heuristic",
+            )
+        else:
+            logger.warning(
+                "sarvam_summary_failed",
+                provider="sarvam",
+                status_code=response.status_code,
+                error=response.error,
+                fallback="offline-heuristic",
+            )
 
     # Heuristic fallback: still produce a useful, structured summary.
     lines = [line for line in transcript.splitlines() if line.strip()]

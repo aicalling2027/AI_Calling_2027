@@ -9,11 +9,14 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     String,
     Text,
     UniqueConstraint,
+    false,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,6 +58,28 @@ class Employee(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     max_tokens: Mapped[int] = mapped_column(Integer, default=512, nullable=False)
     first_message: Mapped[str | None] = mapped_column(Text)
     end_call_message: Mapped[str | None] = mapped_column(Text)
+
+    # -- Calling activation ------------------------------------------------
+    # Enabling calls is an explicit customer action, never a side effect of
+    # creating the employee, so this starts closed and the configuration is
+    # versioned from the first save.
+    calling_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    #: not_configured | configuration_pending | syncing | ready_for_testing |
+    #: test_failed | ready_to_deploy | live | paused | sync_failed
+    calling_status: Mapped[str] = mapped_column(
+        String(32),
+        default="not_configured",
+        server_default="not_configured",
+        nullable=False,
+        index=True,
+    )
+    configuration_version: Mapped[int] = mapped_column(
+        Integer, default=1, server_default=text("1"), nullable=False
+    )
+    #: Fingerprint of the configuration that version refers to.
+    configuration_hash: Mapped[str | None] = mapped_column(String(64))
 
     # -- Lifecycle / counters ---------------------------------------------
     status: Mapped[str] = mapped_column(
@@ -150,13 +175,23 @@ class EmployeeAgentBinding(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixi
 
     ``Employee`` is the definition authored here; the provider only deploys an
     agent it already knows, so this row is the proof the trigger ran and the
-    place a retry reads from. It is never deleted - archiving pauses it, which
-    keeps the provider's call history and phone binding addressable.
+    place a retry reads from. Archiving pauses the deployment and keeps this
+    row; removing the agent deletes the deployment on the platform and drops
+    this row, so a later deploy starts from a clean link.
     """
 
     __tablename__ = "employee_agent_bindings"
     __table_args__ = (
         UniqueConstraint("employee_id", name="uq_employee_agent_bindings_employee_id"),
+        # The documented provider identity. Redundant while one employee owns at
+        # most one provider link, but it states the rule the sync relies on.
+        Index(
+            "uq_employee_agent_bindings_tenant_provider",
+            "organization_id",
+            "employee_id",
+            "provider",
+            unique=True,
+        ),
     )
 
     employee_id: Mapped[str] = mapped_column(
@@ -175,6 +210,24 @@ class EmployeeAgentBinding(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixi
     simulated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_error: Mapped[str | None] = mapped_column(Text)
     synced_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    # -- Sync detail added with Option B ----------------------------------
+    #: Provider-side name of the agent, kept for reconciliation only.
+    external_agent_name: Mapped[str | None] = mapped_column(String(120))
+    #: Last version the provider confirmed as committed; None means unverified.
+    current_committed_version: Mapped[int | None] = mapped_column(Integer)
+    #: Status string exactly as the provider reported it.
+    external_agent_status: Mapped[str | None] = mapped_column(String(32))
+    #: pending | in_sync | out_of_sync | simulated | failed
+    sync_status: Mapped[str] = mapped_column(
+        String(24),
+        default="pending",
+        server_default="pending",
+        nullable=False,
+        index=True,
+    )
+    #: Hash of the configuration that produced the current provider state.
+    last_configuration_hash: Mapped[str | None] = mapped_column(String(64))
 
     employee: Mapped[Employee] = relationship()
 

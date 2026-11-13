@@ -11,6 +11,7 @@ from app.core.constants import Perm
 from app.modules import employees
 from app.schemas.common import MessageResponse, Page
 from app.schemas.employee import (
+    CallingStatusOut,
     EmployeeCreate,
     EmployeeDedupeOut,
     EmployeeDetail,
@@ -126,15 +127,88 @@ def archive_employee(employee_id: str, principal: Writer, db: DbSession) -> Mess
     return MessageResponse(message="The AI employee was archived.")
 
 
+@router.get(
+    "/{employee_id}/calling",
+    response_model=CallingStatusOut,
+    summary="Whether this employee can answer a call",
+)
+def calling_status(employee_id: str, principal: Reader, db: DbSession) -> CallingStatusOut:
+    """The line behind this employee, in the customer's vocabulary.
+
+    Holds no provider identifier: no deployment id, no agent id, no workspace.
+    A customer buys a phone line that works, not a vendor object.
+    """
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    return employees.calling_status(db, employee)
+
+
+@router.post(
+    "/{employee_id}/calling/enable",
+    response_model=EmployeeDetail,
+    summary="Enable calls for this employee",
+)
+def enable_calling(employee_id: str, principal: Writer, db: DbSession) -> EmployeeDetail:
+    """Put the employee on the phone. The only path that reaches the provider."""
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    updated = employees.enable_calling(db, employee, user_id=principal.user_id)
+    return employees.employee_detail(db, updated)
+
+
+@router.post(
+    "/{employee_id}/calling/disable",
+    response_model=EmployeeDetail,
+    summary="Stop answering calls, keeping the number for later",
+)
+def disable_calling(employee_id: str, principal: Writer, db: DbSession) -> EmployeeDetail:
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    updated = employees.disable_calling(db, employee, user_id=principal.user_id)
+    return employees.employee_detail(db, updated)
+
+
+@router.delete(
+    "/{employee_id}/calling",
+    response_model=MessageResponse,
+    summary="Delete the number from the voice platform",
+)
+def remove_calling(employee_id: str, principal: Writer, db: DbSession) -> MessageResponse:
+    """Permanently delete the deployment - inbound calls to its number stop.
+
+    Unlike disabling (which pauses and keeps the provider's history), this is
+    irreversible on the platform. The employee record survives, paused, and can
+    be given a new number later.
+    """
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    if not employees.remove_calling(db, employee, user_id=principal.user_id):
+        return MessageResponse(message="This AI employee has no number yet.")
+    return MessageResponse(message="The number was removed from the voice platform.")
+
+
+# -- Deprecated provider-named aliases --------------------------------------
+# Kept so the current dashboard keeps working; both delegate to the calling
+# service above and are scheduled for removal once it repoints.
 @router.post(
     "/{employee_id}/agent",
     response_model=EmployeeDetail,
     summary="Deploy (or re-deploy) the Sarvam agent for this employee",
+    deprecated=True,
 )
 def sync_agent(employee_id: str, principal: Writer, db: DbSession) -> EmployeeDetail:
     employee = employees.get_employee(db, principal.organization_id, employee_id)
     employees.sync_agent(db, employee, user_id=principal.user_id)
     return employees.employee_detail(db, employee)
+
+
+@router.delete(
+    "/{employee_id}/agent",
+    response_model=MessageResponse,
+    summary="Delete the agent deployment from the voice platform",
+    deprecated=True,
+)
+def remove_agent(employee_id: str, principal: Writer, db: DbSession) -> MessageResponse:
+    employee = employees.get_employee(db, principal.organization_id, employee_id)
+    if not employees.remove_agent(db, employee, user_id=principal.user_id):
+        return MessageResponse(message="This AI employee has no agent deployed.")
+    return MessageResponse(message="The agent was removed from the voice platform.")
 
 
 @router.get(

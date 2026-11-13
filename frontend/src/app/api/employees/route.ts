@@ -45,8 +45,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    // The backend creates the employee and its Sarvam deployment in one call,
-    // so the returned agent already carries `providerAgent`.
+    // Creating an employee never reaches the voice provider, so the returned
+    // agent is `calling.state === "not_configured"` until calls are turned on.
     return NextResponse.json({ agent: await createEmployee(payload) }, { status: 201 });
   } catch (error) {
     return failure(error);

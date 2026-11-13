@@ -13,7 +13,8 @@ from typing import Any
 
 from app.core.config import settings
 from app.core.constants import DEFAULT_LANGUAGE, DEFAULT_MODEL
-from app.integrations import ProviderResponse, request_json, simulated
+from app.core.exceptions import ProviderError, ProviderNotConfiguredError
+from app.integrations import ProviderResponse, request_json, sanitize, simulated
 from app.utils.text import collapse_whitespace
 
 PROVIDER = "sarvam"
@@ -28,6 +29,53 @@ def _headers() -> dict[str, str]:
         "api-subscription-key": settings.sarvam_api_key,
         "Content-Type": "application/json",
     }
+
+
+#: Sarvam's model APIs answer 403 for a bad key (``invalid_api_key_error``); the
+#: voice-agent REST service answers 401. Both mean "fix the credential", so the
+#: predicate accepts either rather than pinning one product's convention.
+AUTH_STATUS = frozenset({401, 403})
+
+
+def auth_failed(result: ProviderResponse) -> bool:
+    """True when the response is a credential rejection, not an outage."""
+    if result.ok:
+        return False
+    if result.status_code in AUTH_STATUS:
+        return True
+    return "invalid_api_key_error" in (result.error or "").lower()
+
+
+def auth_failure_message() -> str:
+    """Operator-facing sentence: names the setting, never the value."""
+    return (
+        "Sarvam rejected the API key, so the request was refused. Replace "
+        "SARVAM_API_KEY with a key created in the Sarvam dashboard, then try again."
+    )
+
+
+def raise_for_failure(result: ProviderResponse, *, action: str) -> None:
+    """Turn a failed call into the right API error.
+
+    A rejected credential is a configuration problem (503), not a provider
+    outage (502), and the two get different fixes - so they must not collapse
+    into one message. ``result.error`` is already sanitised by the transport.
+    """
+    if result.ok:
+        return
+    if auth_failed(result):
+        raise ProviderNotConfiguredError(
+            auth_failure_message(),
+            details={"provider": PROVIDER, "status_code": result.status_code},
+        )
+    raise ProviderError(
+        f"Sarvam could not {action}.",
+        details={
+            "provider": PROVIDER,
+            "status_code": result.status_code,
+            "error": sanitize(result.error),
+        },
+    )
 
 
 def _url(path: str) -> str:

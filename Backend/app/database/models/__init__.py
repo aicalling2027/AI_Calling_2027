@@ -67,6 +67,14 @@ from app.database.models.phone_number import (
     PhoneNumberAssignment,
     TelephonyProvider,
 )
+from app.database.models.provider import (
+    ProviderAgentVersion,
+    ProviderDeployment,
+    ProviderDocumentBinding,
+    ProviderKnowledgeBaseBinding,
+    ProviderSyncJob,
+    ProviderSyncLog,
+)
 from app.database.models.training import (
     EmployeeKnowledgeSource,
     KnowledgeChunk,
@@ -121,6 +129,13 @@ __all__ = [
     "PhoneNumber",
     "PhoneNumberAssignment",
     "TelephonyProvider",
+    # Provider state (Option B)
+    "ProviderAgentVersion",
+    "ProviderDeployment",
+    "ProviderDocumentBinding",
+    "ProviderKnowledgeBaseBinding",
+    "ProviderSyncJob",
+    "ProviderSyncLog",
     # Billing
     "SubscriptionPlan",
     "Subscription",

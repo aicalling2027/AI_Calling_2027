@@ -12,19 +12,27 @@ export type ModelId = "sarvam-24b" | "sarvam-2b" | "sarvam-105b";
 export type VoiceId = string;
 
 /**
- * The voice-provider deployment behind an employee. The backend creates it the
- * moment the employee is created and only ever pauses it, so this mirrors a
- * real Sarvam deployment rather than a local flag.
+ * Whether an employee can answer a call, in the customer's vocabulary.
+ *
+ * Deliberately holds no provider identifier - no deployment id, no agent id, no
+ * workspace - mirroring the API contract. A customer buys a phone line that
+ * works, not a vendor object.
  */
-export type ProviderAgent = {
-  provider: string;
-  deploymentId: string | null;
-  appId: string | null;
-  appVersion: number;
-  status: "pending" | "active" | "paused" | "failed" | string;
+export type CallingStatus = {
+  enabled: boolean;
+  state:
+    | "not_configured"
+    | "configuration_pending"
+    | "syncing"
+    | "ready_to_deploy"
+    | "live"
+    | "paused"
+    | "sync_failed"
+    | string;
   simulated: boolean;
-  syncedAt: string | null;
-  error: string | null;
+  connected: boolean;
+  lastCheckedAt: string | null;
+  actionRequired: string | null;
 };
 
 export type KnowledgeSource = {
@@ -57,7 +65,9 @@ export type Agent = {
   actions: string[];
   outcomes: string[];
   createdAt: string;
-  providerAgent?: ProviderAgent | null;
+  /** Which save of this employee's configuration the UI is looking at. */
+  configurationVersion?: number;
+  calling?: CallingStatus | null;
 };
 
 export type LeadStatus =

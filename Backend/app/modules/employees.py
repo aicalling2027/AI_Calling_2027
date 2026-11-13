@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -39,6 +42,7 @@ from app.integrations import sarvam, sarvam_agents
 from app.modules import audit, billing
 from app.modules.common import as_dict, ensure_unique, scoped
 from app.schemas.employee import (
+    CallingStatusOut,
     EmployeeActionIn,
     EmployeeCreate,
     EmployeeDedupeOut,
@@ -54,7 +58,6 @@ from app.schemas.employee import (
     EmployeeUpdate,
     LanguageCatalogItem,
     PromptVersionOut,
-    ProviderAgentOut,
     VoiceCatalogItem,
 )
 
@@ -72,6 +75,42 @@ PROMPT_FIELDS = (
     "response_style",
     "closing_instruction",
 )
+
+# -- Calling states ---------------------------------------------------------
+# These are the only words a customer sees about the phone line. The vendor's
+# own vocabulary (pending/active/paused/failed) never leaves this module.
+CALLING_NOT_CONFIGURED = "not_configured"
+CALLING_PENDING = "configuration_pending"
+CALLING_SYNCING = "syncing"
+CALLING_READY = "ready_to_deploy"
+CALLING_LIVE = "live"
+CALLING_PAUSED = "paused"
+CALLING_FAILED = "sync_failed"
+
+#: Editing any of these makes the deployed configuration stale.
+CONFIG_FIELDS = PROMPT_FIELDS + (
+    "voice",
+    "model",
+    "default_language",
+    "temperature",
+    "max_tokens",
+    "first_message",
+    "end_call_message",
+)
+
+#: States that claim a working line, and so must fall back to "pending" when
+#: the saved configuration no longer matches what was deployed.
+_STALEABLE_STATES = (CALLING_LIVE, CALLING_READY)
+
+#: Everything whose edit invalidates the deployed configuration. The language
+#: set counts even though it is rows, not a column on the employee.
+_STALENESS_FIELDS = frozenset(CONFIG_FIELDS) | {"languages"}
+
+_ACTION_HINTS = {
+    CALLING_PENDING: "apply_configuration",
+    CALLING_READY: "provider_not_configured",
+    CALLING_FAILED: "provider_error",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +150,9 @@ def list_employees(
 
     items = [EmployeeOut.model_validate(row) for row in rows]
     bindings = _bindings_for(db, [item.id for item in items])
+    sources = {row.id: row for row in rows}
     for item in items:
-        item.provider_agent = _provider_agent(bindings.get(item.id))
+        item.calling = _calling_out(sources[item.id], bindings.get(item.id))
     return items, total
 
 
@@ -142,7 +182,9 @@ def employee_detail(db: Session, employee: Employee) -> EmployeeDetail:
     )
     detail = EmployeeDetail.model_validate(employee)
     detail.knowledge_source_ids = knowledge_ids
-    detail.provider_agent = _provider_agent(_bindings_for(db, [employee.id]).get(employee.id))
+    detail.calling = _calling_out(
+        employee, _bindings_for(db, [employee.id]).get(employee.id)
+    )
     return detail
 
 
@@ -200,18 +242,21 @@ def create_employee(
     db.add(employee)
     db.flush()
 
-    _sync_languages(
-        db,
-        employee,
-        payload.languages
-        or [
-            EmployeeLanguageIn(
-                language_code=employee.default_language, is_default=True
-            )
-        ],
-    )
+    languages = payload.languages or [
+        EmployeeLanguageIn(language_code=employee.default_language, is_default=True)
+    ]
+    _sync_languages(db, employee, languages)
     _sync_actions(db, employee, payload.actions)
     _snapshot_prompt(db, employee, user_id=user_id, note="Initial version")
+
+    # An employee starts silent. Enabling calls is a separate, explicit action,
+    # so nothing here reaches the voice provider - not even a request.
+    employee.calling_enabled = False
+    employee.calling_status = CALLING_NOT_CONFIGURED
+    employee.configuration_version = 1
+    employee.configuration_hash = _configuration_hash(
+        employee, [item.language_code for item in languages]
+    )
 
     audit.log_action(
         db,
@@ -224,11 +269,6 @@ def create_employee(
     )
     db.commit()
     db.refresh(employee)
-
-    # Creating the employee is the trigger: the Sarvam deployment is created
-    # straight away so the workspace never holds an agent the provider has not
-    # heard of. A provider failure is recorded on the binding, not raised.
-    sync_agent(db, employee, user_id=user_id)
     return employee
 
 
@@ -262,6 +302,10 @@ def update_employee(
     employee.updated_at = utcnow()
     if prompt_changed:
         _snapshot_prompt(db, employee, user_id=user_id, note=change_note or "Prompt updated")
+
+    # A name change is cosmetic; everything else alters what a caller hears.
+    if not _STALENESS_FIELDS.isdisjoint(changed_fields):
+        _note_configuration_change(employee)
 
     audit.log_action(
         db,
@@ -318,10 +362,17 @@ def archive_employee(db: Session, employee: Employee, *, user_id: str | None) ->
     employee.is_active = False
 
     binding = _bindings_for(db, [employee.id]).get(employee.id)
-    if binding is not None and binding.status != "paused":
-        sarvam_agents.set_status(binding.deployment_id or "", action="pause")
-        binding.status = "paused"
-        binding.synced_at = utcnow()
+    if binding is not None and binding.deployment_id and binding.status != "paused":
+        _apply_deployment_status(binding, "pause")
+
+    # An archived employee is out of the workspace, so nothing should be able to
+    # turn its line back on without restoring it first.
+    employee.calling_enabled = False
+    employee.calling_status = (
+        CALLING_PAUSED
+        if binding is not None and binding.deployment_id
+        else CALLING_NOT_CONFIGURED
+    )
 
     audit.log_action(
         db,
@@ -336,6 +387,61 @@ def archive_employee(db: Session, employee: Employee, *, user_id: str | None) ->
     return employee
 
 
+def remove_agent(
+    db: Session, employee: Employee, *, user_id: str | None
+) -> bool:
+    """Delete the deployment on the voice platform; the employee row stays.
+
+    The one destructive provider call: the number stops answering and the
+    platform drops the deployment, so this is *not* what archiving does (that
+    pauses). The link is dropped only once the provider confirms, and a
+    simulated deployment - which never existed there - is dropped locally
+    without a request. Returns False when there is nothing to remove.
+    """
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+    deployment_id = binding.deployment_id if binding is not None else None
+    if binding is None or not deployment_id:
+        return False
+
+    if not binding.simulated:
+        result = sarvam_agents.delete_deployment(deployment_id)
+        if not result.ok:
+            if result.status_code in (401, 403):
+                raise ProviderNotConfiguredError(
+                    "The voice agent workspace rejected the API key. Replace it with a "
+                    "key created in the voice agent dashboard, then try again.",
+                    details={"status_code": result.status_code},
+                )
+            raise ProviderError(
+                result.error or "The voice platform did not remove the agent.",
+                details={"status_code": result.status_code, "employee_id": employee.id},
+            )
+
+    db.delete(binding)
+    # No deployment means no line. Leaving the previous answer in place would
+    # outlive the thing that made it true.
+    employee.calling_enabled = False
+    employee.calling_status = CALLING_NOT_CONFIGURED
+    if employee.status != str(EmployeeStatus.ARCHIVED):
+        # An employee with no deployment cannot answer, so it stops claiming it
+        # is live; enabling calls again deploys a fresh one.
+        employee.status = str(EmployeeStatus.PAUSED)
+        employee.is_active = False
+
+    audit.log_action(
+        db,
+        action="employee.agent_removed",
+        organization_id=employee.organization_id,
+        user_id=user_id,
+        resource_type="employee",
+        resource_id=employee.id,
+        changes={"deployment_id": deployment_id},
+    )
+    db.commit()
+    db.refresh(employee)
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Sarvam deployment binding
 # ---------------------------------------------------------------------------
@@ -344,9 +450,10 @@ def sync_agent(
 ) -> EmployeeAgentBinding:
     """Create (or re-create) the Sarvam deployment for this employee.
 
-    Called automatically on create and on demand from the workspace. A provider
+    Only an explicit customer action reaches here: enabling calls, or the
+    deprecated re-deploy route kept for the current dashboard. A provider
     failure is stored on the binding so the employee stays usable and the UI can
-    show why the agent is not live yet.
+    show why the line is not live yet.
     """
     binding = _bindings_for(db, [employee.id]).get(employee.id)
     if binding is None:
@@ -375,25 +482,28 @@ def sync_agent(
         binding.simulated = bool(result.simulated)
         binding.status = "active"
         binding.last_error = None
+        binding.external_agent_name = (employee.name or "")[:120] or None
+        if not employee.configuration_hash:
+            employee.configuration_hash = _configuration_hash(employee)
+        # This is the configuration the deployment was made from. A later edit
+        # moves the employee's hash, which is how the read path knows that what
+        # a caller hears is one save behind.
+        binding.last_configuration_hash = employee.configuration_hash
+        binding.sync_status = "simulated" if binding.simulated else "in_sync"
 
         # A new deployment always comes back live, so re-deploying a paused or
         # archived employee would quietly put it back on the phone behind a
         # "Paused" badge. Send it straight back down instead.
         if employee.status in _STOPPED_STATES:
-            stopped = sarvam_agents.set_status(
-                binding.deployment_id or "", action="pause"
-            )
-            if stopped.ok:
-                binding.status = "paused"
-            else:
-                binding.last_error = (
-                    stopped.error or "The provider rejected the pause after deploying."
-                )[:500]
+            _apply_deployment_status(binding, "pause")
     else:
         binding.status = "failed"
+        binding.sync_status = "failed"
         binding.last_error = (
             result.error or "The voice provider rejected this deployment."
         )[:500]
+
+    employee.calling_status = _state_for_binding(binding)
 
     audit.log_action(
         db,
@@ -414,31 +524,151 @@ def sync_agent(
 
 
 def _follow_status(db: Session, employee: Employee) -> None:
-    """Mirror a pause/resume onto the provider deployment."""
+    """Mirror a pause/resume onto a deployment that already exists.
+
+    Activating an employee no longer deploys one. Enabling calls is its own
+    action with its own endpoint, so a status change can only adjust a line that
+    is already there - never buy a new one.
+    """
     if employee.status == str(EmployeeStatus.ARCHIVED):
         return
 
     binding = _bindings_for(db, [employee.id]).get(employee.id)
-    if binding is None or binding.status == "failed":
-        if employee.status == str(EmployeeStatus.ACTIVE):
-            sync_agent(db, employee)
-        return
-
-    if binding.deployment_id is None:
+    if binding is None or not binding.deployment_id or binding.status == "failed":
         return
 
     action = "resume" if employee.status == str(EmployeeStatus.ACTIVE) else "pause"
     wanted = "active" if action == "resume" else "paused"
-    if binding.status == wanted:
-        return
+    if binding.status != wanted:
+        _apply_deployment_status(binding, action)
+
+    employee.calling_status = _state_for_binding(binding)
+
+
+def _apply_deployment_status(binding: EmployeeAgentBinding, action: str) -> bool:
+    """Pause or resume a deployment; False when the provider refused.
+
+    A simulated deployment exists only in this database, so its row is the whole
+    truth and no request is made for it.
+    """
+    wanted = "active" if action == "resume" else "paused"
+
+    if binding.simulated:
+        binding.status = wanted
+        binding.sync_status = "simulated"
+        binding.synced_at = utcnow()
+        return True
+
+    if not binding.deployment_id:
+        return False
 
     result = sarvam_agents.set_status(binding.deployment_id, action=action)
     binding.synced_at = utcnow()
-    if result.ok:
-        binding.status = wanted
-        binding.last_error = None
+    if not result.ok:
+        binding.last_error = (result.error or f"The provider rejected the {action}.")[:500]
+        return False
+
+    binding.status = wanted
+    binding.sync_status = "in_sync"
+    binding.last_error = None
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Calling lifecycle
+# ---------------------------------------------------------------------------
+def calling_status(db: Session, employee: Employee) -> CallingStatusOut:
+    """What the customer may know about this employee's phone line."""
+    return _calling_out(employee, _bindings_for(db, [employee.id]).get(employee.id))
+
+
+def _require_dialable(employee: Employee) -> None:
+    """The two things that must be true before a caller could hear anything."""
+    if not (employee.system_prompt or "").strip():
+        raise ValidationError(
+            "Add instructions to the employee before enabling calls.",
+            details={"employee_id": employee.id},
+        )
+    if employee.status != str(EmployeeStatus.ACTIVE):
+        raise ConflictError(
+            f"Employee '{employee.name}' is {employee.status}. Activate it before "
+            "enabling calls.",
+            details={"employee_id": employee.id, "status": employee.status},
+        )
+
+
+def enable_calling(db: Session, employee: Employee, *, user_id: str | None) -> Employee:
+    """Put this employee on the phone.
+
+    The one path that reaches the provider on the customer's behalf. A line that
+    already exists is resumed rather than replaced - a second deployment would
+    claim a second number, and the agent's instructions live on the provider, so
+    a fresh deployment would not carry the edit anyway.
+    """
+    _require_dialable(employee)
+
+    employee.calling_enabled = True
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+
+    if binding is not None and binding.deployment_id and binding.status != "failed":
+        if binding.status != "active":
+            _apply_deployment_status(binding, "resume")
+        employee.calling_status = _state_for_binding(binding)
     else:
-        binding.last_error = (result.error or "The provider rejected the status change.")[:500]
+        employee.calling_status = CALLING_SYNCING
+        db.flush()
+        sync_agent(db, employee, user_id=user_id)
+
+    audit.log_action(
+        db,
+        action="employee.calling_enabled",
+        organization_id=employee.organization_id,
+        user_id=user_id,
+        resource_type="employee",
+        resource_id=employee.id,
+        changes={"calling_status": employee.calling_status},
+    )
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+def disable_calling(db: Session, employee: Employee, *, user_id: str | None) -> Employee:
+    """Stop answering calls, keeping the deployment so re-enabling is instant."""
+    employee.calling_enabled = False
+    binding = _bindings_for(db, [employee.id]).get(employee.id)
+
+    if binding is not None and binding.deployment_id:
+        if binding.status == "active":
+            _apply_deployment_status(binding, "pause")
+        # If the provider refused the pause the number is still answering, and
+        # the state keeps saying so instead of pretending otherwise.
+        employee.calling_status = _state_for_binding(binding)
+    else:
+        employee.calling_status = CALLING_NOT_CONFIGURED
+
+    audit.log_action(
+        db,
+        action="employee.calling_disabled",
+        organization_id=employee.organization_id,
+        user_id=user_id,
+        resource_type="employee",
+        resource_id=employee.id,
+        changes={"calling_status": employee.calling_status},
+    )
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+def remove_calling(db: Session, employee: Employee, *, user_id: str | None) -> bool:
+    """Delete the deployment on the voice platform; the employee row stays.
+
+    Separated from :func:`disable_calling` because this one is irreversible: the
+    number stops answering and cannot be recovered, so the caller has to mean it.
+    Returns False when there was nothing to remove.
+    """
+    return remove_agent(db, employee, user_id=user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -470,6 +700,7 @@ def restore_prompt_version(
         if field in PROMPT_FIELDS and hasattr(employee, field):
             setattr(employee, field, value)
 
+    _note_configuration_change(employee)
     _snapshot_prompt(db, employee, user_id=user_id, note=f"Restored v{version.version}")
     audit.log_action(
         db,
@@ -541,15 +772,24 @@ def test_employee(
         language=language,
     )
     latency_ms = int((time.perf_counter() - started) * 1000)
-    content = str(response.data.get("content") or sarvam.offline_reply(
-        [{"role": "user", "content": payload.message}], language=language
-    ))
+
+    # A failed call must surface as a failure. Falling back to the offline reply
+    # here would show a fabricated answer labelled as a real Sarvam response,
+    # which hides a revoked key behind a working-looking console.
+    sarvam.raise_for_failure(response, action="answer this test message")
+
+    content = str(response.data.get("content") or "").strip()
+    if not content:
+        raise ProviderError(
+            "Sarvam accepted the request but returned an empty reply.",
+            details={"provider": "sarvam", "status_code": response.status_code},
+        )
 
     return EmployeeTestResponse(
         reply=content,
         language=language,
         model=employee.model or DEFAULT_MODEL,
-        provider="sarvam" if sarvam.configured() else "offline",
+        provider="offline" if response.simulated else "sarvam",
         latency_ms=latency_ms,
         simulated=response.simulated,
     )
@@ -685,6 +925,14 @@ def import_deployments(
             "The voice agent workspace is not connected yet. Add the missing "
             "settings to the backend environment, then import again.",
             details={"missing": missing},
+        )
+
+    if sarvam_agents.key_conflicts_with_ids():
+        raise ProviderNotConfiguredError(
+            "The agent key field holds a workspace id instead of an API key. "
+            "Replace it with the key from the voice agent dashboard's API Key "
+            "settings, then import again.",
+            details={"setting": "SARVAM_AGENTS_API_KEY", "conflicts_with": "id"},
         )
 
     result = sarvam_agents.list_deployments()
@@ -829,19 +1077,96 @@ def _bindings_for(db: Session, employee_ids: list[str]) -> dict[str, EmployeeAge
     return {row.employee_id: row for row in rows}
 
 
-def _provider_agent(binding: EmployeeAgentBinding | None) -> ProviderAgentOut | None:
-    if binding is None:
-        return None
-    return ProviderAgentOut(
-        provider=binding.provider,
-        deployment_id=binding.deployment_id,
-        app_id=binding.app_id,
-        app_version=binding.app_version,
-        status=binding.status,
-        simulated=binding.simulated,
-        synced_at=binding.synced_at,
-        error=binding.last_error,
+def _calling_out(
+    employee: Employee, binding: EmployeeAgentBinding | None
+) -> CallingStatusOut:
+    """Translate internal provider state into the customer's vocabulary.
+
+    The stored state is what the provider last reported. It is corrected on read
+    in one case: a configuration saved after the deployment was made has not
+    reached the live line, so claiming "live" there would be a lie the customer
+    would only discover from a caller.
+    """
+    state = employee.calling_status or CALLING_NOT_CONFIGURED
+    connected = bool(binding and binding.status == "active" and not binding.simulated)
+    if state == CALLING_LIVE and _configuration_is_stale(employee, binding):
+        state = CALLING_PENDING
+
+    return CallingStatusOut(
+        enabled=bool(employee.calling_enabled),
+        state=state,
+        simulated=bool(binding.simulated) if binding else False,
+        connected=connected,
+        last_checked_at=binding.synced_at if binding else None,
+        action_required=_ACTION_HINTS.get(state),
     )
+
+
+def _configuration_is_stale(
+    employee: Employee, binding: EmployeeAgentBinding | None
+) -> bool:
+    """True when the saved configuration is newer than the deployed one."""
+    if binding is None:
+        return True
+    if not binding.last_configuration_hash or not employee.configuration_hash:
+        # Nothing recorded on one side means the match cannot be proven, and an
+        # unproven match must not be reported as live.
+        return True
+    return binding.last_configuration_hash != employee.configuration_hash
+
+
+def _configuration_hash(
+    employee: Employee, language_codes: Sequence[str] | None = None
+) -> str:
+    """Fingerprint of everything that shapes a conversation.
+
+    Language codes are passed in when the caller already knows the intended set:
+    a freshly added ``EmployeeLanguage`` row is not yet on the relationship, so
+    reading it back would hash the empty set and make every change look applied.
+    """
+    codes = language_codes
+    if codes is None:
+        codes = [row.language_code for row in employee.languages]
+
+    payload = {
+        "prompts": {field: getattr(employee, field) or "" for field in PROMPT_FIELDS},
+        "voice": employee.voice,
+        "model": employee.model,
+        "language": employee.default_language,
+        "languages": sorted(set(codes)),
+        "temperature": round(float(employee.temperature or 0.0), 3),
+        "max_tokens": int(employee.max_tokens or 0),
+        "first_message": employee.first_message or "",
+        "end_call_message": employee.end_call_message or "",
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _note_configuration_change(employee: Employee) -> None:
+    """Bump the configuration version and stop claiming the old one is live.
+
+    There is no API to push an edit into an agent that is already deployed, so
+    a saved change makes the line one deployment behind. Saying so is the point:
+    the alternative is a customer editing a prompt and believing callers hear it.
+    """
+    employee.configuration_version = int(employee.configuration_version or 0) + 1
+    employee.configuration_hash = _configuration_hash(employee)
+    if employee.calling_status in _STALEABLE_STATES:
+        employee.calling_status = CALLING_PENDING
+
+
+def _state_for_binding(binding: EmployeeAgentBinding) -> str:
+    """The customer-visible calling state a provider result adds up to."""
+    if binding.status == "failed":
+        return CALLING_FAILED
+    if binding.status == "paused":
+        return CALLING_PAUSED
+    if binding.simulated:
+        # No workspace credentials, so nothing was actually deployed. "Ready"
+        # is honest: the configuration exists, the phone line does not.
+        return CALLING_READY
+    return CALLING_LIVE
 
 
 #: The two states a Sarvam deployment reports. An unknown one is not a licence
@@ -919,6 +1244,15 @@ def _create_from_deployment(
     )
     _snapshot_prompt(db, employee, user_id=user_id, note="Imported agent")
 
+    # The deployment is answering on the provider, so the line is real - but this
+    # row does not describe it (the instructions stay on Sarvam), which is what
+    # the mismatch between the two hashes will keep telling the customer.
+    employee.calling_enabled = status == EmployeeStatus.ACTIVE
+    employee.calling_status = (
+        CALLING_LIVE if status == EmployeeStatus.ACTIVE else CALLING_PAUSED
+    )
+    employee.configuration_hash = _configuration_hash(employee)
+
     binding = EmployeeAgentBinding(
         organization_id=organization_id,
         employee_id=employee.id,
@@ -929,6 +1263,8 @@ def _create_from_deployment(
         status=str(deployment.get("status") or "").strip().lower() or "active",
         simulated=False,
         synced_at=utcnow(),
+        external_agent_name=str(deployment.get("name") or "")[:120] or None,
+        sync_status="out_of_sync",
     )
     db.add(binding)
 
@@ -963,6 +1299,10 @@ def _refresh_binding(
     binding.simulated = False
     binding.last_error = None
     binding.synced_at = utcnow()
+    binding.external_agent_status = binding.status
+    employee.calling_status = (
+        CALLING_LIVE if binding.status == "active" else CALLING_PAUSED
+    )
 
     # A pause made on Sarvam is a pause here. Activation is deliberately not
     # mirrored: a draft has no instructions yet, and an import must never put

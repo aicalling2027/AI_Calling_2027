@@ -148,21 +148,98 @@ def employee_id_placeholder(client, auth) -> str:
     return rows["items"][0]["id"]
 
 
-def test_employee_creation_deploys_the_agent(client, auth, employee):
-    """Creating the employee is the trigger - the provider binding comes back."""
-    binding = employee["provider_agent"]
-    assert binding["provider"] == "sarvam-voice-agents"
-    assert binding["status"] == "active"
-    assert binding["simulated"] is True
-    assert binding["deployment_id"].startswith("dep-sim-")
-    assert binding["error"] is None
+def _disposable_employee(client, auth, prefix: str) -> str:
+    """A throw-away, activated employee that already has instructions.
+
+    Enabling calls needs both, and the trial plan caps the workspace at two
+    seats, so callers must archive what they create.
+    """
+    created = client.post(
+        f"{API}/employees",
+        headers=auth,
+        json={
+            "name": unique(prefix),
+            "system_prompt": "Answer questions about admissions.",
+        },
+    )
+    assert created.status_code == 201, created.text
+    employee_id = created.json()["id"]
+
+    activated = client.post(
+        f"{API}/employees/{employee_id}/status", headers=auth, json={"status": "active"}
+    )
+    assert activated.status_code == 200, activated.text
+    return employee_id
 
 
-def test_agent_can_be_redeployed_without_duplicating_it(client, auth, employee):
-    first = employee["provider_agent"]["deployment_id"]
-    again = client.post(f"{API}/employees/{employee['id']}/agent", headers=auth)
-    assert again.status_code == 200
-    assert again.json()["provider_agent"]["deployment_id"] == first
+def test_employee_creation_does_not_touch_the_voice_provider(client, auth, employee):
+    """Creating a row is a workspace action; putting it on the phone is not."""
+    calling = employee["calling"]
+    assert calling["enabled"] is False
+    assert calling["state"] == "not_configured"
+    assert calling["connected"] is False
+    assert calling["last_checked_at"] is None
+
+    # White-label: no deployment id, agent id or workspace in the payload.
+    assert "provider_agent" not in employee
+    assert "dep-" not in str(employee)
+
+
+def test_enabling_calling_does_not_duplicate_the_line(client, auth, employee):
+    """Enabling twice reuses the line instead of claiming a second number."""
+    first = client.post(f"{API}/employees/{employee['id']}/calling/enable", headers=auth)
+    assert first.status_code == 200, first.text
+    body = first.json()["calling"]
+    assert body["enabled"] is True
+    assert body["state"] == "ready_to_deploy"
+    assert body["simulated"] is True
+
+    again = client.post(f"{API}/employees/{employee['id']}/calling/enable", headers=auth)
+    assert again.status_code == 200, again.text
+    assert again.json()["calling"]["state"] == body["state"]
+
+    # The deprecated provider-named alias still reaches the same line.
+    legacy = client.post(f"{API}/employees/{employee['id']}/agent", headers=auth)
+    assert legacy.status_code == 200, legacy.text
+    assert legacy.json()["calling"]["state"] == body["state"]
+
+
+def test_pausing_an_employee_takes_its_line_down(client, auth):
+    """A status change may adjust an existing line, never create one."""
+    employee_id = _disposable_employee(client, auth, "Paused")
+
+    enabled = client.post(f"{API}/employees/{employee_id}/calling/enable", headers=auth)
+    assert enabled.status_code == 200, enabled.text
+    assert enabled.json()["calling"]["state"] == "ready_to_deploy"
+
+    paused = client.post(
+        f"{API}/employees/{employee_id}/status", headers=auth, json={"status": "paused"}
+    )
+    assert paused.json()["calling"]["state"] == "paused"
+
+    resumed = client.post(
+        f"{API}/employees/{employee_id}/status", headers=auth, json={"status": "active"}
+    )
+    assert resumed.json()["calling"]["state"] == "ready_to_deploy"
+
+    client.delete(f"{API}/employees/{employee_id}", headers=auth)
+
+
+def test_editing_after_enabling_marks_the_line_as_pending(client, auth):
+    """An edit nobody can push to the agent must not keep reading as applied."""
+    employee_id = _disposable_employee(client, auth, "Stale")
+    client.post(f"{API}/employees/{employee_id}/calling/enable", headers=auth)
+
+    edited = client.patch(
+        f"{API}/employees/{employee_id}",
+        headers=auth,
+        json={"system_prompt": "Ask about the new term dates."},
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["configuration_version"] == 2
+    assert edited.json()["calling"]["state"] == "configuration_pending"
+
+    client.delete(f"{API}/employees/{employee_id}", headers=auth)
 
 
 def test_duplicate_employee_name_is_rejected(client, auth, employee):
@@ -203,20 +280,19 @@ def test_dedupe_is_a_no_op_on_a_clean_workspace(client, auth, employee):
     assert body["archived_ids"] == []
 
 
-def test_redeploying_a_paused_employee_keeps_the_agent_paused(client, auth):
+def test_redeploying_a_paused_employee_keeps_the_line_down(client, auth):
     """A re-deploy must not put a stopped employee back on the phone."""
-    created = client.post(f"{API}/employees", headers=auth, json={"name": unique("Paused")})
-    assert created.status_code == 201, created.text
-    employee_id = created.json()["id"]
+    employee_id = _disposable_employee(client, auth, "Paused again")
 
+    client.post(f"{API}/employees/{employee_id}/calling/enable", headers=auth)
     paused = client.post(
         f"{API}/employees/{employee_id}/status", headers=auth, json={"status": "paused"}
     )
-    assert paused.json()["provider_agent"]["status"] == "paused"
+    assert paused.json()["calling"]["state"] == "paused"
 
     again = client.post(f"{API}/employees/{employee_id}/agent", headers=auth)
     assert again.status_code == 200, again.text
-    assert again.json()["provider_agent"]["status"] == "paused"
+    assert again.json()["calling"]["state"] == "paused"
 
     client.delete(f"{API}/employees/{employee_id}", headers=auth)
 

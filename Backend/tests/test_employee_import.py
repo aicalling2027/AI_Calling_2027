@@ -8,6 +8,8 @@ covered by ``test_api``.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from app.database.models.billing import SubscriptionPlan
@@ -35,6 +37,8 @@ def _deployment(
 def _as_workspace(monkeypatch: pytest.MonkeyPatch, deployments: list[dict]) -> None:
     """Pretend Sarvam is addressed and answered with exactly these deployments."""
     monkeypatch.setattr(employees.sarvam_agents, "missing_workspace_settings", lambda: [])
+    # The developer's own .env decides this; the tests describe a valid key.
+    monkeypatch.setattr(employees.sarvam_agents, "key_conflicts_with_ids", lambda: False)
     monkeypatch.setattr(
         employees.sarvam_agents,
         "list_deployments",
@@ -112,11 +116,14 @@ def test_import_creates_one_employee_per_deployment(client, auth, seats, monkeyp
 
     rows = client.get(f"{API}/employees", headers=auth).json()["items"]
     by_name = {row["name"]: row for row in rows}
-    assert by_name[active_name]["provider_agent"]["deployment_id"] == "dep-imp-1"
-    assert by_name[active_name]["provider_agent"]["app_version"] == 3
-    assert by_name[active_name]["provider_agent"]["simulated"] is False
-    assert by_name[paused_name]["provider_agent"]["status"] == "paused"
-    assert by_name[paused_name]["provider_agent"]["app_version"] == 7
+    assert by_name[active_name]["calling"]["connected"] is True
+    assert by_name[active_name]["calling"]["simulated"] is False
+    assert by_name[paused_name]["calling"]["state"] == "paused"
+    # The deployment answers, but this row does not describe what it says, so
+    # the workspace does not claim the saved configuration is live.
+    assert by_name[active_name]["calling"]["state"] == "configuration_pending"
+    # No provider identifier leaves the building.
+    assert "deployment_id" not in str(by_name[active_name]["calling"])
     # The remote state is reflected, not overwritten by a local draft.
     assert by_name[active_name]["status"] == "active"
     assert by_name[paused_name]["status"] == "paused"
@@ -138,8 +145,7 @@ def test_import_twice_updates_the_link_instead_of_duplicating(client, auth, seat
     rows = client.get(f"{API}/employees", headers=auth).json()["items"]
     matching = [row for row in rows if row["name"] == name]
     assert len(matching) == 1
-    assert matching[0]["provider_agent"]["app_version"] == 4
-    assert matching[0]["provider_agent"]["status"] == "paused"
+    assert matching[0]["calling"]["state"] == "paused"
     assert matching[0]["status"] == "paused"
 
     _archive(client, auth, matching[0]["id"])
@@ -191,6 +197,7 @@ def test_import_stops_at_the_plan_limit(client, auth, employee, monkeypatch):
 def test_import_turns_a_rejected_key_into_a_sentence(client, auth, monkeypatch):
     """A 401 from the workspace is read by a person, not a log file."""
     monkeypatch.setattr(employees.sarvam_agents, "missing_workspace_settings", lambda: [])
+    monkeypatch.setattr(employees.sarvam_agents, "key_conflicts_with_ids", lambda: False)
     monkeypatch.setattr(
         employees.sarvam_agents,
         "list_deployments",
@@ -204,3 +211,32 @@ def test_import_turns_a_rejected_key_into_a_sentence(client, auth, monkeypatch):
     assert error["code"] == "provider_not_configured"
     assert "api key" in error["message"].lower()
     assert "401" not in error["message"]
+
+
+def test_key_field_holds_an_id_is_caught_before_the_call(client, auth, monkeypatch):
+    """The workspace id sits next to the key in .env; name the mix-up."""
+    monkeypatch.setattr(employees.sarvam_agents, "missing_workspace_settings", lambda: [])
+    monkeypatch.setattr(employees.sarvam_agents, "key_conflicts_with_ids", lambda: True)
+
+    response = client.post(f"{API}/employees/import", headers=auth)
+
+    assert response.status_code == 503, response.text
+    error = response.json()["error"]
+    assert error["code"] == "provider_not_configured"
+    assert "workspace id" in error["message"]
+    assert error["details"]["setting"] == "SARVAM_AGENTS_API_KEY"
+
+
+def test_key_conflicts_with_ids_compares_against_both_ids(monkeypatch):
+    fake = SimpleNamespace(
+        sarvam_agents_api_key="ws-1",
+        sarvam_api_key="model-key",
+        sarvam_org_id="org-1",
+        sarvam_workspace_id="ws-1",
+    )
+    monkeypatch.setattr(employees.sarvam_agents, "settings", fake)
+
+    assert employees.sarvam_agents.key_conflicts_with_ids() is True
+
+    fake.sarvam_agents_api_key = "real-key"
+    assert employees.sarvam_agents.key_conflicts_with_ids() is False

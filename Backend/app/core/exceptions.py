@@ -93,6 +93,19 @@ class ProviderNotConfiguredError(ProviderError):
     message = "This integration is not configured on the server."
 
 
+class ProviderCapabilityMissing(ProviderError):
+    """The provider does not offer this operation, so nothing was attempted.
+
+    Deliberately not a 500: the request was understood and the answer is final.
+    501 tells a caller "this build cannot do that yet" without hinting at which
+    vendor is behind it - the capability name is the only detail that leaves.
+    """
+
+    status_code = 501
+    code = "provider_capability_unavailable"
+    message = "This capability is not available yet."
+
+
 class InsufficientCreditsError(AppError):
     status_code = 402
     code = "insufficient_credits"

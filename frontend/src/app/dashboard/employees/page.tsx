@@ -320,15 +320,12 @@ export default function EmployeesPage() {
                 <Badge variant="outline">
                   {MODELS.find((model) => model.id === agent.modelId)?.name ?? agent.model}
                 </Badge>
-                {agent.providerAgent ? (
+                {agent.calling ? (
                   <Badge
-                    variant={agent.providerAgent.status === "failed" ? "danger" : "secondary"}
-                    title={
-                      agent.providerAgent.error ??
-                      `Agent deployment ${agent.providerAgent.deploymentId ?? "pending"}`
-                    }
+                    variant={agent.calling.state === "sync_failed" ? "danger" : "secondary"}
+                    title={`Calls ${agent.calling.state.replaceAll("_", " ")}`}
                   >
-                    Agent · {agent.providerAgent.status}
+                    Calls · {agent.calling.state.replaceAll("_", " ")}
                   </Badge>
                 ) : null}
               </div>

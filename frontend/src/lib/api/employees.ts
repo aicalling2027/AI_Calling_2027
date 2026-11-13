@@ -11,8 +11,8 @@
 import {
   type Agent,
   type AgentStatus,
+  type CallingStatus,
   type ModelId,
-  type ProviderAgent,
   initialsOf,
   languageCode,
   languageFromCode,
@@ -22,15 +22,13 @@ import {
 } from "@/content/workspace";
 import { apiFetch } from "@/lib/api/aotms";
 
-type ProviderAgentRecord = {
-  provider: string;
-  deployment_id: string | null;
-  app_id: string | null;
-  app_version: number;
-  status: string;
+type CallingStatusRecord = {
+  enabled: boolean;
+  state: string;
   simulated: boolean;
-  synced_at: string | null;
-  error: string | null;
+  connected: boolean;
+  last_checked_at: string | null;
+  action_required: string | null;
 };
 
 /** The subset of `EmployeeOut` the dashboard reads. */
@@ -51,7 +49,8 @@ export type EmployeeRecord = {
   last_active_at: string | null;
   created_at: string;
   languages: { language_code: string; is_default: boolean }[];
-  provider_agent: ProviderAgentRecord | null;
+  configuration_version: number;
+  calling: CallingStatusRecord;
 };
 
 type EmployeePage = { items: EmployeeRecord[]; meta?: { total: number } };
@@ -136,17 +135,15 @@ function formatDate(value: string): string {
   });
 }
 
-function providerAgent(record: ProviderAgentRecord | null): ProviderAgent | null {
+function callingStatus(record: CallingStatusRecord | null): CallingStatus | null {
   if (!record) return null;
   return {
-    provider: record.provider,
-    deploymentId: record.deployment_id,
-    appId: record.app_id,
-    appVersion: record.app_version,
-    status: record.status,
+    enabled: record.enabled,
+    state: record.state,
     simulated: record.simulated,
-    syncedAt: record.synced_at,
-    error: record.error,
+    connected: record.connected,
+    lastCheckedAt: record.last_checked_at,
+    actionRequired: record.action_required,
   };
 }
 
@@ -190,7 +187,8 @@ export function toAgent(record: EmployeeRecord): Agent {
     actions: [],
     outcomes: [],
     createdAt: formatDate(record.created_at),
-    providerAgent: providerAgent(record.provider_agent),
+    configurationVersion: record.configuration_version,
+    calling: callingStatus(record.calling),
   };
 }
 
@@ -291,9 +289,17 @@ export async function setEmployeeStatus(id: string, status: AgentStatus): Promis
   return toAgent(record);
 }
 
-/** Re-run the Sarvam deployment for an employee (same agent, same number). */
-export async function deployEmployeeAgent(id: string): Promise<Agent> {
-  const record = await apiFetch<EmployeeRecord>(`/employees/${id}/agent`, {
+/** Turn calls on for an employee: the deploy step, made explicit. */
+export async function enableEmployeeCalling(id: string): Promise<Agent> {
+  const record = await apiFetch<EmployeeRecord>(`/employees/${id}/calling/enable`, {
+    method: "POST",
+  });
+  return toAgent(record);
+}
+
+/** Stop answering calls, keeping the number so it can come back. */
+export async function disableEmployeeCalling(id: string): Promise<Agent> {
+  const record = await apiFetch<EmployeeRecord>(`/employees/${id}/calling/disable`, {
     method: "POST",
   });
   return toAgent(record);
