@@ -1,0 +1,650 @@
+{
+  "schema": "modeling.program",
+  "schemaVersion": 1,
+  "kind": "model.create",
+  "intent": "author the AOTMS hero handset as parametric geometry",
+  "units": {
+    "length": "m",
+    "angle": "rad",
+    "time": "s"
+  },
+  "coordinateSystem": {
+    "handedness": "right",
+    "upAxis": "y",
+    "forwardAxis": "z"
+  },
+  "spatialEnvelope": {
+    "min": [
+      -0.0368,
+      -0.0745,
+      -0.0065
+    ],
+    "max": [
+      0.0368,
+      0.0745,
+      0.0044
+    ],
+    "tolerance": 0.0006
+  },
+  "requires": [
+    "modeling.feature.axis",
+    "modeling.feature.beveled-box",
+    "modeling.feature.box",
+    "modeling.feature.cylinder",
+    "modeling.parameters",
+    "modeling.scene",
+    "modeling.spatial-envelope"
+  ],
+  "parameters": [
+    {
+      "key": "device.width",
+      "dimension": "length",
+      "default": 0.072,
+      "min": 0.06,
+      "max": 0.09
+    },
+    {
+      "key": "device.height",
+      "dimension": "length",
+      "default": 0.149,
+      "min": 0.12,
+      "max": 0.18
+    },
+    {
+      "key": "device.depth",
+      "dimension": "length",
+      "default": 0.008,
+      "min": 0.006,
+      "max": 0.012
+    },
+    {
+      "key": "device.bevel",
+      "dimension": "length",
+      "default": 0.0035,
+      "min": 0.001,
+      "max": 0.0039
+    }
+  ],
+  "operations": [
+    {
+      "op": "appearance.define",
+      "opKey": "device.frame",
+      "key": "device.frame",
+      "baseColor": "#3A4049",
+      "metallic": 0.9,
+      "roughness": 0.32,
+      "emissive": "#000000"
+    },
+    {
+      "op": "appearance.define",
+      "opKey": "device.glass",
+      "key": "device.glass",
+      "baseColor": "#0A1020",
+      "metallic": 0.1,
+      "roughness": 0.12,
+      "emissive": "#2F9BFF"
+    },
+    {
+      "op": "appearance.define",
+      "opKey": "device.lens",
+      "key": "device.lens",
+      "baseColor": "#0B1016",
+      "metallic": 0.6,
+      "roughness": 0.08,
+      "emissive": "#000000"
+    },
+    {
+      "op": "appearance.define",
+      "opKey": "device.trim",
+      "key": "device.trim",
+      "baseColor": "#20262E",
+      "metallic": 0.75,
+      "roughness": 0.4,
+      "emissive": "#000000"
+    },
+    {
+      "op": "appearance.define",
+      "opKey": "device.mark",
+      "key": "device.mark",
+      "baseColor": "#F5F1E8",
+      "metallic": 0,
+      "roughness": 0.5,
+      "emissive": "#FF8A3D"
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.body.feature",
+      "key": "device.body.feature",
+      "feature": {
+        "type": "primitive.beveled-box",
+        "size": [
+          {
+            "kind": "param",
+            "key": "device.width"
+          },
+          {
+            "kind": "param",
+            "key": "device.height"
+          },
+          {
+            "kind": "param",
+            "key": "device.depth"
+          }
+        ],
+        "bevelRadius": {
+          "kind": "param",
+          "key": "device.bevel"
+        },
+        "bevelSegments": 4
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.screen.feature",
+      "key": "device.screen.feature",
+      "feature": {
+        "type": "primitive.box",
+        "size": [
+          0.064,
+          0.14,
+          0.0012
+        ]
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.lens.feature",
+      "key": "device.lens.feature",
+      "feature": {
+        "type": "primitive.cylinder",
+        "radius": 0.0052,
+        "height": 0.0018,
+        "radialSegments": 24,
+        "axis": "z"
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.lens-glass.feature",
+      "key": "device.lens-glass.feature",
+      "feature": {
+        "type": "primitive.cylinder",
+        "radius": 0.0032,
+        "height": 0.001,
+        "radialSegments": 24,
+        "axis": "z"
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.button.feature",
+      "key": "device.button.feature",
+      "feature": {
+        "type": "primitive.box",
+        "size": [
+          0.0014,
+          0.012,
+          0.0035
+        ]
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.island.feature",
+      "key": "device.island.feature",
+      "feature": {
+        "type": "primitive.beveled-box",
+        "size": [
+          0.03,
+          0.03,
+          0.0015
+        ],
+        "bevelRadius": 0.0006,
+        "bevelSegments": 2
+      }
+    },
+    {
+      "op": "feature.define",
+      "opKey": "device.slot.feature",
+      "key": "device.slot.feature",
+      "feature": {
+        "type": "primitive.box",
+        "size": [
+          0.014,
+          0.0011,
+          0.0004
+        ]
+      }
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.body.component",
+      "key": "device.body.component",
+      "feature": "device.body.feature",
+      "appearance": "device.frame"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.screen.component",
+      "key": "device.screen.component",
+      "feature": "device.screen.feature",
+      "appearance": "device.glass"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.lens.component",
+      "key": "device.lens.component",
+      "feature": "device.lens.feature",
+      "appearance": "device.lens"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.lens-glass.component",
+      "key": "device.lens-glass.component",
+      "feature": "device.lens-glass.feature",
+      "appearance": "device.glass"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.button.component",
+      "key": "device.button.component",
+      "feature": "device.button.feature",
+      "appearance": "device.trim"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.island.component",
+      "key": "device.island.component",
+      "feature": "device.island.feature",
+      "appearance": "device.trim"
+    },
+    {
+      "op": "component.define",
+      "opKey": "device.slot.component",
+      "key": "device.slot.component",
+      "feature": "device.slot.feature",
+      "appearance": "device.mark"
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.root",
+      "key": "device.root",
+      "name": "AOTMSDevice",
+      "transform": {
+        "translation": [
+          0,
+          0,
+          0
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.body",
+      "key": "device.body",
+      "name": "device.body",
+      "parent": "device.root",
+      "component": "device.body.component",
+      "transform": {
+        "translation": [
+          0,
+          0,
+          0
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.screen",
+      "key": "device.screen",
+      "name": "device.screen",
+      "parent": "device.root",
+      "component": "device.screen.component",
+      "transform": {
+        "translation": [
+          0,
+          0,
+          0.0035
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.camera-island",
+      "key": "device.camera-island",
+      "name": "device.camera-island",
+      "parent": "device.root",
+      "component": "device.island.component",
+      "transform": {
+        "translation": [
+          -0.0155,
+          0.0525,
+          -0.0046
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens.000",
+      "key": "device.lens.000",
+      "name": "device.lens.000",
+      "parent": "device.root",
+      "component": "device.lens.component",
+      "transform": {
+        "translation": [
+          -0.0215,
+          0.0585,
+          -0.0056
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens.001",
+      "key": "device.lens.001",
+      "name": "device.lens.001",
+      "parent": "device.root",
+      "component": "device.lens.component",
+      "transform": {
+        "translation": [
+          -0.0215,
+          0.0455,
+          -0.0056
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens.002",
+      "key": "device.lens.002",
+      "name": "device.lens.002",
+      "parent": "device.root",
+      "component": "device.lens.component",
+      "transform": {
+        "translation": [
+          -0.0095,
+          0.052,
+          -0.0056
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens-glass.000",
+      "key": "device.lens-glass.000",
+      "name": "device.lens-glass.000",
+      "parent": "device.root",
+      "component": "device.lens-glass.component",
+      "transform": {
+        "translation": [
+          -0.0215,
+          0.0585,
+          -0.0064
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens-glass.001",
+      "key": "device.lens-glass.001",
+      "name": "device.lens-glass.001",
+      "parent": "device.root",
+      "component": "device.lens-glass.component",
+      "transform": {
+        "translation": [
+          -0.0215,
+          0.0455,
+          -0.0064
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.lens-glass.002",
+      "key": "device.lens-glass.002",
+      "name": "device.lens-glass.002",
+      "parent": "device.root",
+      "component": "device.lens-glass.component",
+      "transform": {
+        "translation": [
+          -0.0095,
+          0.052,
+          -0.0064
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.button.power",
+      "key": "device.button.power",
+      "name": "device.button.power",
+      "parent": "device.root",
+      "component": "device.button.component",
+      "transform": {
+        "translation": [
+          0.0362,
+          0.02,
+          0
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.button.volume-up",
+      "key": "device.button.volume-up",
+      "name": "device.button.volume-up",
+      "parent": "device.root",
+      "component": "device.button.component",
+      "transform": {
+        "translation": [
+          -0.0362,
+          0.033,
+          0
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.button.volume-down",
+      "key": "device.button.volume-down",
+      "name": "device.button.volume-down",
+      "parent": "device.root",
+      "component": "device.button.component",
+      "transform": {
+        "translation": [
+          -0.0362,
+          0.017,
+          0
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.earpiece",
+      "key": "device.earpiece",
+      "name": "device.earpiece",
+      "parent": "device.root",
+      "component": "device.slot.component",
+      "transform": {
+        "translation": [
+          0,
+          0.0702,
+          0.0042
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "op": "occurrence.define",
+      "opKey": "device.brand-bar",
+      "key": "device.brand-bar",
+      "name": "device.brand-bar",
+      "parent": "device.root",
+      "component": "device.slot.component",
+      "transform": {
+        "translation": [
+          0,
+          -0.0702,
+          0.0042
+        ],
+        "rotationRad": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "budget": {
+    "maxBytes": 2097152,
+    "maxNodes": 32,
+    "maxVertices": 8000,
+    "maxTriangles": 8000,
+    "maxOperations": 48,
+    "maxGeneratedInstances": 24
+  }
+}

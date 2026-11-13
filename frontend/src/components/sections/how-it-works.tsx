@@ -24,7 +24,7 @@ export function HowItWorks() {
   const { demo } = howItWorks;
 
   return (
-    <section className="section overflow-hidden bg-surface">
+    <section className="section overflow-hidden bg-surface/80">
       <Container>
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-x-16 lg:gap-y-12">
           {/* Heading — the reading column starts here. */}

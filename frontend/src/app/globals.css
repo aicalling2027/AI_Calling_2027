@@ -481,12 +481,12 @@
     box-shadow: var(--elevation-pill);
   }
 
-  /* Frosted material for the nav pill and the panels it opens. A white tint
-     with a blurred backdrop, a hairline in brand navy to give the edge, and a
-     lift shadow. Over the hero's white field the hairline is what makes the
-     shape read, so it is not decorative. */
+  /* Frosted material for the panels the nav opens. A white tint with a
+     blurred backdrop, a hairline in brand navy to give the edge, and a lift
+     shadow. The tint is nearly opaque on purpose: at 0.72 the hero headline
+     showed through the Product panel and read as part of the menu. */
   .liquid-glass {
-    background-color: rgba(255, 255, 255, 0.72);
+    background-color: rgba(255, 255, 255, 0.95);
     -webkit-backdrop-filter: blur(24px) saturate(1.4) brightness(1.04);
     backdrop-filter: blur(24px) saturate(1.4) brightness(1.04);
     box-shadow:
@@ -494,6 +494,24 @@
       inset 0 0 0 1px rgba(13, 42, 107, 0.09),
       0 24px 48px -24px rgba(13, 42, 107, 0.35),
       0 2px 8px rgba(13, 42, 107, 0.06);
+  }
+
+  /* The nav chip is the only surface a header link ever gets: the bar itself
+     stays transparent. On hover it fills with a translucent white and takes
+     the two neumorphic insets, so the target reads as pressed rather than
+     painted. Triggers get the state attr; plain links rely on :hover alone. */
+  .nav-chip {
+    transition:
+      background-color 0.3s ease,
+      box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nav-chip:hover,
+  .nav-chip[data-state="open"] {
+    background-color: rgba(255, 255, 255, 0.78);
+    box-shadow:
+      inset 2px 2px 6px rgba(13, 42, 107, 0.12),
+      inset -2px -2px 6px rgba(255, 255, 255, 1);
   }
 
   /* The highlight that slides between dropdown rows. Same ingredients as the
@@ -528,11 +546,17 @@
     will-change: transform, width, height;
   }
 
-  /* Soft radial glows behind the hero — cobalt left, tangerine right. */
+  /* Soft radial glows behind the hero — cobalt left, tangerine right. The
+     cobalt is mixed down from the brand blue, not from its tint: the tint
+     (#dfe8fc) is almost white, so over the tangerine wash it washed out to
+     nothing and the blue shadow disappeared. The mix has to stay this strong
+     for the same reason — blue over a warm field neutralises long before it
+     reads as blue. */
   .glow-blue {
     background-image: radial-gradient(
       closest-side,
-      var(--cobalt-tint),
+      color-mix(in oklab, var(--cobalt) 46%, transparent),
+      color-mix(in oklab, var(--cobalt) 16%, transparent) 55%,
       transparent
     );
   }
@@ -543,6 +567,21 @@
       var(--tangerine-tint),
       transparent
     );
+  }
+
+  /* The hero device shot was supplied on its own pale-blue studio ground.
+     One gradient cannot feather four sides, so two are intersected: the phone
+     keeps its centre and its backdrop dissolves into the hero field instead
+     of ending on a rectangle. */
+  .hero-device {
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0%, #000 20%, #000 80%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 9%, #000 82%, transparent 100%);
+    mask-image:
+      linear-gradient(to right, transparent 0%, #000 20%, #000 80%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 9%, #000 82%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
   }
 
   /* Full-bleed dark band: white text, tangerine accents. Used once per page. */

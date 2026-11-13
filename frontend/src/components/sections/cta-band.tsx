@@ -1,7 +1,5 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
 import { Container } from "@/components/layout/container";
+import { FlowButton } from "@/components/ui/flow-button";
 
 type CtaAction = { label: string; href: string };
 
@@ -26,12 +24,17 @@ export function CtaBand({
   note,
 }: CtaBandProps) {
   return (
-    <section className="section section-night">
+    // `overflow-hidden` belongs to the full-bleed band, not to the content box:
+    // the glow is deliberately offset outside the content, and clipping it
+    // there would slice through its bright core and show a hard rectangle.
+    <section className="section section-night overflow-hidden">
       <Container>
-        <div className="relative overflow-hidden">
+        <div className="relative">
+          {/* A gradient rather than a blurred disc: it fades inside its own box,
+              so wherever the band clips it the edge is already transparent. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-coral/20 blur-3xl"
+            className="pointer-events-none absolute -right-20 -top-24 size-72 bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--tangerine)_32%,transparent),transparent)]"
           />
           <div className="relative grid gap-8 md:grid-cols-[1.3fr_0.7fr] md:items-end">
             <div>
@@ -49,19 +52,12 @@ export function CtaBand({
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
-              <Link
-                href={primary.href}
-                className="btn-fill btn-accent h-12 gap-2 px-7 text-sm [--btn-fill-color:var(--cobalt-night)] hover:text-white"
-              >
+              <FlowButton href={primary.href} size="lg" tone="night">
                 {primary.label}
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-              <Link
-                href={secondary.href}
-                className="btn-fill btn-on-night h-12 px-7 text-sm hover:text-ink"
-              >
+              </FlowButton>
+              <FlowButton href={secondary.href} size="lg" tone="nightQuiet">
                 {secondary.label}
-              </Link>
+              </FlowButton>
             </div>
           </div>
         </div>

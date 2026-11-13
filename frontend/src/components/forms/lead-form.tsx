@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
+import { FlowButton } from "@/components/ui/flow-button";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -233,10 +234,13 @@ export function LeadForm({ kind, submitLabel, intro }: LeadFormProps) {
           </label>
         </div>
 
-        <button
+        {/* The same CTA as the rest of the page, in submit form: `type`
+            overrides the component's `button` default, so Enter still submits. */}
+        <FlowButton
           type="submit"
+          size="lg"
           disabled={status === "submitting"}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-blue px-6 text-sm font-semibold text-white shadow-button transition-colors hover:bg-blue-deep disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          className="w-full gap-2 sm:w-auto"
         >
           {status === "submitting" ? (
             <>
@@ -246,7 +250,7 @@ export function LeadForm({ kind, submitLabel, intro }: LeadFormProps) {
           ) : (
             submitLabel
           )}
-        </button>
+        </FlowButton>
 
         <div role="status" aria-live="polite" className="text-sm">
           {status === "sent" ? (

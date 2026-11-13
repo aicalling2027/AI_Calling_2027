@@ -8,7 +8,7 @@ const icons = [Phone, RotateCw, ShieldCheck, ListChecks];
 
 export function FeatureGrid() {
   return (
-    <section className="section bg-ivory">
+    <section className="section bg-ivory/80">
       <Container>
         <p className="eyebrow">{featureGrid.eyebrow}</p>
         <h2 className="display mt-3 max-w-2xl text-3xl leading-tight md:text-4xl">

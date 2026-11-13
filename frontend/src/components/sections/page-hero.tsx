@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 
 import { Container } from "@/components/layout/container";
 import BlurText from "@/components/reactbits/BlurText";
-import { buttonVariants } from "@/components/ui/button";
+import { FlowButton } from "@/components/ui/flow-button";
 import { cn } from "@/lib/utils";
 
 export type Crumb = { label: string; href?: string };
@@ -125,19 +125,14 @@ export function PageHero({
             {actions.length ? (
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 {actions.map((action) => (
-                  <Link
+                  <FlowButton
                     key={action.href + action.label}
                     href={action.href}
-                    className={cn(
-                      buttonVariants({
-                        variant: action.tone === "secondary" ? "outline" : "default",
-                        size: "lg",
-                      }),
-                      "h-12 px-7 text-sm",
-                    )}
+                    size="lg"
+                    tone={action.tone === "secondary" ? "quiet" : "default"}
                   >
                     {action.label}
-                  </Link>
+                  </FlowButton>
                 ))}
               </div>
             ) : null}

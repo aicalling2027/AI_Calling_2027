@@ -1,11 +1,10 @@
-import Link from "next/link";
-
 import { Container } from "@/components/layout/container";
+import { FlowButton } from "@/components/ui/flow-button";
 import { pricingSection } from "@/content/home";
 
 export function PricingSection() {
   return (
-    <section className="section bg-ivory">
+    <section className="section bg-ivory/80">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">{pricingSection.eyebrow}</p>
@@ -17,18 +16,12 @@ export function PricingSection() {
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/contact"
-              className="btn-glass inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold"
-            >
+            <FlowButton href="/contact" tone="default">
               Request a quote
-            </Link>
-            <Link
-              href="/pricing"
-              className="btn-glass inline-flex h-11 items-center rounded-full px-6 text-sm font-medium text-ink-soft"
-            >
+            </FlowButton>
+            <FlowButton href="/pricing" tone="quiet">
               Pricing overview
-            </Link>
+            </FlowButton>
           </div>
 
           <p className="mt-5 text-xs text-ink-soft">{pricingSection.note}</p>

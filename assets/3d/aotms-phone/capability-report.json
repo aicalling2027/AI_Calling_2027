@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "profile": "qoder-glb-safe",
+  "status": "complete",
+  "capabilities": [
+    {
+      "id": "artifact.glb.create",
+      "status": "implemented",
+      "evidence": [
+        "revision:1"
+      ]
+    },
+    {
+      "id": "transaction.dry-run",
+      "status": "implemented",
+      "evidence": [
+        "lifecycle:createModelBundle"
+      ]
+    },
+    {
+      "id": "transaction.expected-state",
+      "status": "implemented",
+      "evidence": [
+        "state:sha256:772cb8ea9c7d8b32ad69a4ca5415c3d22ea152b7630fda28fffb06f313f9ab77"
+      ]
+    },
+    {
+      "id": "project.sidecar",
+      "status": "implemented",
+      "evidence": [
+        "revision:1"
+      ]
+    },
+    {
+      "id": "validation.khronos",
+      "status": "implemented",
+      "evidence": [
+        "profile:qoder-glb-safe"
+      ]
+    },
+    {
+      "id": "validation.spatial-envelope",
+      "status": "implemented",
+      "evidence": [
+        "preflight:world-bounds"
+      ]
+    },
+    {
+      "id": "geometry.primitive.beveled-box",
+      "status": "implemented",
+      "evidence": [
+        "feature:device.body.feature",
+        "feature:device.island.feature"
+      ]
+    },
+    {
+      "id": "geometry.primitive.box",
+      "status": "implemented",
+      "evidence": [
+        "feature:device.screen.feature",
+        "feature:device.button.feature",
+        "feature:device.slot.feature"
+      ]
+    },
+    {
+      "id": "geometry.primitive.cylinder",
+      "status": "implemented",
+      "evidence": [
+        "feature:device.lens.feature",
+        "feature:device.lens-glass.feature"
+      ]
+    },
+    {
+      "id": "geometry.axis",
+      "status": "implemented",
+      "evidence": [
+        "feature:device.lens.feature:z",
+        "feature:device.lens-glass.feature:z"
+      ]
+    },
+    {
+      "id": "node.hierarchy.create",
+      "status": "implemented",
+      "evidence": [
+        "occurrence:device.body",
+        "occurrence:device.screen",
+        "occurrence:device.camera-island",
+        "occurrence:device.lens.000",
+        "occurrence:device.lens.001",
+        "occurrence:device.lens.002",
+        "occurrence:device.lens-glass.000",
+        "occurrence:device.lens-glass.001",
+        "occurrence:device.lens-glass.002",
+        "occurrence:device.button.power",
+        "occurrence:device.button.volume-up",
+        "occurrence:device.button.volume-down",
+        "occurrence:device.earpiece",
+        "occurrence:device.brand-bar"
+      ]
+    },
+    {
+      "id": "geometry.edit",
+      "status": "unsupported",
+      "evidence": [
+        "profile:qoder-glb-safe"
+      ]
+    },
+    {
+      "id": "animation.edit",
+      "status": "unsupported",
+      "evidence": [
+        "profile:qoder-glb-safe"
+      ]
+    },
+    {
+      "id": "texture.import",
+      "status": "unsupported",
+      "evidence": [
+        "profile:qoder-glb-safe"
+      ]
+    }
+  ]
+}

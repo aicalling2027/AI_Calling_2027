@@ -7,6 +7,7 @@ import { ChevronDown, LayoutGrid, LogOut, UserRound } from "lucide-react";
 
 import { UserAvatar } from "@/components/auth/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
+import { FlowButton } from "@/components/ui/flow-button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthUser } from "@/lib/supabase/use-auth-user";
 import { userDisplayName } from "@/lib/user";
@@ -68,19 +69,21 @@ export function AuthNav() {
 
   if (auth.status === "signed-out") {
     return (
-      <Link
+      <FlowButton
         href="/login"
         aria-label="Sign in"
-        className={cn(
-          buttonVariants({ variant: "glass", size: "lg" }),
-          "h-10 gap-2 px-3 text-sm xl:px-4",
-        )}
+        size="sm"
+        tone="quiet"
+        arrow={false}
+        className="size-10 px-0 xl:w-auto xl:px-8"
       >
-        <UserRound className="size-4" />
-        {/* Below xl the header collapses to icons, so the label comes back
-            only when the full navigation is visible. */}
-        <span className="hidden xl:inline">Sign in</span>
-      </Link>
+        <span className="flex items-center gap-2">
+          <UserRound className="size-4" />
+          {/* Below xl the header collapses to icons, so the label comes back
+              only when the full navigation is visible. */}
+          <span className="hidden xl:inline">Sign in</span>
+        </span>
+      </FlowButton>
     );
   }
 
@@ -88,8 +91,7 @@ export function AuthNav() {
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
+      <FlowButton
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls="account-menu"
@@ -100,16 +102,26 @@ export function AuthNav() {
             open: !(current.pathname === pathname && current.open),
           }))
         }
-        className="btn-glass flex cursor-pointer items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1"
+        // The avatar is the icon, so the arrows stay out and the pill only
+        // changes geometry and colour on hover.
+        size="sm"
+        arrow={false}
+        className="pl-1 pr-2.5"
       >
-        <UserAvatar user={user} />
-        <ChevronDown
-          className={cn(
-            "size-3.5 text-ink-soft transition-transform",
-            open && "rotate-180",
-          )}
-        />
-      </button>
+        {/* FlowButton wraps its children in an inline label, so the row has to
+            be built here: with no flex parent the chevron baseline-aligns
+            against the square avatar and hangs low. */}
+        <span className="flex items-center gap-1.5">
+          <UserAvatar user={user} />
+          <ChevronDown
+            aria-hidden
+            className={cn(
+              "size-3.5 shrink-0 text-ink-soft transition-transform group-hover:text-white",
+              open && "rotate-180",
+            )}
+          />
+        </span>
+      </FlowButton>
 
       {open ? (
         <div
@@ -172,16 +184,18 @@ export function AuthNavMobile() {
 
   if (auth.status === "signed-out") {
     return (
-      <Link
+      <FlowButton
         href="/login"
-        className={cn(
-          buttonVariants({ variant: "glass", size: "lg" }),
-          "h-11 w-full gap-2 text-sm",
-        )}
+        size="sm"
+        tone="quiet"
+        arrow={false}
+        className="h-11 w-full text-sm"
       >
-        <UserRound className="size-4" />
-        Sign in
-      </Link>
+        <span className="flex items-center gap-2">
+          <UserRound className="size-4" />
+          Sign in
+        </span>
+      </FlowButton>
     );
   }
 

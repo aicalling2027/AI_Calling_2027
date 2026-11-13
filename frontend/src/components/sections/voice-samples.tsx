@@ -159,7 +159,7 @@ export function VoiceSamples() {
   );
 
   return (
-    <section id="voices" className="section bg-cream">
+    <section id="voices" className="section bg-cream/80">
       <Container>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>

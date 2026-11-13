@@ -1,10 +1,7 @@
-import Link from "next/link";
-
 import { Container } from "@/components/layout/container";
-import { buttonVariants } from "@/components/ui/button";
+import { FlowButton } from "@/components/ui/flow-button";
 import { ToolGlyph, toolMarks } from "@/components/ui/tool-marks";
 import { integrations } from "@/content/home";
-import { cn } from "@/lib/utils";
 
 /**
  * The tool strip that sits directly under the hero: where leads come from and
@@ -13,7 +10,7 @@ import { cn } from "@/lib/utils";
  */
 export function Integrations() {
   return (
-    <section className="section bg-mist">
+    <section className="section bg-mist/75">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">{integrations.eyebrow}</p>
@@ -42,15 +39,9 @@ export function Integrations() {
         </ul>
 
         <div className="mt-8 flex flex-col items-center gap-3">
-          <Link
-            href={integrations.cta.href}
-            className={cn(
-              buttonVariants({ variant: "glass", size: "lg" }),
-              "h-11 px-6 text-sm",
-            )}
-          >
+          <FlowButton href={integrations.cta.href}>
             {integrations.cta.label}
-          </Link>
+          </FlowButton>
           <p className="max-w-md text-center text-xs leading-relaxed text-ink-soft">
             {integrations.note}
           </p>

@@ -12,7 +12,7 @@ export function UseCases() {
     useCases.tabs.find((tab) => tab.id === active) ?? useCases.tabs[0];
 
   return (
-    <section className="section bg-surface">
+    <section className="section bg-surface/80">
       <Container>
         <p className="eyebrow">{useCases.eyebrow}</p>
         <h2 className="display mt-3 max-w-2xl text-3xl leading-tight md:text-4xl">

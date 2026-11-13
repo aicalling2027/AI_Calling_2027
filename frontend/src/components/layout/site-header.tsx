@@ -26,10 +26,8 @@ import {
 
 import { AuthNav, AuthNavMobile } from "@/components/auth/auth-nav";
 import { Container } from "@/components/layout/container";
-import {
-  LiquidNavLayer,
-  LiquidPanelGlass,
-} from "@/components/ui/liquid-nav-layer";
+import { FlowButton } from "@/components/ui/flow-button";
+import { LiquidPanelGlass } from "@/components/ui/liquid-nav-layer";
 import { MenuToggleIcon } from "@/components/ui/menu-toggle-icon";
 import {
   NavigationMenu,
@@ -456,7 +454,7 @@ export function SiteHeader() {
         "z-50 w-full border-b transition-[background-color,border-color,box-shadow] duration-300",
         overHero ? "fixed inset-x-0 top-0" : "sticky top-0",
         scrolled
-          ? "border-line bg-white/85 shadow-[0_18px_40px_-34px_rgba(13,42,107,0.8)] backdrop-blur-xl"
+          ? "border-line bg-white/85 backdrop-blur-xl shadow-[0_18px_40px_-34px_rgba(13,42,107,0.8)]"
           : "border-transparent bg-transparent",
       )}
     >
@@ -467,31 +465,22 @@ export function SiteHeader() {
             aria-label={`${site.legalName} home`}
             className="flex shrink-0 cursor-pointer items-center"
           >
-            {/* The artwork carries a white box, so it sits on a white pill. */}
-            <span className="brand-pill">
-              <Image
-                src={site.logo.src}
-                alt={site.logo.alt}
-                width={site.logo.width}
-                height={site.logo.height}
-                priority
-                className="h-8 w-auto md:h-9"
-              />
-            </span>
+            {/* On the hero the bar has no ground of its own, so the logo sits
+                straight on the page instead of on the white pill the footer
+                still needs. */}
+            <Image
+              src={site.logo.src}
+              alt={site.logo.alt}
+              width={site.logo.width}
+              height={site.logo.height}
+              priority
+              className="h-8 w-auto md:h-9"
+            />
           </Link>
 
-          {/* The desktop links sit on a pill of water. The layer is purely
-              decorative, so it is a sibling of the menu rather than a wrapper:
-              Radix positions the shared panel against the menu, and nesting
-              the list would move it. */}
-          <div
-            data-liquid-nav
-            className="relative hidden self-stretch items-center xl:flex"
-          >
-            <LiquidNavLayer
-              tone="light"
-              className="inset-y-2 -inset-x-3 rounded-full"
-            />
+          {/* The desktop links sit directly on the page: no plate, no bar. The
+              chip presses in on hover, which is the only surface they get. */}
+          <div className="relative hidden self-stretch items-center xl:flex">
             <NavigationMenu
               aria-label="Main"
               delayDuration={120}
@@ -501,21 +490,20 @@ export function SiteHeader() {
               // self-stretch makes the menu as tall as the header bar, so the
               // shared viewport hangs from the header edge instead of the text
               // baseline. The colour comes from the bar through `text-current`.
-              className="relative z-10 self-stretch text-ink-soft xl:flex"
+              className="relative z-10 self-stretch text-ink/85 xl:flex"
             >
               <NavigationMenuList>
                 {primaryNav.map((item) =>
                   item.children ? (
                     <NavigationMenuItem key={item.label}>
                       <NavigationMenuTrigger
-                        data-liquid-item
                         aria-current={
                           itemIsActive(pathname, item) ? "page" : undefined
                         }
-                        // No fill on hover or open: the water drop behind the row
-                        // is what marks the target now.
+                        // Hover and open both press the chip in; the fill is
+                        // owned by .nav-chip so the utility can't override it.
                         className={cn(
-                          "cursor-pointer hover:bg-transparent hover:text-ink data-[state=open]:bg-transparent data-[state=open]:text-ink",
+                          "nav-chip cursor-pointer hover:text-ink data-[state=open]:text-ink",
                           itemIsActive(pathname, item) && "text-cobalt-deep",
                         )}
                       >
@@ -533,7 +521,6 @@ export function SiteHeader() {
                     <NavigationMenuItem key={item.label}>
                       <NavigationMenuLink asChild>
                         <Link
-                          data-liquid-item
                           href={item.href ?? "#"}
                           aria-current={
                             itemIsActive(pathname, item) ? "page" : undefined
@@ -543,7 +530,7 @@ export function SiteHeader() {
                           // so Tailwind order — not our intent — would decide.
                           className={cn(
                             navigationMenuTriggerStyle(),
-                            "cursor-pointer hover:bg-transparent hover:text-ink",
+                            "nav-chip cursor-pointer hover:text-ink",
                             itemIsActive(pathname, item) && "text-cobalt-deep",
                           )}
                         >
@@ -555,12 +542,10 @@ export function SiteHeader() {
                 )}
 
                 {/* API and Docs are a pair, not two loose buttons, so they get
-                    their own trigger beside Resources. The trigger joins the
-                    water like any other item. */}
+                    their own trigger beside Resources. */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger
-                    data-liquid-item
-                    className="cursor-pointer hover:bg-transparent hover:text-ink data-[state=open]:bg-transparent data-[state=open]:text-ink"
+                    className="nav-chip cursor-pointer hover:text-ink data-[state=open]:text-ink"
                   >
                     Developers
                   </NavigationMenuTrigger>
@@ -578,25 +563,26 @@ export function SiteHeader() {
               account entry at all. */}
           <div className="flex items-center gap-2">
             <div className="hidden xl:block">
-              <Link
-                href={cta.primary.href}
-                className="btn-glass inline-flex h-10 cursor-pointer items-center justify-center rounded-full px-4 text-sm font-semibold"
-              >
+              <FlowButton href={cta.primary.href} size="sm" tone="brand">
                 {cta.primary.label}
-              </Link>
+              </FlowButton>
             </div>
             <AuthNav />
 
-            <button
-              type="button"
-              className="btn-glass inline-flex size-10 cursor-pointer items-center justify-center rounded-full text-ink xl:hidden"
+            {/* Same pill as the two controls beside it: below xl this is the
+                third member of the corner, so a glass button here would be
+                the odd one out. */}
+            <FlowButton
+              arrow={false}
+              size="sm"
+              className="size-10 px-0 xl:hidden"
               aria-expanded={mobileOpen}
               aria-controls="mobile-nav"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobile({ pathname, open: !mobileOpen })}
             >
               <MenuToggleIcon open={mobileOpen} className="size-5" />
-            </button>
+            </FlowButton>
           </div>
         </div>
       </Container>
@@ -674,12 +660,14 @@ export function SiteHeader() {
           </nav>
 
           <div className="mt-auto flex flex-col gap-2 pt-8">
-            <Link
+            <FlowButton
               href={cta.primary.href}
-              className="btn-glass inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-full text-sm font-semibold"
+              size="sm"
+              tone="brand"
+              className="h-11 w-full text-sm"
             >
               {cta.primary.label}
-            </Link>
+            </FlowButton>
             <AuthNavMobile />
           </div>
         </Container>

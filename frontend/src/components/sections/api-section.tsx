@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { Check } from "lucide-react";
 
 import { Container } from "@/components/layout/container";
+import { FlowButton } from "@/components/ui/flow-button";
 import { apiSection } from "@/content/home";
 
 export function ApiSection() {
   return (
-    <section className="section bg-surface">
+    <section className="section bg-surface/80">
       <Container>
         <div className="overflow-hidden rounded-2xl bg-blue-tint px-6 py-10 md:px-12 md:py-14">
           <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
@@ -18,12 +18,9 @@ export function ApiSection() {
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-ink-soft md:text-base">
                 {apiSection.body}
               </p>
-              <Link
-                href="/contact"
-                className="btn-glass mt-7 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold"
-              >
+              <FlowButton href="/contact" className="mt-7">
                 Request API access
-              </Link>
+              </FlowButton>
             </div>
 
             <ul className="space-y-3">

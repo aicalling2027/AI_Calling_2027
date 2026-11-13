@@ -9,15 +9,13 @@
 
 export const hero = {
   // TODO(AOTMS): final hero headline.
-  title: "AI voice calling, built for your business.",
-  /** The word drawn in coral with a hand-drawn underline. Must appear in `title`. */
-  highlight: "business",
+  title: "AI Automatic voice calling, built for your business",
+  /** The small label above the headline: what the product is, in one line. */
+  eyebrow: "AI voice agents for inbound and outbound",
   // TODO(AOTMS): final hero subheading.
   subtitle:
     "AOTMS Global runs multilingual AI voice agents for inbound and outbound calls, so your team spends its time on the conversations that need a human.",
   /** One extra line between the subheading and the buttons: the three products. */
-  note: "Inbound answering, outbound campaigns and instant lead callbacks — one system, on the numbers you already own.",
-  /** Short, checkable statements under the hero buttons. No invented claims. */
   trust: [
     "Multilingual voice agents",
     "Inbound and outbound calls",
