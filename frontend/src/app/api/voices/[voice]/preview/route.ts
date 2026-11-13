@@ -9,8 +9,12 @@ import { NextResponse } from "next/server";
  */
 const API_BASE = (process.env.AOTMS_API_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
 
-/** Speakers are lowercase slugs; anything else is not worth forwarding. */
-const VOICE_ID = /^[a-z][a-z0-9-]{1,30}$/;
+/**
+ * Speaker ids are either a legacy slug (`shubh`) or a dashed UUID
+ * (`01a0cf16-7021-76f7-a0cc-9d065cdb30a8`); anything else is not worth
+ * forwarding.
+ */
+const VOICE_ID = /^[a-z0-9][a-z0-9-]{1,40}$/i;
 
 export async function GET(_request: Request, context: { params: Promise<{ voice: string }> }) {
   const { voice } = await context.params;

@@ -11,7 +11,6 @@ import {
   Loader2,
   Mic,
   Paperclip,
-  Play,
   Sparkles,
   Square,
   Wand2,
@@ -27,6 +26,7 @@ import {
 } from "@/components/dashboard/ui/kit";
 import { LanguageDropdown } from "@/components/dashboard/ui/language-dropdown";
 import { SelectCard } from "@/components/dashboard/ui/select-card";
+import { VoicePreview } from "@/components/dashboard/ui/voice-preview";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
   initialsOf,
   templateById,
   voiceById,
+  voiceSampleSources,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +67,6 @@ export default function NewEmployeePage() {
   const [error, setError] = React.useState<string | null>(null);
   const [building, setBuilding] = React.useState(false);
   const [listening, setListening] = React.useState(false);
-  const [preview, setPreview] = React.useState<VoiceId | null>(null);
 
   const fileRef = React.useRef<HTMLInputElement>(null);
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -119,11 +119,6 @@ export default function NewEmployeePage() {
       setPrompt((current) => `${current}${current.endsWith(".") ? "" : "."}${SAMPLE_DICTATION}`);
       setListening(false);
     }, 2200);
-  };
-
-  const previewVoice = (id: VoiceId) => {
-    setPreview(id);
-    later(() => setPreview((current) => (current === id ? null : current)), 2400);
   };
 
   const onPickFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,7 +197,7 @@ export default function NewEmployeePage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
           {/* Prompt composer ------------------------------------------------ */}
-          <section className="rounded-xl border border-line bg-surface p-4">
+          <section className="rounded-xl border border-line bg-mist p-4">
             <div className="flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-lg bg-cobalt-tint text-cobalt-deep">
                 <Wand2 className="size-4" />
@@ -219,7 +214,7 @@ export default function NewEmployeePage() {
               onChange={(event) => setPrompt(event.target.value)}
               rows={4}
               aria-label="Employee instruction"
-              className="mt-3 w-full resize-y rounded-lg border border-line bg-mist-soft/60 p-3 text-sm leading-relaxed text-ink outline-none transition-colors focus-visible:border-cobalt focus-visible:bg-surface focus-visible:ring-3 focus-visible:ring-cobalt/15"
+              className="mt-3 w-full resize-y rounded-lg border border-line bg-surface p-3 text-sm leading-relaxed text-ink outline-none transition-colors focus-visible:border-cobalt focus-visible:bg-surface focus-visible:ring-3 focus-visible:ring-cobalt/15"
             />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
@@ -230,7 +225,7 @@ export default function NewEmployeePage() {
                   "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
                   listening
                     ? "bg-destructive/10 text-destructive"
-                    : "bg-mist text-ink-soft hover:text-ink",
+                    : "bg-surface text-ink-soft ring-1 ring-line hover:text-ink",
                 )}
               >
                 {listening ? <Square className="size-3.5" /> : <Mic className="size-3.5" />}
@@ -239,7 +234,7 @@ export default function NewEmployeePage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-mist px-2.5 text-xs font-medium text-ink-soft transition-colors hover:text-ink"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-surface px-2.5 text-xs font-medium text-ink-soft ring-1 ring-line transition-colors hover:text-ink"
               >
                 <Paperclip className="size-3.5" />
                 Attach knowledge
@@ -265,7 +260,7 @@ export default function NewEmployeePage() {
                       onClick={() =>
                         setFiles((current) => current.filter((item) => item !== file))
                       }
-                      className="inline-flex items-center gap-1 rounded-md bg-mist px-2 py-1 text-[11px] text-ink-soft hover:text-ink"
+                      className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] text-ink-soft ring-1 ring-line hover:text-ink"
                       aria-label={`Remove ${file.name}`}
                     >
                       <FileText className="size-3" />
@@ -440,31 +435,21 @@ export default function NewEmployeePage() {
             hint="Preview a voice before you commit. You can change it later in the workspace."
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              {VOICES.map((item) => (
+              {VOICES.map((item, index) => (
                 <SelectCard
                   key={item.id}
                   selected={voiceId === item.id}
                   onSelect={() => setVoiceId(item.id)}
                   title={item.name}
-                  description={`${item.gender} · ${item.tone}`}
+                  description={
+                    item.gender === "Unspecified"
+                      ? item.tone
+                      : `${item.gender} · ${item.tone}`
+                  }
                   meta={item.language}
                   icon={<Mic className="size-4" />}
                 >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      previewVoice(item.id);
-                    }}
-                    className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md bg-surface px-2 text-[11px] font-medium text-ink-soft ring-1 ring-line transition-colors hover:text-ink"
-                  >
-                    {preview === item.id ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <Play className="size-3" />
-                    )}
-                    {preview === item.id ? "Playing sample…" : "Preview voice"}
-                  </button>
+                  <VoicePreview sources={voiceSampleSources(item, index + 1)} />
                 </SelectCard>
               ))}
             </div>
@@ -500,7 +485,7 @@ export default function NewEmployeePage() {
 
         {/* Summary --------------------------------------------------------- */}
         <aside className="h-fit space-y-3 xl:sticky xl:top-20">
-          <section className="rounded-xl border border-line bg-surface p-4">
+          <section className="rounded-xl border border-line bg-mist p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft">
               Preview
             </p>
@@ -534,7 +519,7 @@ export default function NewEmployeePage() {
               />
             </dl>
 
-            <div className="mt-4 rounded-lg bg-mist-soft p-3 text-[11px] leading-relaxed text-ink-soft">
+            <div className="mt-4 rounded-lg bg-surface p-3 text-[11px] leading-relaxed text-ink-soft ring-1 ring-line">
               New employees start as <span className="font-semibold text-ink">Draft</span>.
               Activate from the workspace once the phone number and outcomes are set.
             </div>
@@ -590,9 +575,9 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-line bg-surface p-4">
+    <section className="rounded-xl border border-line bg-mist p-4">
       <div className="flex items-start gap-3">
-        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-mist text-[11px] font-semibold text-ink-soft">
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface text-[11px] font-semibold text-ink-soft ring-1 ring-line">
           {step}
         </span>
         <div className="min-w-0 flex-1">

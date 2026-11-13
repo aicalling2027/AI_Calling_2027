@@ -192,6 +192,9 @@ export const LANGUAGES = [
   "Urdu",
   "Nepali",
   "Konkani",
+  "Sanskrit",
+  "Maithili",
+  "Sindhi",
 ];
 
 /** Native script, badge glyph and accent used by the language dropdowns. */
@@ -213,6 +216,9 @@ export const LANGUAGE_META: Record<string, LanguageMeta> = {
   Urdu: { native: "اردو", badge: "ار", accent: "#4338ca" },
   Nepali: { native: "नेपाली", badge: "ने", accent: "#7e22ce" },
   Konkani: { native: "कोंकणी", badge: "कों", accent: "#9a3412" },
+  Sanskrit: { native: "संस्कृतम्", badge: "सं", accent: "#57534e" },
+  Maithili: { native: "मैथिली", badge: "मै", accent: "#155e75" },
+  Sindhi: { native: "سنڌي", badge: "سن", accent: "#9d174d" },
 };
 
 /** Backend language codes (BCP-47). The UI shows the display name, the API
@@ -233,6 +239,9 @@ export const LANGUAGE_CODES: Record<string, string> = {
   Urdu: "ur-IN",
   Nepali: "ne-IN",
   Konkani: "kok-IN",
+  Sanskrit: "sa-IN",
+  Maithili: "mai-IN",
+  Sindhi: "sd-IN",
 };
 
 export const languageCode = (name: string) => LANGUAGE_CODES[name] ?? "en-IN";
@@ -280,23 +289,69 @@ export const MODELS: {
   },
 ];
 
+/** `Unspecified` is used where the catalogue does not label the voice. */
+export type VoiceGender = "Female" | "Male" | "Unspecified";
+
+/**
+ * The voice catalogue, in catalogue order.
+ *
+ * Three rules shape this list:
+ *
+ * - `id` is the identifier the catalogue issues and the only value stored on an
+ *   employee. It is never rendered: the card shows `name`, so the customer sees
+ *   a colleague, not a provider object.
+ * - `slug` is a stable handle for templates, which are written by name.
+ * - `gender` says "Unspecified" when the catalogue does not label the voice.
+ *   The nine original presets keep their labels so existing employees read the
+ *   same as before.
+ *
+ * Audio samples live in `public/voices`; see `voiceSampleSources` for the
+ * filenames that are accepted.
+ */
 export const VOICES: {
   id: VoiceId;
+  slug: string;
   name: string;
-  gender: "Female" | "Male";
+  gender: VoiceGender;
   language: string;
   tone: string;
 }[] = [
-  { id: "shubh", name: "Shubh", gender: "Male", language: "English, Hindi, Tamil", tone: "Confident" },
-  { id: "tanya", name: "Tanya", gender: "Female", language: "English, Hindi, Bengali", tone: "Friendly" },
-  { id: "anand", name: "Anand", gender: "Male", language: "English, Hindi, Telugu", tone: "Warm" },
-  { id: "sunny", name: "Sunny", gender: "Male", language: "English, Hindi, Malayalam", tone: "Cheerful" },
-  { id: "mani", name: "Mani", gender: "Male", language: "English, Hindi, Kannada", tone: "Calm" },
-  { id: "kabir", name: "Kabir", gender: "Male", language: "English, Hindi, Gujarati", tone: "Steady" },
-  { id: "priya", name: "Priya", gender: "Female", language: "English, Hindi, Marathi", tone: "Precise" },
-  { id: "kavya", name: "Kavya", gender: "Female", language: "Hindi, Marathi", tone: "Calm" },
-  { id: "ritu", name: "Ritu", gender: "Female", language: "Hindi, English", tone: "Warm" },
+  { id: "01a0cf16-7021-76f7-a0cc-9d065cdb30a8", slug: "shubh", name: "Shubh", gender: "Male", language: "English, Hindi, Tamil", tone: "Confident" },
+  { id: "01a0cf16-5726-7055-8622-322e53f6bc77", slug: "tanya", name: "Tanya", gender: "Female", language: "English, Hindi, Bengali", tone: "Friendly" },
+  { id: "01a0cf16-73d4-78aa-a416-c593287484db", slug: "anand", name: "Anand", gender: "Male", language: "English, Hindi, Telugu", tone: "Warm" },
+  { id: "01a0cf16-6001-7fac-b2c3-96de29fc6cd6", slug: "sunny", name: "Sunny", gender: "Male", language: "English, Hindi, Malayalam", tone: "Cheerful" },
+  { id: "01a0cf16-729b-720b-bf53-1e18c3d5a5da", slug: "mani", name: "Mani", gender: "Male", language: "English, Hindi, Kannada", tone: "Calm" },
+  { id: "01a0cf16-655d-78cb-8b68-a000a3e4878e", slug: "kabir", name: "Kabir", gender: "Male", language: "English, Hindi, Gujarati", tone: "Steady" },
+  { id: "01a0cf16-6ecd-7a97-b86b-f91eeadd5bd7", slug: "priya", name: "Priya", gender: "Female", language: "English, Hindi, Marathi", tone: "Precise" },
+  { id: "01a0cf16-6b54-7b44-8dff-e67586a9762a", slug: "kavya", name: "Kavya", gender: "Female", language: "Hindi, Marathi", tone: "Calm" },
+  { id: "01a0cf16-5a52-747d-8900-0a77b9f5402c", slug: "ritu", name: "Ritu", gender: "Female", language: "Hindi, English", tone: "Warm" },
+  { id: "01a0cf16-68c6-7341-8408-bceec24a6a06", slug: "aarav", name: "Aarav", gender: "Unspecified", language: "All supported languages", tone: "Clear" },
+  { id: "01a0cf16-5c61-787d-a83f-ae54ce8c0f96", slug: "meera", name: "Meera", gender: "Unspecified", language: "All supported languages", tone: "Bright" },
+  { id: "01a0cf16-7179-7472-b7df-b7b432d5faa5", slug: "ishaan", name: "Ishaan", gender: "Unspecified", language: "All supported languages", tone: "Assured" },
+  { id: "01a0cf16-6c54-746b-815a-2e1cf51a473a", slug: "ananya", name: "Ananya", gender: "Unspecified", language: "All supported languages", tone: "Gentle" },
+  { id: "01a0cf16-6a07-7cee-b592-494b2d213be1", slug: "diya", name: "Diya", gender: "Unspecified", language: "All supported languages", tone: "Lively" },
 ];
+
+/** The id behind a stable slug, for templates written against a voice name. */
+export const voiceIdBySlug = (slug: string) =>
+  VOICES.find((voice) => voice.slug === slug)?.id ?? VOICES[0].id;
+
+/**
+ * Filenames a sample may live at, tried in order.
+ *
+ * The id is preferred. The 1-based position is accepted as well, so files can
+ * be dropped into `public/voices` as `01.mp3`, `02.mp3`, ... without renaming.
+ */
+export function voiceSampleSources(
+  voice: { id: string },
+  position: number,
+): string[] {
+  return [
+    `/voices/${voice.id}.mp3`,
+    `/voices/${String(position).padStart(2, "0")}.mp3`,
+    `/voices/${voice.id}.wav`,
+  ];
+}
 
 export const TEMPLATES: {
   id: string;
@@ -313,7 +368,7 @@ export const TEMPLATES: {
     category: "Insurance & Finance",
     role: "Renewal specialist",
     languages: ["Hindi", "English"],
-    voiceId: "kabir",
+    voiceId: voiceIdBySlug("kabir"),
     prompt:
       "You are a renewal specialist for a health insurer. Confirm the customer's policy number, explain the renewal amount, handle price objections, and offer a callback slot if they are not ready to pay today. Never quote a discount you were not given.",
   },
@@ -323,7 +378,7 @@ export const TEMPLATES: {
     category: "Travel & Tourism",
     role: "Travel consultant",
     languages: ["English", "Hindi"],
-    voiceId: "tanya",
+    voiceId: voiceIdBySlug("tanya"),
     prompt:
       "You are a travel consultant. Understand destination, travel dates, number of travellers and budget, then suggest two packages. Offer to email the itinerary and book a follow-up call.",
   },
@@ -333,7 +388,7 @@ export const TEMPLATES: {
     category: "Hospital & Clinic",
     role: "Front-desk receptionist",
     languages: ["Hindi", "Marathi", "English"],
-    voiceId: "priya",
+    voiceId: voiceIdBySlug("priya"),
     prompt:
       "You are the front desk for a multi-specialty clinic. Capture the patient name, complaint and preferred doctor, then book the earliest slot. Escalate emergencies to a human immediately.",
   },
@@ -343,7 +398,7 @@ export const TEMPLATES: {
     category: "Coaching & Tuitions",
     role: "Admissions counsellor",
     languages: ["English", "Hindi"],
-    voiceId: "shubh",
+    voiceId: voiceIdBySlug("shubh"),
     prompt:
       "You are an admissions counsellor. Ask about the student's grade and subjects, explain the batch schedule and fee, and invite them to a free demo class.",
   },
@@ -353,7 +408,7 @@ export const TEMPLATES: {
     category: "Real Estate",
     role: "Sales associate",
     languages: ["Hindi", "English"],
-    voiceId: "shubh",
+    voiceId: voiceIdBySlug("shubh"),
     prompt:
       "You are a real estate sales associate. Qualify budget and locality, describe two matching projects, and book a site visit with the project name and time confirmed.",
   },
@@ -363,7 +418,7 @@ export const TEMPLATES: {
     category: "Local Services",
     role: "Booking agent",
     languages: ["Hindi", "Marathi"],
-    voiceId: "anand",
+    voiceId: voiceIdBySlug("anand"),
     prompt:
       "You are a booking agent for a home services company. Capture the service needed, address and preferred slot, confirm the visit charge and send the booking confirmation.",
   },
@@ -373,7 +428,7 @@ export const TEMPLATES: {
     category: "Jewellery & Fashion",
     role: "Showroom concierge",
     languages: ["English", "Hindi"],
-    voiceId: "kavya",
+    voiceId: voiceIdBySlug("kavya"),
     prompt:
       "You are a jewellery showroom concierge. Understand the occasion and budget, describe two collections, and invite the customer to a private viewing at the nearest showroom.",
   },
@@ -422,8 +477,17 @@ const TONES = [
 export const modelById = (id: ModelId) =>
   MODELS.find((model) => model.id === id) ?? MODELS[0];
 
+/**
+ * Resolve a stored voice to its catalogue entry.
+ *
+ * Employees saved before the catalogue moved to ids hold a slug, so both are
+ * accepted; without that an existing employee would silently display the first
+ * voice in the list.
+ */
 export const voiceById = (id: VoiceId) =>
-  VOICES.find((voice) => voice.id === id) ?? VOICES[0];
+  VOICES.find((voice) => voice.id === id) ??
+  VOICES.find((voice) => voice.slug === id) ??
+  VOICES[0];
 
 export const templateById = (id: string) =>
   TEMPLATES.find((template) => template.id === id) ?? TEMPLATES[0];
@@ -456,8 +520,8 @@ export const seedAgents: Agent[] = [
     status: "Active",
     languages: ["Hindi", "English"],
     defaultLanguage: "Hindi",
-    voice: "Anushka",
-    voiceId: "anushka",
+    voice: "Shubh",
+    voiceId: voiceIdBySlug("shubh"),
     model: "Sarvam-M 24B",
     modelId: "sarvam-24b",
     calls: 1284,
@@ -497,7 +561,7 @@ export const seedAgents: Agent[] = [
     languages: ["Hindi", "Marathi", "English"],
     defaultLanguage: "Hindi",
     voice: "Kavya",
-    voiceId: "kavya",
+    voiceId: voiceIdBySlug("kavya"),
     model: "Sarvam-M 24B",
     modelId: "sarvam-24b",
     calls: 2410,

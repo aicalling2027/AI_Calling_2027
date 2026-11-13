@@ -30,6 +30,7 @@ import {
   TextInput,
 } from "@/components/dashboard/ui/kit";
 import { SelectCard } from "@/components/dashboard/ui/select-card";
+import { VoicePreview } from "@/components/dashboard/ui/voice-preview";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -41,9 +42,9 @@ import {
   MODELS,
   OUTCOME_OPTIONS,
   VOICES,
-  type VoiceId,
   initialsOf,
   voiceById,
+  voiceSampleSources,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,6 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [sourceName, setSourceName] = React.useState("");
   const [sourceKind, setSourceKind] = React.useState<"PDF" | "DOCX" | "TXT" | "URL" | "FAQ">("PDF");
-  const [preview, setPreview] = React.useState<VoiceId | null>(null);
   const [name, setName] = React.useState(agent?.name ?? "");
   const [purpose, setPurpose] = React.useState(agent?.purpose ?? "");
   const [status, setStatus] = React.useState<AgentStatus>(agent?.status ?? "Draft");
@@ -782,7 +782,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
             Changing the voice does not change the script. Preview before you switch.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {VOICES.map((voice) => (
+            {VOICES.map((voice, index) => (
               <SelectCard
                 key={voice.id}
                 selected={agent.voiceId === voice.id}
@@ -790,29 +790,18 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
                   store.updateAgent(agent.id, { voiceId: voice.id, voice: voice.name })
                 }
                 title={voice.name}
-                description={`${voice.gender} · ${voice.tone}`}
+                description={
+                  voice.gender === "Unspecified"
+                    ? voice.tone
+                    : `${voice.gender} · ${voice.tone}`
+                }
                 meta={voice.language}
                 icon={<Mic className="size-4" />}
               >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setPreview(voice.id);
-                    later(
-                      () => setPreview((current) => (current === voice.id ? null : current)),
-                      2200,
-                    );
-                  }}
-                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md bg-surface px-2 text-[11px] font-medium text-ink-soft ring-1 ring-line transition-colors hover:text-ink"
-                >
-                  {preview === voice.id ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <Play className="size-3" />
-                  )}
-                  {preview === voice.id ? "Playing sample…" : "Preview"}
-                </button>
+                <VoicePreview
+                  sources={voiceSampleSources(voice, index + 1)}
+                  label="Preview"
+                />
               </SelectCard>
             ))}
           </div>

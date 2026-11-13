@@ -94,7 +94,7 @@ class EmployeeBase(APIModel):
     response_style: str | None = None
     closing_instruction: str | None = None
 
-    voice: str = "anushka"
+    voice: str = "shubh"
     model: str = "sarvam-m"
     default_language: str = "en-IN"
     temperature: float = Field(default=0.6, ge=0.0, le=1.5)

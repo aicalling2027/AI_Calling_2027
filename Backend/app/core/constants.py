@@ -134,8 +134,19 @@ SUPPORTED_LANGUAGES: Final[dict[str, str]] = {
 
 DEFAULT_LANGUAGE: Final[str] = "en-IN"
 
-#: Sarvam Bulbul speaker presets mapped to a gender label for the UI.
+#: Every speaker id an employee may be configured with.
+#:
+#: Two generations live here on purpose. The nine names at the top are the
+#: original Bulbul presets, and employees already saved with one of them must
+#: keep validating - dropping them would turn an unrelated edit into a 422. The
+#: UUIDs below are the ids the voice catalogue issues today, added so a new
+#: employee can be built against any of them.
+#:
+#: ``"unspecified"`` is the honest label for a catalogue id the provider does
+#: not describe: guessing male/female would print a claim we cannot verify in
+#: front of a customer.
 SUPPORTED_VOICES: Final[dict[str, str]] = {
+    # -- Original presets, kept for existing rows -------------------------
     "shubh": "male",
     "tanya": "female",
     "anand": "male",
@@ -145,6 +156,22 @@ SUPPORTED_VOICES: Final[dict[str, str]] = {
     "priya": "female",
     "kavya": "female",
     "ritu": "female",
+    # -- Current catalogue ------------------------------------------------
+    "01a0cf16-7021-76f7-a0cc-9d065cdb30a8": "unspecified",
+    "01a0cf16-5726-7055-8622-322e53f6bc77": "unspecified",
+    "01a0cf16-73d4-78aa-a416-c593287484db": "unspecified",
+    "01a0cf16-6001-7fac-b2c3-96de29fc6cd6": "unspecified",
+    # This id was supplied twice; it is one voice, so it is listed once.
+    "01a0cf16-729b-720b-bf53-1e18c3d5a5da": "unspecified",
+    "01a0cf16-655d-78cb-8b68-a000a3e4878e": "unspecified",
+    "01a0cf16-6ecd-7a97-b86b-f91eeadd5bd7": "unspecified",
+    "01a0cf16-6b54-7b44-8dff-e67586a9762a": "unspecified",
+    "01a0cf16-5a52-747d-8900-0a77b9f5402c": "unspecified",
+    "01a0cf16-68c6-7341-8408-bceec24a6a06": "unspecified",
+    "01a0cf16-5c61-787d-a83f-ae54ce8c0f96": "unspecified",
+    "01a0cf16-7179-7472-b7df-b7b432d5faa5": "unspecified",
+    "01a0cf16-6c54-746b-815a-2e1cf51a473a": "unspecified",
+    "01a0cf16-6a07-7cee-b592-494b2d213be1": "unspecified",
 }
 
 #: The public voice catalogue - what the marketing site lists and what the

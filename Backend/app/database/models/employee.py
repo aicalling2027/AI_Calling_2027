@@ -49,7 +49,7 @@ class Employee(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     closing_instruction: Mapped[str | None] = mapped_column(Text)
 
     # -- Voice / model -----------------------------------------------------
-    voice: Mapped[str] = mapped_column(String(64), default="anushka", nullable=False)
+    voice: Mapped[str] = mapped_column(String(64), default="shubh", nullable=False)
     model: Mapped[str] = mapped_column(String(64), default=DEFAULT_MODEL, nullable=False)
     default_language: Mapped[str] = mapped_column(
         String(16), default=DEFAULT_LANGUAGE, nullable=False

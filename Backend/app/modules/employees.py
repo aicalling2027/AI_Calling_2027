@@ -1327,7 +1327,9 @@ def _free_name(base: str, taken: set[str]) -> str:
 
 def _default_voice() -> str:
     speaker = (settings.sarvam_default_speaker or "").strip()
-    return speaker if speaker in SUPPORTED_VOICES else "anushka"
+    # The fallback has to be a member of SUPPORTED_VOICES, otherwise the row is
+    # written with a speaker the schema would reject on the next edit.
+    return speaker if speaker in SUPPORTED_VOICES else "shubh"
 
 
 def _assert_name_is_free(
