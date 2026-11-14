@@ -69,6 +69,24 @@ const SENTIMENT_DOT: Record<string, string> = {
   Unknown: "bg-ink-soft/40",
 };
 
+/** Limits worth starting from. Clicking one appends it as its own line. */
+const RULE_PRESETS = [
+  {
+    label: "No unapproved prices",
+    rule: "Never quote a price that is not in the approved sheet.",
+  },
+  {
+    label: "Respect do-not-call",
+    rule: "Stop calling as soon as the customer asks not to be contacted.",
+  },
+  {
+    label: "Escalate on request",
+    rule: "Offer a human transfer when the caller asks twice.",
+  },
+];
+
+const wordsIn = (text: string) => (text.trim() ? text.trim().split(/\s+/).length : 0);
+
 export default function EmployeeWorkspacePage() {
   const params = useParams<{ id: string }>();
   const store = useWorkspace();
@@ -111,6 +129,11 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
   const [tab, setTab] = React.useState<TabId>("overview");
   const [greeting, setGreeting] = React.useState(agent?.greeting ?? "");
   const [prompt, setPrompt] = React.useState(agent?.prompt ?? "");
+  const [description, setDescription] = React.useState(agent?.description ?? "");
+  const [objectives, setObjectives] = React.useState(agent?.objectives ?? "");
+  const [rules, setRules] = React.useState(agent?.rules ?? "");
+  const [closingLine, setClosingLine] = React.useState(agent?.closingLine ?? "");
+  const [closingRules, setClosingRules] = React.useState(agent?.closingRules ?? "");
   const [contact, setContact] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [notes, setNotes] = React.useState("");
@@ -215,6 +238,44 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
     });
     setSourceName("");
     later(() => store.setKnowledgeStatus(agent.id, id, "Ready"), 2600);
+  };
+
+  /* -- Call script -------------------------------------------------------
+     Six fields saved together. One dirty flag keeps the tab honest about
+     whether what is on screen is what the next call will actually read. */
+  const scriptDirty =
+    greeting !== (agent.greeting ?? "") ||
+    description !== (agent.description ?? "") ||
+    objectives !== (agent.objectives ?? "") ||
+    rules !== (agent.rules ?? "") ||
+    closingLine !== (agent.closingLine ?? "") ||
+    closingRules !== (agent.closingRules ?? "") ||
+    prompt !== (agent.prompt ?? "");
+
+  const spokenWords =
+    wordsIn(greeting) + wordsIn(description) + wordsIn(objectives) + wordsIn(closingLine);
+  const spokenSeconds = Math.max(1, Math.round(spokenWords / 2.5));
+
+  const saveScript = () => {
+    store.updateAgent(agent.id, {
+      greeting,
+      description,
+      objectives,
+      rules,
+      closingLine,
+      closingRules,
+      prompt,
+    });
+  };
+
+  const discardScript = () => {
+    setGreeting(agent.greeting ?? "");
+    setDescription(agent.description ?? "");
+    setObjectives(agent.objectives ?? "");
+    setRules(agent.rules ?? "");
+    setClosingLine(agent.closingLine ?? "");
+    setClosingRules(agent.closingRules ?? "");
+    setPrompt(agent.prompt ?? "");
   };
 
   return (
@@ -550,41 +611,240 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
       ) : null}
 
       {tab === "script" ? (
-        <section className="rounded-xl border border-line bg-surface p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-ink">Call script</h2>
-              <p className="mt-0.5 text-xs text-ink-soft">
-                Used on every call. Keep the opening line short and the rules explicit.
-              </p>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="rounded-xl border border-line bg-surface p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Call script</h2>
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  Read in order on every call: the intro opens, the description sets the
+                  subject, the objectives and rules keep it on track, the ending closes it.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge variant="outline">{agent.defaultLanguage}</Badge>
+                <Badge variant="secondary">v{agent.configurationVersion ?? 1}</Badge>
+              </div>
             </div>
-            <Badge variant="outline">{agent.defaultLanguage}</Badge>
-          </div>
-          <div className="mt-4 space-y-3">
-            <Field label="Opening line" htmlFor="script-greeting">
-              <TextArea
-                id="script-greeting"
-                value={greeting}
-                onChange={(event) => setGreeting(event.target.value)}
-                rows={2}
-              />
-            </Field>
-            <Field label="Instruction block" htmlFor="script-prompt">
-              <TextArea
-                id="script-prompt"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                rows={9}
-              />
-            </Field>
-          </div>
-          <div className="mt-4 flex items-center gap-2">
-            <SaveButton onSave={() => store.updateAgent(agent.id, { greeting, prompt })} />
-            <span className="text-[11px] text-ink-soft">
-              Saved scripts apply to the next call, not the one in progress.
-            </span>
-          </div>
-        </section>
+
+            <div className="mt-4 space-y-3">
+              <ScriptBlock
+                step="1"
+                title="Intro"
+                hint="The first sentence, spoken before anything else. Keep it under 15 seconds."
+                meta={`${wordsIn(greeting)} words`}
+              >
+                <TextArea
+                  id="script-greeting"
+                  value={greeting}
+                  onChange={(event) => setGreeting(event.target.value)}
+                  rows={2}
+                  placeholder="Namaste, main Aarav bol raha hoon…"
+                />
+              </ScriptBlock>
+
+              <ScriptBlock
+                step="2"
+                title="Description"
+                hint="What the call is about, in plain language. It keeps the employee on subject."
+                meta={`${wordsIn(description)} words`}
+              >
+                <TextArea
+                  id="script-description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  rows={3}
+                  placeholder="Calls policyholders whose health cover is due for renewal…"
+                />
+              </ScriptBlock>
+
+              <ScriptBlock
+                step="3"
+                title="Objectives"
+                hint="What a good call has to achieve. One aim per line, in the order they matter."
+                meta={`${wordsIn(objectives)} words`}
+              >
+                <TextArea
+                  id="script-objectives"
+                  value={objectives}
+                  onChange={(event) => setObjectives(event.target.value)}
+                  rows={4}
+                  placeholder={"Confirm the policy is still wanted.\nState the renewal amount."}
+                />
+              </ScriptBlock>
+
+              <ScriptBlock
+                step="4"
+                title="Rules"
+                hint="Hard limits. Anything written here outranks the objectives."
+              >
+                <TextArea
+                  id="script-rules"
+                  value={rules}
+                  onChange={(event) => setRules(event.target.value)}
+                  rows={4}
+                  placeholder="Never quote a premium that is not in the rate sheet."
+                />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {RULE_PRESETS.map(({ label, rule }) => {
+                    const added = rules.includes(rule);
+                    return (
+                      <button
+                        key={rule}
+                        type="button"
+                        disabled={added}
+                        title={rule}
+                        onClick={() =>
+                          setRules((current) =>
+                            current.trim() ? `${current.trimEnd()}\n${rule}` : rule,
+                          )
+                        }
+                        className={cn(
+                          "rounded-full border px-2 py-1 text-[10px] font-medium transition-colors",
+                          added
+                            ? "border-line bg-mist text-ink-soft"
+                            : "border-line bg-surface text-ink hover:border-cobalt/40 hover:text-cobalt-deep",
+                        )}
+                      >
+                        {added ? `${label} · added` : `+ ${label}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </ScriptBlock>
+
+              <ScriptBlock
+                step="5"
+                title="Ending"
+                hint="The last line the customer hears, and when the employee may hang up."
+              >
+                <TextArea
+                  id="script-closing-line"
+                  value={closingLine}
+                  onChange={(event) => setClosingLine(event.target.value)}
+                  rows={2}
+                  placeholder="Dhanyavaad. Confirmation WhatsApp par bhej raha hoon."
+                />
+                <label
+                  htmlFor="script-closing-rules"
+                  className="mt-2 block text-[11px] font-semibold text-ink-soft"
+                >
+                  Closing rules
+                </label>
+                <TextArea
+                  id="script-closing-rules"
+                  value={closingRules}
+                  onChange={(event) => setClosingRules(event.target.value)}
+                  rows={2}
+                  className="mt-1"
+                  placeholder="End only after the customer confirms the next step."
+                />
+              </ScriptBlock>
+            </div>
+
+            <details className="mt-3 rounded-lg border border-hairline bg-mist-soft/40 p-3">
+              <summary className="cursor-pointer text-xs font-semibold text-ink">
+                Instruction block
+                <span className="ml-1.5 font-normal text-ink-soft">
+                  Advanced · the full system prompt
+                </span>
+              </summary>
+              <div className="mt-2.5">
+                <TextArea
+                  id="script-prompt"
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  rows={9}
+                />
+              </div>
+            </details>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <SaveButton label="Save script" onSave={saveScript} />
+              <button
+                type="button"
+                onClick={discardScript}
+                disabled={!scriptDirty}
+                className="inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-medium text-ink-soft transition-colors hover:bg-white hover:text-ink disabled:pointer-events-none disabled:opacity-50"
+              >
+                Discard changes
+              </button>
+              <span className="text-[11px] text-ink-soft">
+                {scriptDirty
+                  ? "Unsaved edits. A saved script applies to the next call, not the one in progress."
+                  : "Saved. Applies to the next call, not the one in progress."}
+              </span>
+            </div>
+          </section>
+
+          <aside className="space-y-4">
+            <section className="rounded-xl border border-line bg-surface p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-ink">How the call reads</h2>
+                <Badge variant={scriptDirty ? "warning" : "success"}>
+                  {scriptDirty ? "Unsaved" : "Saved"}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                {agent.name} speaks {agent.defaultLanguage} in {agent.voice}.
+              </p>
+              <ol className="mt-3 space-y-2">
+                {[
+                  { label: "Intro", text: greeting },
+                  { label: "Description", text: description },
+                  { label: "Objectives", text: objectives },
+                  { label: "Rules", text: rules },
+                  { label: "Ending", text: closingLine },
+                ].map((part) => (
+                  <li key={part.label} className="rounded-lg bg-mist-soft/60 px-2.5 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                      {part.label}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-0.5 whitespace-pre-line text-[11px] leading-relaxed",
+                        part.text.trim() ? "text-ink" : "text-ink-soft/70",
+                      )}
+                    >
+                      {part.text.trim() || "Not written yet."}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 flex items-center justify-between text-[11px] text-ink-soft">
+                <span>{spokenWords} words spoken</span>
+                <span>≈ {spokenSeconds} s</span>
+              </p>
+              <Link
+                href={`/dashboard/talk?agent=${agent.id}`}
+                className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3 w-full" })}
+              >
+                <Phone aria-hidden />
+                Run a test call
+              </Link>
+            </section>
+
+            <section className="rounded-xl border border-line bg-cream/60 p-4">
+              <h2 className="text-xs font-semibold text-ink">Bounds the call cannot cross</h2>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                {agent.actions.length > 0
+                  ? `It may only ${agent.actions.join(", ").toLowerCase()} — anything else is refused mid-call.`
+                  : "No actions are allowed yet, so the call can only talk and take notes."}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {agent.outcomes.length > 0 ? (
+                  agent.outcomes.map((outcome) => (
+                    <Badge key={outcome} variant="outline">
+                      {outcome}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-[11px] text-ink-soft">No outcomes chosen yet.</span>
+                )}
+              </div>
+            </section>
+          </aside>
+        </div>
       ) : null}
 
       {tab === "training" ? (
@@ -900,6 +1160,46 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
           </p>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+/** One numbered part of the call script, with its own label and hint. */
+function ScriptBlock({
+  step,
+  title,
+  hint,
+  meta,
+  children,
+}: {
+  step: string;
+  title: string;
+  hint: string;
+  meta?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-hairline p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            aria-hidden
+            className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-mist text-[10px] font-semibold text-ink"
+          >
+            {step}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-ink">{title}</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-soft">{hint}</p>
+          </div>
+        </div>
+        {meta ? (
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-soft">
+            {meta}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2.5">{children}</div>
     </div>
   );
 }

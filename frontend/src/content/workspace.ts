@@ -61,6 +61,16 @@ export type Agent = {
   lastActive: string;
   greeting: string;
   prompt: string;
+  /** What the call is about, in plain language. */
+  description?: string;
+  /** What a good call has to achieve, one aim per line. */
+  objectives?: string;
+  /** Hard limits the employee must never break. */
+  rules?: string;
+  /** The last line spoken before the call ends. */
+  closingLine?: string;
+  /** When the employee may hang up, and what it must confirm first. */
+  closingRules?: string;
   knowledge: KnowledgeSource[];
   actions: string[];
   outcomes: string[];
@@ -686,6 +696,16 @@ export const seedAgents: Agent[] = [
       "Namaste, main Aarav bol raha hoon aapki health policy renewal ke baare mein. Do minute hain abhi?",
     prompt:
       "You are a renewal specialist calling existing health-insurance customers. Confirm identity, state the renewal amount, handle price objections with the value framing below, and offer a callback slot if the customer is not ready.",
+    description:
+      "Calls policyholders whose health cover is due for renewal, confirms the amount and answers cover questions.",
+    objectives:
+      "Confirm the policy is still wanted.\nState the renewal amount and the due date.\nOffer the 10-lakh cover and explain the room-rent cap.\nBook a callback when the customer is undecided.",
+    rules:
+      "Never quote a premium that is not in the renewal rate sheet.\nDo not call again within 24 hours.\nHand over to a human when the customer asks about a claim.",
+    closingLine:
+      "Dhanyavaad. Renewal ki confirmation aur rate sheet WhatsApp par bhej raha hoon.",
+    closingRules:
+      "End only after the customer confirms the next step. Repeat the amount and the date once before hanging up.",
     knowledge: [
       {
         id: "k1",
@@ -726,6 +746,16 @@ export const seedAgents: Agent[] = [
       "Thank you for calling AOTMS support. This is Meera. How can I help you today?",
     prompt:
       "You are the inbound support agent. Identify the customer, summarise their issue, resolve anything covered by the support playbook, and transfer billing disputes to a human.",
+    description:
+      "Answers the support line, identifies the caller and resolves anything the support playbook already covers.",
+    objectives:
+      "Identify the customer and the account.\nResolve the issue in this call when the playbook covers it.\nHand billing disputes and refunds to a human.",
+    rules:
+      "Never promise a refund.\nNever share another customer's policy details.\nStop and transfer if the caller is still angry after one attempt.",
+    closingLine:
+      "Thank you for calling AOTMS. I have logged this and sent the reference on WhatsApp.",
+    closingRules:
+      "Summarise the resolution before hanging up and confirm the ticket reference out loud.",
     knowledge: [
       {
         id: "k3",
@@ -759,6 +789,16 @@ export const seedAgents: Agent[] = [
       "Hi, this is Kabir from AOTMS. I have two quick questions about the enquiry you submitted.",
     prompt:
       "You qualify inbound leads for a SaaS product. Confirm company size, current tooling and timeline, score the lead from 1 to 5, and book a demo for scores of 4 and above.",
+    description:
+      "Qualifies inbound SaaS enquiries before a human picks them up, so the demo calendar stays clean.",
+    objectives:
+      "Confirm company size, current tooling and timeline.\nScore the lead from 1 to 5.\nBook a demo for scores of 4 and above.",
+    rules:
+      "Never invent pricing.\nDo not call more than twice in a week.\nMark the lead unqualified when there is no timeline.",
+    closingLine:
+      "Thanks for your time. I have noted everything and the team will follow up by email.",
+    closingRules:
+      "Close within four minutes unless a demo is being booked.",
     knowledge: [],
     actions: ["Capture lead information", "Update CRM", "Trigger webhook"],
     outcomes: ["Qualified lead", "Unqualified lead", "Follow-up required"],

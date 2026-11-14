@@ -39,7 +39,12 @@ export type EmployeeRecord = {
   purpose: string | null;
   business_category: string | null;
   system_prompt: string;
+  personality: string | null;
+  conversation_objectives: string | null;
+  interaction_rules: string | null;
+  closing_instruction: string | null;
   first_message: string | null;
+  end_call_message: string | null;
   voice: string;
   model: string;
   default_language: string;
@@ -181,6 +186,11 @@ export function toAgent(record: EmployeeRecord): Agent {
     lastActive: relativeTime(record.last_active_at),
     greeting: record.first_message ?? "",
     prompt: record.system_prompt ?? "",
+    description: record.description ?? "",
+    objectives: record.conversation_objectives ?? "",
+    rules: record.interaction_rules ?? "",
+    closingLine: record.end_call_message ?? "",
+    closingRules: record.closing_instruction ?? "",
     // Knowledge and actions live in their own modules; the employee screen
     // starts from the record itself rather than inventing rows.
     knowledge: [],
@@ -237,6 +247,12 @@ export function toPatchBody(patch: Partial<Agent>) {
   if (patch.purpose !== undefined) body.purpose = patch.purpose;
   if (patch.prompt !== undefined) body.system_prompt = patch.prompt;
   if (patch.greeting !== undefined) body.first_message = patch.greeting;
+  // The four script sections the call reads around the intro and the prompt.
+  if (patch.description !== undefined) body.description = patch.description;
+  if (patch.objectives !== undefined) body.conversation_objectives = patch.objectives;
+  if (patch.rules !== undefined) body.interaction_rules = patch.rules;
+  if (patch.closingLine !== undefined) body.end_call_message = patch.closingLine;
+  if (patch.closingRules !== undefined) body.closing_instruction = patch.closingRules;
   if (patch.voiceId !== undefined) body.voice = patch.voiceId;
   if (patch.modelId !== undefined) body.model = modelCodeOf(patch.modelId);
   if (patch.defaultLanguage !== undefined) {
