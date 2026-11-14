@@ -27,25 +27,103 @@ import { LanguageDropdown } from "@/components/dashboard/ui/language-dropdown";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { initialsOf } from "@/content/workspace";
+import { initialsOf, type LeadStatus } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Queued", "Dialling the number", "Connected", "Completing the call"];
 
-const INTENTS = [
-  { id: "qualify", label: "Qualify the lead" },
-  { id: "callback", label: "Request a callback" },
-  { id: "appointment", label: "Book an appointment" },
-  { id: "renewal", label: "Renewal reminder" },
+/** Used only while an employee has not declared its own outcome list. */
+const DEFAULT_OUTCOMES = [
+  "Interested",
+  "Callback requested",
+  "Appointment scheduled",
+  "Not interested",
+  "No answer",
 ];
+
+type CallPlan = {
+  /** A call that was never picked up must not look like a completed one. */
+  connected: boolean;
+  status: LeadStatus;
+  followUp: string;
+  sentiment: "Positive" | "Neutral" | "Negative" | "Unknown";
+  closing: string;
+};
+
+/**
+ * Turns the one outcome an employee reports into the rest of the record: the
+ * lead status, the follow-up slot, the sentiment and the last line of the
+ * transcript. Ordered so "unqualified" is matched before "qualified".
+ */
+function planFor(outcome: string): CallPlan {
+  const key = outcome.toLowerCase();
+
+  if (key.includes("appointment") || key.includes("booked")) {
+    return {
+      connected: true,
+      status: "Appointment",
+      followUp: "Tomorrow, 11:00 am",
+      sentiment: "Positive",
+      closing: "I have booked that slot and sent the confirmation on WhatsApp.",
+    };
+  }
+  if (key.includes("no answer") || key.includes("failed") || key.includes("unreachable")) {
+    return {
+      connected: false,
+      status: "Contacted",
+      followUp: "Today, 7:00 pm",
+      sentiment: "Unknown",
+      closing: "No answer after 30 seconds. The script was not played and a retry is booked for the evening slot.",
+    };
+  }
+  if (
+    key.includes("not interested") ||
+    key.includes("unqualified") ||
+    key.includes("not qualified") ||
+    key.includes("do not call")
+  ) {
+    return {
+      connected: true,
+      status: "Not interested",
+      followUp: "No follow-up",
+      sentiment: "Negative",
+      closing: "Understood. I have noted that and will not call again.",
+    };
+  }
+  if (
+    key.includes("callback") ||
+    key.includes("call back") ||
+    key.includes("follow-up") ||
+    key.includes("follow up") ||
+    key.includes("transfer") ||
+    key.includes("human")
+  ) {
+    return {
+      connected: true,
+      status: "Contacted",
+      followUp: "Today, 6:00 pm",
+      sentiment: "Neutral",
+      closing: "Theek hai, main aapko suggest kiye gaye samay par call karwa dunga.",
+    };
+  }
+  return {
+    connected: true,
+    status: "Qualified",
+    followUp: "Today, 4:00 pm",
+    sentiment: "Positive",
+    closing: "I have shared the details on WhatsApp and noted everything in the system.",
+  };
+}
 
 export default function InstantLeadsPage() {
   const { agents, leads, addConversation, addLead } = useWorkspace();
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [identity, setIdentity] = React.useState("");
   const [agentId, setAgentId] = React.useState(agents[0]?.id ?? "");
   const [language, setLanguage] = React.useState(agents[0]?.defaultLanguage ?? "Hindi");
-  const [intent, setIntent] = React.useState(INTENTS[0].id);
+  const [outcomeChoice, setOutcomeChoice] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [consent, setConsent] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -54,6 +132,10 @@ export default function InstantLeadsPage() {
   const [result, setResult] = React.useState<{
     id: string;
     outcome: string;
+    status: LeadStatus;
+    followUp: string;
+    connected: boolean;
+    credits: number;
     summary: string;
   } | null>(null);
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -64,7 +146,15 @@ export default function InstantLeadsPage() {
   }, []);
 
   const agent = agents.find((item) => item.id === agentId) ?? agents[0];
-  const intentLabel = INTENTS.find((item) => item.id === intent)?.label ?? "Call";
+  /* Everything below is read from the selected employee, so the form can only
+     offer a language it speaks and an outcome it is allowed to report. */
+  const outcomes = agent?.outcomes.length ? agent.outcomes : DEFAULT_OUTCOMES;
+  const outcome = outcomes.includes(outcomeChoice) ? outcomeChoice : outcomes[0];
+  const plan = planFor(outcome);
+  const languages = agent?.languages.length
+    ? agent.languages
+    : [agent?.defaultLanguage ?? "Hindi"];
+  const spokenLanguage = languages.includes(language) ? language : languages[0];
   const instantLeads = leads.filter((lead) => lead.source === "Instant leads");
 
   const later = (fn: () => void, ms: number) => {
@@ -81,6 +171,10 @@ export default function InstantLeadsPage() {
       setError("Enter a valid phone number with at least 10 digits.");
       return;
     }
+    if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError("That email address is incomplete. Fix it or leave the field blank.");
+      return;
+    }
     if (!consent) {
       setError("Confirm that the contact has agreed to receive this call.");
       return;
@@ -90,7 +184,10 @@ export default function InstantLeadsPage() {
     setStep(1);
     setResult(null);
 
-    const summary = `${intentLabel} for ${name.trim()}.${notes.trim() ? ` ${notes.trim()}` : ""}`;
+    const credits = plan.connected ? 5 : 0;
+    const summary = `${outcome} on a ${spokenLanguage} call with ${name.trim()}.${
+      notes.trim() ? ` ${notes.trim()}` : ""
+    }`;
 
     later(() => setStep(2), 900);
     later(() => setStep(3), 2100);
@@ -100,44 +197,47 @@ export default function InstantLeadsPage() {
         phone,
         agentId: agent.id,
         direction: "Outbound",
-        outcome: intent === "appointment" ? "Appointment scheduled" : "Callback requested",
-        sentiment: "Neutral",
-        duration: "1:48",
-        credits: 5,
+        outcome,
+        sentiment: plan.sentiment,
+        duration: plan.connected ? "1:48" : "0:30",
+        credits,
         startedAt: "Just now",
         summary,
-        transcript: [
-          { who: "Agent", text: agent.greeting },
-          { who: "Customer", text: notes.trim() || "Haan, boliye." },
-          {
-            who: "Agent",
-            text:
-              intent === "appointment"
-                ? "I have booked that slot and sent the confirmation on WhatsApp."
-                : "Theek hai, main aapko suggest kiye gaye samay par call karwa dunga.",
-          },
-        ],
+        transcript: plan.connected
+          ? [
+              { who: "Agent", text: agent.greeting },
+              { who: "Customer", text: notes.trim() || "Haan, boliye." },
+              { who: "Agent", text: plan.closing },
+            ]
+          : [{ who: "Agent", text: plan.closing }],
       });
       addLead({
         name: name.trim(),
         phone,
-        email: "",
+        email: email.trim(),
+        identity: identity.trim(),
         source: "Instant leads",
         agentId: agent.id,
-        status: intent === "appointment" ? "Appointment" : "Contacted",
-        followUp: "Today, 6:00 pm",
+        status: plan.status,
+        followUp: plan.followUp,
         lastContact: "just now",
         summary,
       });
       setStep(4);
       setResult({
         id,
-        outcome: intent === "appointment" ? "Appointment scheduled" : "Callback requested",
+        outcome,
+        status: plan.status,
+        followUp: plan.followUp,
+        connected: plan.connected,
+        credits,
         summary,
       });
       setPhase("done");
       setName("");
       setPhone("");
+      setEmail("");
+      setIdentity("");
       setNotes("");
       setConsent(false);
     }, 3200);
@@ -168,6 +268,8 @@ export default function InstantLeadsPage() {
           <h2 className="text-sm font-semibold text-ink">New instant lead</h2>
           <p className="mt-0.5 text-xs text-ink-soft">
             The employee uses the saved script and reports one outcome at the end.
+            The languages, the capabilities and the outcome list are read from the
+            employee you pick, so the lead record matches what it can actually do.
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -186,6 +288,34 @@ export default function InstantLeadsPage() {
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder="+91 98204 11822"
                 inputMode="tel"
+              />
+            </Field>
+            <Field
+              label="Email"
+              hint="Optional. Used for the written follow-up."
+              htmlFor="instant-email"
+            >
+              <TextInput
+                id="instant-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="rohit@example.com"
+                inputMode="email"
+                autoComplete="off"
+              />
+            </Field>
+            <Field
+              label="Identity"
+              hint="Your reference for this customer."
+              htmlFor="instant-identity"
+            >
+              <TextInput
+                id="instant-identity"
+                value={identity}
+                onChange={(event) => setIdentity(event.target.value)}
+                placeholder="POL-884213"
+                autoComplete="off"
               />
             </Field>
             <Field label="Employee" htmlFor="instant-agent">
@@ -211,21 +341,43 @@ export default function InstantLeadsPage() {
               <LanguageDropdown
                 id="instant-language"
                 label="Language"
-                value={language}
+                value={spokenLanguage}
                 onChange={setLanguage}
-                options={agent?.languages ?? ["Hindi"]}
+                options={languages}
               />
             </Field>
-            <Field label="Objective" htmlFor="instant-intent" className="sm:col-span-2">
+            {agent && agent.actions.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
+                <span className="text-[11px] font-medium text-ink-soft">
+                  On the call it can
+                </span>
+                {agent.actions.map((action) => (
+                  <Badge key={action} variant="outline">
+                    {action}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+            <Field
+              label="Outcome to report"
+              hint={
+                agent
+                  ? `Reported when the call ends. Lands in Leads as ${plan.status}${
+                      plan.followUp === "No follow-up"
+                        ? " with no follow-up"
+                        : `, follow-up ${plan.followUp.toLowerCase()}`
+                    }.`
+                  : "Pick an employee first."
+              }
+              htmlFor="instant-outcome"
+              className="sm:col-span-2"
+            >
               <CategoryDropdown
-                id="instant-intent"
-                label="Objective"
-                value={intent}
-                onChange={setIntent}
-                options={INTENTS.map((item) => ({
-                  value: item.id,
-                  label: item.label,
-                }))}
+                id="instant-outcome"
+                label="Outcome to report"
+                value={outcome}
+                onChange={setOutcomeChoice}
+                options={outcomes.map((label) => ({ value: label, label }))}
               />
             </Field>
             <Field
@@ -278,7 +430,9 @@ export default function InstantLeadsPage() {
               {phase === "calling" ? "Calling…" : "Call now"}
             </button>
             <span className="text-[11px] text-ink-soft">
-              {agent ? `${agent.name} · ${agent.voice} · ${language}` : "No employee available"}
+              {agent
+                ? `${agent.name} · ${agent.voice} · ${spokenLanguage}`
+                : "No employee available"}
             </span>
           </div>
         </section>
@@ -288,7 +442,11 @@ export default function InstantLeadsPage() {
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-ink">Call progress</h2>
               {phase === "done" ? (
-                <StatusBadge variant="success">Completed</StatusBadge>
+                plan.connected ? (
+                  <StatusBadge variant="success">Completed</StatusBadge>
+                ) : (
+                  <StatusBadge variant="warning">No answer</StatusBadge>
+                )
               ) : phase === "calling" ? (
                 <StatusBadge variant="warning">In progress</StatusBadge>
               ) : (
@@ -298,7 +456,9 @@ export default function InstantLeadsPage() {
 
             <ol className="mt-3 space-y-2">
               {STEPS.map((label, index) => {
-                const done = step > index + 1;
+                // A call nobody answered stops after the dial: the later steps
+                // must not turn green and claim a conversation happened.
+                const done = step > index + 1 && (plan.connected || index < 2);
                 const active = step === index + 1 && phase === "calling";
                 return (
                   <li key={label} className="flex items-center gap-2.5 text-xs">
@@ -325,11 +485,31 @@ export default function InstantLeadsPage() {
             </ol>
 
             {result ? (
-              <div className="mt-4 rounded-lg bg-[#e6f5ec] p-3 text-xs text-[#1c7a4c]">
-                <p className="font-semibold">Call completed · {result.outcome}</p>
-                <p className="mt-1 leading-relaxed text-[#1c7a4c]/90">{result.summary}</p>
+              <div
+                className={cn(
+                  "mt-4 rounded-lg p-3 text-xs",
+                  result.connected
+                    ? "bg-[#e6f5ec] text-[#1c7a4c]"
+                    : "bg-cream/70 text-ink",
+                )}
+              >
+                <p className="font-semibold">
+                  {result.connected ? "Call completed" : "Call ended without an answer"} ·{" "}
+                  {result.outcome}
+                </p>
+                <p className="mt-1 leading-relaxed opacity-90">{result.summary}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">{result.status}</Badge>
+                  <span className="inline-flex items-center gap-1 text-[11px]">
+                    <Clock className="size-3" />
+                    {result.followUp}
+                  </span>
+                </div>
                 <p className="mt-1 text-[11px]">
-                  Reference {result.id.toUpperCase()} · 5 credits deducted
+                  Reference {result.id.toUpperCase()} ·{" "}
+                  {result.credits > 0
+                    ? `${result.credits} credits deducted`
+                    : "no credits deducted"}
                 </p>
                 <div className="mt-2 flex gap-3">
                   <Link href="/dashboard/conversations" className="font-semibold underline">
@@ -407,7 +587,17 @@ export default function InstantLeadsPage() {
                       {agents.find((item) => item.id === lead.agentId)?.name ?? "Unassigned"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Badge variant={lead.status === "Appointment" ? "warning" : "secondary"}>
+                      <Badge
+                        variant={
+                          lead.status === "Appointment"
+                            ? "warning"
+                            : lead.status === "Qualified"
+                              ? "success"
+                              : lead.status === "Not interested"
+                                ? "outline"
+                                : "secondary"
+                        }
+                      >
                         {lead.status}
                       </Badge>
                     </td>
