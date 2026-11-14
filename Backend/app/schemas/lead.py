@@ -63,6 +63,9 @@ class LeadCreate(APIModel):
     notes: str | None = None
     custom_fields: dict = Field(default_factory=dict)
     assigned_to: str | None = None
+    # A lead captured after its first call arrives with the outcome already
+    # known, so the funnel entry can be recorded with the row itself.
+    status: LeadStatus | None = None
 
 
 class LeadUpdate(APIModel):

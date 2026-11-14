@@ -50,18 +50,23 @@ export function LeadImportCard({ employeeId }: { employeeId?: string | null }) {
   const ready = React.useMemo(() => validLeads(rows), [rows]);
   const skippedRows = rows.length - ready.length;
 
-  const remember = (lead: LeadDraft, note: string) => {
-    addLead({
-      name: lead.name.trim(),
-      phone: lead.phone.trim(),
-      email: lead.email.trim(),
-      source: "Instant leads",
-      agentId: employeeId || null,
-      status: "New",
-      followUp: "Not scheduled",
-      lastContact: "just added",
-      summary: note,
-    });
+  /** Record a lead that is already stored, by its server id. */
+  const remember = (lead: LeadDraft, note: string, remoteId?: string) => {
+    addLead(
+      {
+        name: lead.name.trim(),
+        phone: lead.phone.trim(),
+        email: lead.email.trim(),
+        identity: lead.identity.trim(),
+        source: "Instant leads",
+        agentId: employeeId || null,
+        status: "New",
+        followUp: "Not scheduled",
+        lastContact: "just added",
+        summary: note,
+      },
+      remoteId,
+    );
   };
 
   const handleFiles = async (files: File[]) => {
@@ -116,6 +121,7 @@ export function LeadImportCard({ employeeId }: { employeeId?: string | null }) {
             created?: number;
             skipped?: number;
             createdPhones?: string[];
+            leadIds?: string[];
             error?: { message?: string };
           }
         | null;
@@ -129,11 +135,21 @@ export function LeadImportCard({ employeeId }: { employeeId?: string | null }) {
       // ones: a sheet that mixes duplicates with new leads would otherwise put
       // the wrong people in the visible list. Falling back to the first N keeps
       // this working against a server that does not report them yet.
-      const landed = new Set((body?.createdPhones ?? []).map(phoneKey));
+      const createdPhones = body?.createdPhones ?? [];
+      const leadIds = body?.leadIds ?? [];
+      // The two arrays come back in creation order, so position is the join.
+      const idByPhone = new Map(
+        createdPhones.map((phone, index) => [phoneKey(phone), leadIds[index]] as const),
+      );
+      const landed = new Set(idByPhone.keys());
       const saved = landed.size > 0 ? ready.filter((lead) => landed.has(phoneKey(lead.phone))) : [];
       const remembered = saved.length > 0 ? saved : ready.slice(0, created);
       remembered.forEach((lead) =>
-        remember(lead, lead.identity ? `Imported · ID ${lead.identity}` : "Imported from a sheet"),
+        remember(
+          lead,
+          lead.identity ? `Imported · ID ${lead.identity}` : "Imported from a sheet",
+          idByPhone.get(phoneKey(lead.phone)),
+        ),
       );
 
       const duplicates = Number(body?.skipped ?? 0);
@@ -170,14 +186,18 @@ export function LeadImportCard({ employeeId }: { employeeId?: string | null }) {
         body: JSON.stringify({ ...manual, employeeId }),
       });
       const body = (await response.json().catch(() => null)) as
-        | { error?: { message?: string } }
+        | { lead?: { id?: string }; error?: { message?: string } }
         | null;
 
       if (!response.ok) {
         throw new Error(body?.error?.message ?? "The lead was not saved. Try again.");
       }
 
-      remember(manual, manual.identity ? `Added by hand · ID ${manual.identity}` : "Added by hand");
+      remember(
+        manual,
+        manual.identity ? `Added by hand · ID ${manual.identity}` : "Added by hand",
+        body?.lead?.id,
+      );
       setNotice({ tone: "ok", text: `${manual.name.trim()} is in the queue.` });
       setManual(blankLeadDraft());
       setManualProblems([]);

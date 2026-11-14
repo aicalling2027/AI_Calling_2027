@@ -170,6 +170,10 @@ export async function createLead(input: {
   detail?: string;
   /** The dashboard's label for where the lead came from. */
   source?: string;
+  /** What happened on the first call, if it has already happened. */
+  notes?: string;
+  /** Where the lead already sits in the funnel, when the call is over. */
+  status?: LeadStatus;
 }): Promise<LeadRecord> {
   return apiFetch<LeadRecord>("/leads", {
     method: "POST",
@@ -178,6 +182,8 @@ export async function createLead(input: {
       employee_id: input.employeeId || undefined,
       source: leadSourceValue(input.source ?? "") ?? SOURCE,
       source_detail: input.detail ?? "instant_leads_manual",
+      notes: input.notes?.trim() || undefined,
+      status: input.status ? leadStatusValue(input.status) : undefined,
     },
   });
 }

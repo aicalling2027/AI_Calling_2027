@@ -3,7 +3,8 @@ import { connection, NextResponse } from "next/server";
 import { createLead, listLeads, toLeadView } from "@/lib/api/leads";
 import { failure, LEAD_SCOPE } from "@/lib/api/respond";
 import { guardSession } from "@/lib/api/session";
-import { readLeadDraft, validateLeadDraft } from "@/lib/lead-import";
+import type { LeadStatus } from "@/content/workspace";
+import { LEAD_STATUS_OPTIONS, readLeadDraft, validateLeadDraft } from "@/lib/lead-import";
 
 /** Every lead in the workspace, already in the shape the dashboard renders. */
 export async function GET() {
@@ -42,7 +43,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const payload = (body ?? {}) as { employeeId?: unknown; source?: unknown };
+  const payload = (body ?? {}) as {
+    employeeId?: unknown;
+    source?: unknown;
+    notes?: unknown;
+    status?: unknown;
+  };
   const lead = readLeadDraft(body);
   const problems = validateLeadDraft(lead);
 
@@ -57,12 +63,24 @@ export async function POST(request: Request) {
   // The dashboard's own wording for where the lead came from; the client maps
   // it to the backend's enum and falls back to "instant" for anything else.
   const source = typeof payload.source === "string" ? payload.source : undefined;
+  // The call outcome, when the lead is captured after a call rather than
+  // before one.
+  const notes = typeof payload.notes === "string" ? payload.notes : undefined;
+  // A lead captured after its first call arrives already in the funnel; only
+  // the labels the dashboard actually offers are accepted.
+  const status =
+    typeof payload.status === "string" &&
+    (LEAD_STATUS_OPTIONS as readonly string[]).includes(payload.status)
+      ? (payload.status as LeadStatus)
+      : undefined;
 
   try {
     const stored = await createLead({
       lead,
       employeeId,
       source,
+      notes,
+      status,
       detail: "instant_leads_manual",
     });
     return NextResponse.json({ lead: toLeadView(stored) }, { status: 201 });

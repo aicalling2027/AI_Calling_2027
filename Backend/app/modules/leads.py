@@ -190,6 +190,10 @@ def create_lead(
         description=f"Lead created from {payload.source}",
         actor_id=user_id,
     )
+    if payload.status is not None and str(payload.status) != lead.status:
+        # The caller already knows where this lead sits in the funnel, so the
+        # move is recorded now rather than needing a second request.
+        _apply_status(db, lead, str(payload.status), note=None, actor_id=user_id)
     audit.log_action(
         db,
         action="lead.created",
@@ -361,15 +365,21 @@ def list_leads(
 
 
 def update_lead(db: Session, lead: Lead, payload: LeadUpdate, *, user_id: str | None) -> Lead:
-    updates = payload.model_dump(exclude_unset=True, exclude_none=True)
+    # Kept before the nulls are dropped: a caller that sends `employee_id: null`
+    # means "unassign this lead", which is not the same as leaving it out.
+    explicit = payload.model_dump(exclude_unset=True)
+    updates = {key: value for key, value in explicit.items() if value is not None}
     new_status = updates.pop("status", None)
 
     changes: dict[str, Any] = {}
 
     # Name, phone, email and identity live on the contact, so they are applied
     # there and reported back under the key the caller used.
+    identity_supplied = "identity" in updates
     identity = updates.pop("identity", None)
     supplied = [field for field in CONTACT_FIELDS if field in updates]
+    if identity_supplied:
+        supplied.append("identity")
     if supplied and lead.contact is None:
         raise ConflictError("This lead has no contact to update.", code="contact_missing")
 
@@ -378,6 +388,10 @@ def update_lead(db: Session, lead: Lead, payload: LeadUpdate, *, user_id: str | 
             if field == "identity":
                 continue
             value = updates.pop(field)
+            if field == "email" and not value:
+                # Clearing the address leaves the column empty rather than
+                # holding an empty string, matching how contacts are created.
+                value = None
             if getattr(lead.contact, field) != value:
                 setattr(lead.contact, field, value)
                 changes[field] = value
@@ -409,6 +423,12 @@ def update_lead(db: Session, lead: Lead, payload: LeadUpdate, *, user_id: str | 
         if getattr(lead, field) != value:
             setattr(lead, field, value)
             changes[field] = value
+
+    # An explicit null is the one assignment change that cannot ride the loop
+    # above, because nulls were filtered out of `updates` on the way in.
+    if explicit.get("employee_id", "absent") is None and lead.employee_id is not None:
+        lead.employee_id = None
+        changes["employee_id"] = None
 
     if new_status:
         _apply_status(db, lead, str(new_status), note=None, actor_id=user_id)

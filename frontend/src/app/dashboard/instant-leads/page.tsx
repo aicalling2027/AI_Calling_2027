@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { LeadImportCard } from "@/components/dashboard/lead-import-card";
+import { LeadRowActions } from "@/components/dashboard/lead-row-actions";
 import { CategoryDropdown } from "@/components/dashboard/ui/category-dropdown";
 import {
   Field,
@@ -378,11 +379,11 @@ export default function InstantLeadsPage() {
         </div>
         {instantLeads.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-ink-soft">
-            No instant leads yet. The first call you place will appear here.
+            No instant leads yet. Add one above, or place a call and it lands here.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-xs">
+            <table className="w-full min-w-[720px] text-left text-xs">
               <thead>
                 <tr className="border-b border-hairline text-[10px] uppercase tracking-wide text-ink-soft">
                   <th scope="col" className="px-4 py-2 font-semibold">Contact</th>
@@ -390,6 +391,9 @@ export default function InstantLeadsPage() {
                   <th scope="col" className="px-4 py-2 font-semibold">Status</th>
                   <th scope="col" className="px-4 py-2 font-semibold">Follow-up</th>
                   <th scope="col" className="px-4 py-2 font-semibold">Summary</th>
+                  <th scope="col" className="px-4 py-2 text-right font-semibold">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-hairline">
@@ -415,6 +419,9 @@ export default function InstantLeadsPage() {
                     </td>
                     <td className="max-w-[280px] truncate px-4 py-2.5 text-ink-soft">
                       {lead.summary}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <LeadRowActions lead={lead} />
                     </td>
                   </tr>
                 ))}

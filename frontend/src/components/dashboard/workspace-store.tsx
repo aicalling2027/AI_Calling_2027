@@ -83,8 +83,9 @@ type WorkspaceActions = {
   dedupeAgents: () => Promise<number>;
   /** Pull the agents that already exist in your connected account in as employees. */
   importAgents: () => Promise<ImportSummary>;
-  addLead: (input: Omit<Lead, "id">) => void;
+  addLead: (input: Omit<Lead, "id">, remoteId?: string) => void;
   updateLead: (id: string, patch: Partial<Lead>) => void;
+  removeLead: (id: string) => void;
   addCampaign: (input: {
     name: string;
     agentId: string;
@@ -162,6 +163,22 @@ async function fetchAgents(): Promise<Agent[]> {
   const body = (await response.json().catch(() => null)) as AgentPayload | null;
   if (!response.ok) throw new Error(body?.error?.message ?? "Could not load employees.");
   return body?.items ?? [];
+}
+
+type LeadPayload = { items?: Lead[]; lead?: Lead; error?: { message?: string } };
+
+async function fetchLeads(): Promise<Lead[]> {
+  const response = await fetch("/api/leads", { cache: "no-store" });
+  const body = (await response.json().catch(() => null)) as LeadPayload | null;
+  if (!response.ok) throw new Error(body?.error?.message ?? "Could not load leads.");
+  return body?.items ?? [];
+}
+
+/** The JSON body of a write, or a thrown error carrying the server's reason. */
+async function readLead(response: Response, fallback: string): Promise<Lead> {
+  const body = (await response.json().catch(() => null)) as LeadPayload | null;
+  if (!response.ok || !body?.lead) throw new Error(body?.error?.message ?? fallback);
+  return body.lead;
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
@@ -286,21 +303,133 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshAgents]);
 
-  const addLead = React.useCallback((input: Omit<Lead, "id">) => {
-    setState((prev) => ({
-      ...prev,
-      leads: [{ ...input, id: uid("lead") }, ...prev.leads],
-    }));
+  // Leads are read the same way employees are: the seeds paint the first frame,
+  // then the database answers and replaces them.
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchLeads()
+      .then((items) => {
+        if (!cancelled) setState((prev) => ({ ...prev, leads: items }));
+      })
+      .catch((error: unknown) => {
+        // An unreachable backend must not blank the screen mid-session.
+        console.error("[workspace] load leads", error);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const updateLead = React.useCallback((id: string, patch: Partial<Lead>) => {
-    setState((prev) => ({
-      ...prev,
-      leads: prev.leads.map((lead) =>
-        lead.id === id ? { ...lead, ...patch } : lead,
-      ),
-    }));
+  const refreshLeads = React.useCallback(async () => {
+    try {
+      const items = await fetchLeads();
+      setState((prev) => ({ ...prev, leads: items }));
+    } catch (error) {
+      console.error("[workspace] load leads", error);
+    }
   }, []);
+
+  /**
+   * Add a lead.
+   *
+   * A caller that has just created the row on the server passes its id, so the
+   * list does not post it twice. Otherwise the row appears immediately under a
+   * temporary id and is swapped for the stored one when the round trip lands.
+   */
+  const addLead = React.useCallback(
+    (input: Omit<Lead, "id">, remoteId?: string) => {
+      if (remoteId) {
+        setState((prev) => ({
+          ...prev,
+          leads: [{ ...input, id: remoteId }, ...prev.leads],
+        }));
+        return;
+      }
+
+      const temporaryId = uid("lead");
+      setState((prev) => ({
+        ...prev,
+        leads: [{ ...input, id: temporaryId }, ...prev.leads],
+      }));
+
+      void fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: input.name,
+          phone: input.phone,
+          email: input.email,
+          identity: input.identity ?? "",
+          source: input.source,
+          employeeId: input.agentId,
+          // The outcome note is stored, not just painted: without this the row
+          // would be created empty and lose its summary on the next reload.
+          notes: input.summary,
+          status: input.status,
+        }),
+      })
+        .then(async (response) => {
+          const stored = await readLead(response, "The lead could not be saved.");
+          setState((prev) => ({
+            ...prev,
+            leads: prev.leads.map((lead) => (lead.id === temporaryId ? stored : lead)),
+          }));
+        })
+        .catch((error: unknown) => {
+          console.error("[workspace] add lead", error);
+          void refreshLeads();
+        });
+    },
+    [refreshLeads],
+  );
+
+  /**
+   * Save an edit. The row updates on screen first; a refusal re-reads the
+   * server so the UI never keeps a change that was rejected.
+   */
+  const updateLead = React.useCallback(
+    (id: string, patch: Partial<Lead>) => {
+      setState((prev) => ({
+        ...prev,
+        leads: prev.leads.map((lead) => (lead.id === id ? { ...lead, ...patch } : lead)),
+      }));
+
+      void fetch(`/api/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+        .then(async (response) => {
+          const stored = await readLead(response, "The change could not be saved.");
+          setState((prev) => ({
+            ...prev,
+            leads: prev.leads.map((lead) => (lead.id === id ? stored : lead)),
+          }));
+        })
+        .catch((error: unknown) => {
+          console.error("[workspace] save lead", error);
+          void refreshLeads();
+        });
+    },
+    [refreshLeads],
+  );
+
+  /** Remove a lead; a refusal restores the row from the server. */
+  const removeLead = React.useCallback(
+    (id: string) => {
+      setState((prev) => ({ ...prev, leads: prev.leads.filter((lead) => lead.id !== id) }));
+
+      void fetch(`/api/leads/${id}`, { method: "DELETE" })
+        .then((response) => {
+          if (!response.ok) throw new Error("The lead could not be deleted.");
+        })
+        .catch((error: unknown) => {
+          console.error("[workspace] delete lead", error);
+          void refreshLeads();
+        });
+    },
+    [refreshLeads],
+  );
 
   const addCampaign = React.useCallback(
     (input: { name: string; agentId: string; contacts: number; schedule: string }) => {
@@ -516,6 +645,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       importAgents,
       addLead,
       updateLead,
+      removeLead,
       addCampaign,
       setCampaignStatus,
       addNumber,
@@ -543,6 +673,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       importAgents,
       addLead,
       updateLead,
+      removeLead,
       addCampaign,
       setCampaignStatus,
       addNumber,
