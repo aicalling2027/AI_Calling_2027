@@ -24,6 +24,9 @@ import jwt
 from app.core.config import settings
 from app.core.constants import Role, permissions_for
 from app.core.exceptions import AuthenticationError, PermissionDeniedError
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 _PBKDF2_ITERATIONS: Final[int] = 210_000
 _PBKDF2_ALGORITHM: Final[str] = "sha256"
@@ -143,6 +146,12 @@ def decode_token(token: str, *, expected_type: str = ACCESS_TOKEN_TYPE) -> dict[
     except jwt.ExpiredSignatureError as exc:
         raise AuthenticationError("Your session has expired. Please sign in again.") from exc
     except jwt.InvalidTokenError as exc:
+        raise AuthenticationError("The supplied token is invalid.") from exc
+    except jwt.PyJWTError as exc:
+        # InvalidKeyError (bad or empty signing secret) inherits from PyJWTError
+        # but not from InvalidTokenError, so without this branch a misconfigured
+        # JWT_SECRET surfaces as an unhandled 500 on every authenticated request.
+        logger.error("Token verification failed on a key/algorithm problem: %s", exc)
         raise AuthenticationError("The supplied token is invalid.") from exc
 
     if payload.get("type") != expected_type:

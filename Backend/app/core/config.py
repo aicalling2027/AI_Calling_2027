@@ -177,6 +177,24 @@ class Settings(BaseSettings):
             return value.strip().lower()
         return value
 
+    @field_validator("jwt_secret", mode="after")
+    @classmethod
+    def _require_jwt_secret(cls, value: str) -> str:
+        """Reject an empty ``JWT_SECRET`` instead of failing on every request.
+
+        A variable that exists but is blank does not mean "unset" - it overrides
+        the default with ``""``. PyJWT then refuses to sign or verify (empty HMAC
+        keys raise ``InvalidKeyError``, which is not an ``InvalidTokenError``),
+        so every login and every authenticated call would return 500. Failing
+        here turns that into a startup error that names the variable.
+        """
+        if not value.strip():
+            raise ValueError(
+                "JWT_SECRET is set but empty. Remove the variable to keep the "
+                "development default, or set a random value of at least 32 characters."
+            )
+        return value
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalise_database_url(cls, value: object) -> object:
