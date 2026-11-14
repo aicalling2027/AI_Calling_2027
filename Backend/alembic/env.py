@@ -31,7 +31,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# ``configparser`` interpolates ``%`` on write, so a URL-encoded password
+# (Supabase hands out ``%40`` for ``@``) would be rejected as invalid
+# interpolation and abort every alembic command before it reaches the database.
+# Doubling the percent signs stores the URL literally; ``get_section()`` below
+# undoes the escaping when the engine is built.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

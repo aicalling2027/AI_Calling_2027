@@ -82,6 +82,8 @@ export type Lead = {
   name: string;
   phone: string;
   email: string;
+  /** The customer's own reference: a policy, application or account number. */
+  identity?: string;
   source: string;
   agentId: string | null;
   status: LeadStatus;

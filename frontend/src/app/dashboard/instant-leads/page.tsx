@@ -12,6 +12,7 @@ import {
   Timer,
 } from "lucide-react";
 
+import { LeadImportCard } from "@/components/dashboard/lead-import-card";
 import { CategoryDropdown } from "@/components/dashboard/ui/category-dropdown";
 import {
   Field,
@@ -361,6 +362,11 @@ export default function InstantLeadsPage() {
             </p>
           </section>
         </div>
+
+        {/* Third grid child: it lands under the form, so the sheet you want to
+            import sits beside the call it belongs to rather than below the
+            whole page. */}
+        <LeadImportCard employeeId={agentId} />
       </div>
 
       <section className="rounded-xl border border-line bg-surface">

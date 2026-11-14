@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   Building2,
   FileText,
   Loader2,
   Mic,
   Paperclip,
-  Sparkles,
   Square,
   Wand2,
   X,
@@ -482,18 +482,35 @@ export default function NewEmployeePage() {
               </p>
             ) : null}
 
+            {/* The one primary action on the page, so it borrows the shared
+                recipe every other dashboard CTA uses: cobalt fill, the
+                tangerine sweep on hover, and a pressed shadow. The arrow sits
+                in the trailing slot and the spinner takes its place, which
+                keeps the label from shifting while the employee builds. */}
             <button
               type="button"
               onClick={build}
               disabled={building}
-              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-cobalt text-sm font-semibold text-white transition-colors hover:bg-cobalt-deep focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cobalt/30 disabled:opacity-70"
+              className={buttonVariants({
+                size: "lg",
+                className:
+                  "mt-3 h-11 w-full gap-2 text-[0.9rem] font-semibold disabled:opacity-70",
+              })}
             >
               {building ? (
-                <Loader2 className="size-4 animate-spin" />
+                <>
+                  Building employee…
+                  <Loader2 aria-hidden className="animate-spin" />
+                </>
               ) : (
-                <Sparkles className="size-4" />
+                <>
+                  Build my employee
+                  <ArrowRight
+                    aria-hidden
+                    className="transition-transform duration-200 group-hover/button:translate-x-0.5"
+                  />
+                </>
               )}
-              {building ? "Building employee…" : "Build my employee"}
             </button>
             <p className="mt-2 text-center text-[11px] text-ink-soft">
               Takes a few seconds. Nothing is charged until the first call.

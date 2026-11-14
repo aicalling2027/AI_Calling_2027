@@ -37,6 +37,25 @@ from app.utils.phone import same_number
 
 CONVERTING_STATUSES = frozenset({str(LeadStatus.CONVERTED)})
 
+# Fields on ``LeadUpdate`` that belong to the contact rather than the lead.
+CONTACT_FIELDS = ("full_name", "phone", "email", "identity")
+
+
+def _with_identity(
+    custom_fields: dict[str, Any] | None, identity: str | None
+) -> dict[str, Any]:
+    """Fold the sheet's Identity column into the custom-field bag.
+
+    A value the caller already put in ``custom_fields`` is kept - the typed
+    field is a convenience for the common case, not a way to overwrite a field
+    whose shape we do not own. A blank cell adds nothing, so an empty column
+    leaves no stray key behind.
+    """
+    merged = dict(custom_fields or {})
+    if identity and identity.strip():
+        merged.setdefault("identity", identity.strip())
+    return merged
+
 
 # ---------------------------------------------------------------------------
 # Contacts
@@ -118,7 +137,14 @@ def create_lead(
     user_id: str | None = None,
 ) -> Lead:
     """Create a lead from an inline contact or an existing contact id."""
+    identity: str | None = None
     if payload.contact is not None:
+        # Resolved once, here, so a contact and the lead pointing at it cannot
+        # end up holding different identity values.
+        contact_fields = _with_identity(
+            payload.contact.custom_fields, payload.contact.identity
+        )
+        identity = contact_fields.get("identity")
         contact = get_or_create_contact(
             db,
             organization.id,
@@ -131,7 +157,7 @@ def create_lead(
             country=payload.contact.country,
             preferred_language=payload.contact.preferred_language,
             tags=payload.contact.tags,
-            custom_fields=payload.contact.custom_fields,
+            custom_fields=contact_fields,
         )
     elif payload.contact_id:
         contact = scoped(db, Contact, payload.contact_id, organization.id, label="Contact")
@@ -151,7 +177,7 @@ def create_lead(
         external_id=payload.external_id,
         status=str(LeadStatus.DNC) if contact.is_dnc else str(LeadStatus.NEW),
         notes=payload.notes,
-        custom_fields=payload.custom_fields,
+        custom_fields=_with_identity(payload.custom_fields, identity),
         assigned_to=payload.assigned_to,
     )
     db.add(lead)
@@ -201,6 +227,7 @@ def bulk_import(
     skipped = 0
     errors: list[dict[str, Any]] = []
     lead_ids: list[str] = []
+    created_phones: list[str] = []
 
     existing = {
         row[0]
@@ -215,6 +242,9 @@ def bulk_import(
                 skipped += 1
                 continue
 
+            # One bag for the row, shared by the contact and its lead, so the
+            # two records cannot disagree about who this customer is.
+            fields = _with_identity(item.custom_fields, item.identity)
             contact = get_or_create_contact(
                 db,
                 organization.id,
@@ -224,7 +254,7 @@ def bulk_import(
                 company=item.company,
                 city=item.city,
                 preferred_language=item.language,
-                custom_fields=item.custom_fields,
+                custom_fields=fields,
             )
             lead = Lead(
                 organization_id=organization.id,
@@ -233,11 +263,12 @@ def bulk_import(
                 source=str(payload.source),
                 source_detail=payload.source_detail,
                 status=str(LeadStatus.DNC) if contact.is_dnc else str(LeadStatus.NEW),
-                custom_fields=item.custom_fields,
+                custom_fields=fields,
             )
             db.add(lead)
             db.flush()
             lead_ids.append(lead.id)
+            created_phones.append(contact.phone)
             existing.add(contact.phone)
             created += 1
         except Exception as exc:  # noqa: BLE001 - one bad row must not stop the import
@@ -254,7 +285,13 @@ def bulk_import(
         changes={"created": created, "skipped": skipped, "source": str(payload.source)},
     )
     db.commit()
-    return BulkImportResult(created=created, skipped=skipped, errors=errors, lead_ids=lead_ids)
+    return BulkImportResult(
+        created=created,
+        skipped=skipped,
+        errors=errors,
+        lead_ids=lead_ids,
+        created_phones=created_phones,
+    )
 
 
 def get_lead(db: Session, organization_id: str, lead_id: str) -> Lead:
@@ -328,6 +365,46 @@ def update_lead(db: Session, lead: Lead, payload: LeadUpdate, *, user_id: str | 
     new_status = updates.pop("status", None)
 
     changes: dict[str, Any] = {}
+
+    # Name, phone, email and identity live on the contact, so they are applied
+    # there and reported back under the key the caller used.
+    identity = updates.pop("identity", None)
+    supplied = [field for field in CONTACT_FIELDS if field in updates]
+    if supplied and lead.contact is None:
+        raise ConflictError("This lead has no contact to update.", code="contact_missing")
+
+    if lead.contact is not None:
+        for field in supplied:
+            if field == "identity":
+                continue
+            value = updates.pop(field)
+            if getattr(lead.contact, field) != value:
+                setattr(lead.contact, field, value)
+                changes[field] = value
+
+        if identity is not None:
+            # An empty cell clears the reference, so a mistake can be undone
+            # without deleting the lead and typing it again.
+            value = identity.strip()
+            original = dict(lead.contact.custom_fields or {})
+            merged = dict(original)
+            if value:
+                merged["identity"] = value
+            else:
+                merged.pop("identity", None)
+            if merged != original:
+                lead.contact.custom_fields = merged
+                changes["identity"] = value
+            # Keep the lead's own copy in step where it already has one, rather
+            # than reintroducing the identity on leads that never carried it.
+            lead_fields = dict(lead.custom_fields or {})
+            if "identity" in lead_fields:
+                if value:
+                    lead_fields["identity"] = value
+                else:
+                    lead_fields.pop("identity", None)
+                lead.custom_fields = lead_fields
+
     for field, value in updates.items():
         if getattr(lead, field) != value:
             setattr(lead, field, value)

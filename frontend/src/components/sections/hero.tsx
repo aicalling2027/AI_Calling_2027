@@ -96,12 +96,6 @@ export function Hero() {
           />
         </div>
 
-        {/* The one <p> in the hero: a smaller, quieter line than the
-            subheading above it. */}
-        <p className="mx-auto mt-3 max-w-2xl text-pretty text-[10.5px] font-medium text-ink md:mt-4 md:text-[11px]">
-          {hero.note}
-        </p>
-
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:mt-7">
           <FlowButton href={cta.primary.href} size="lg" tone="brand">
             {cta.primary.label}

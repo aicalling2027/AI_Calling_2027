@@ -8,7 +8,26 @@ import { ApiError } from "@/lib/api/aotms";
  * A rejected service credential or an unreachable API is our problem, not the
  * visitor's session, so those surface as 502 instead of a misleading 401.
  */
-export function failure(error: unknown): NextResponse {
+export type FailureScope = {
+  /** Log tag, e.g. `leads` reads as `[api/leads]`. */
+  tag: string;
+  code: string;
+  message: string;
+};
+
+const EMPLOYEE_SCOPE: FailureScope = {
+  tag: "employees",
+  code: "employees_unavailable",
+  message: "The employee service is unavailable. Try again in a moment.",
+};
+
+export const LEAD_SCOPE: FailureScope = {
+  tag: "leads",
+  code: "leads_unavailable",
+  message: "The lead service is unavailable. Try again in a moment.",
+};
+
+export function failure(error: unknown, scope: FailureScope = EMPLOYEE_SCOPE): NextResponse {
   if (error instanceof ApiError) {
     const upstreamAuth = error.status === 401 || error.status === 403;
     const status = upstreamAuth || error.status >= 500 ? 502 : error.status;
@@ -18,14 +37,9 @@ export function failure(error: unknown): NextResponse {
     );
   }
 
-  console.error("[api/employees]", error);
+  console.error(`[api/${scope.tag}]`, error);
   return NextResponse.json(
-    {
-      error: {
-        code: "employees_unavailable",
-        message: "The employee service is unavailable. Try again in a moment.",
-      },
-    },
+    { error: { code: scope.code, message: scope.message } },
     { status: 500 },
   );
 }

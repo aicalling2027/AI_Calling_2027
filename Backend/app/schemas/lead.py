@@ -22,6 +22,10 @@ class ContactCreate(APIModel):
     full_name: str = Field(min_length=2, max_length=160)
     phone: str = Field(max_length=32)
     email: str | None = Field(default=None, max_length=255)
+    # The customer's own identifier - a policy, application or account number.
+    # It belongs to the customer, not to us, so it is kept as metadata rather
+    # than becoming a column the product has to own and migrate.
+    identity: str | None = Field(default=None, max_length=64)
     company: str | None = Field(default=None, max_length=160)
     city: str | None = Field(default=None, max_length=80)
     state: str | None = Field(default=None, max_length=80)
@@ -68,6 +72,18 @@ class LeadUpdate(APIModel):
     score: int | None = Field(default=None, ge=0, le=100)
     notes: str | None = None
     custom_fields: dict | None = None
+    # The contact's own fields, so a lead can be corrected from the screen that
+    # lists it instead of being deleted and retyped.
+    full_name: str | None = Field(default=None, min_length=2, max_length=160)
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=255)
+    identity: str | None = Field(default=None, max_length=64)
+
+    @field_validator("phone")
+    @classmethod
+    def _optional_phone(cls, value: str | None) -> str | None:
+        """The same normalisation as creation - but an omitted phone stays out."""
+        return None if value is None else _normalise_phone(value)
 
 
 class LeadStatusUpdate(APIModel):
@@ -119,6 +135,7 @@ class BulkLeadItem(APIModel):
     full_name: str = Field(min_length=2, max_length=160)
     phone: str = Field(max_length=32)
     email: str | None = Field(default=None, max_length=255)
+    identity: str | None = Field(default=None, max_length=64)
     company: str | None = Field(default=None, max_length=160)
     city: str | None = Field(default=None, max_length=80)
     language: str | None = Field(default=None, max_length=16)
@@ -139,6 +156,10 @@ class BulkImportResult(APIModel):
     skipped: int
     errors: list[dict] = Field(default_factory=list)
     lead_ids: list[str] = Field(default_factory=list)
+    # Which numbers actually became leads. The caller is told the count either
+    # way, but a sheet can mix duplicates with new rows, so it cannot work out
+    # from the count alone which of its rows landed.
+    created_phones: list[str] = Field(default_factory=list)
 
 
 class FollowUpCreate(APIModel):
