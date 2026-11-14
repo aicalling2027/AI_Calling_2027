@@ -39,6 +39,16 @@ type CachedToken = { token: string; expiresAt: number };
 
 let cachedToken: CachedToken | null = null;
 
+/**
+ * Set once a provisioned `AOTMS_API_TOKEN` has been refused by the backend.
+ *
+ * A static token can be rotated or revoked outside this app, and when it is the
+ * whole dashboard goes blank while the health probe still reports a reachable
+ * backend. Falling back to the service account turns that into a self-healing
+ * hop instead of an outage nobody can name.
+ */
+let staticTokenRejected = false;
+
 /** The backend's uniform error envelope: `{ error: { code, message } }`. */
 type ErrorEnvelope = { error?: { code?: string; message?: string } };
 
@@ -52,7 +62,7 @@ function readError(payload: unknown, status: number): ApiError {
 }
 
 async function accessToken(): Promise<string> {
-  if (STATIC_TOKEN) return STATIC_TOKEN;
+  if (STATIC_TOKEN && !staticTokenRejected) return STATIC_TOKEN;
   if (cachedToken && cachedToken.expiresAt > Date.now() + 15_000) return cachedToken.token;
 
   const response = await fetch(`${API_BASE}${API_PREFIX}/auth/login`, {
@@ -85,8 +95,11 @@ type ApiRequest = {
 /**
  * Call the backend as the workspace service account.
  *
- * A rejected token is dropped and retried once, so a rotated credential does
- * not surface as a spurious error to the dashboard.
+ * A rejected credential is dropped and retried once, so a rotated token or an
+ * expired cache does not surface as a spurious error to the dashboard. A read
+ * that times out is retried too: a sleeping backend loses the first attempt and
+ * answering sooner than it wakes only produces an error the visitor cannot act
+ * on.
  */
 export async function apiFetch<T>(path: string, init: ApiRequest = {}): Promise<T> {
   const send = async (token: string) =>
@@ -101,10 +114,29 @@ export async function apiFetch<T>(path: string, init: ApiRequest = {}): Promise<
       signal: AbortSignal.timeout(15_000),
     });
 
-  let response = await send(await accessToken());
-  if (response.status === 401) {
+  const isRead = !init.method || init.method === "GET";
+  const attempt = async (token: string): Promise<Response> => {
+    try {
+      return await send(token);
+    } catch (error) {
+      const timedOut =
+        error instanceof Error &&
+        (error.name === "TimeoutError" || error.name === "AbortError");
+      if (!timedOut || !isRead) throw error;
+      console.warn(`[api] ${path} timed out once; retrying`);
+      return send(token);
+    }
+  };
+
+  const first = await accessToken();
+  let response = await attempt(first);
+  if (response.status === 401 || response.status === 403) {
+    // The credential in hand was refused: drop whatever produced it and ask
+    // for a fresh one, once.
     cachedToken = null;
-    response = await send(await accessToken());
+    if (first === STATIC_TOKEN) staticTokenRejected = true;
+    const next = await accessToken();
+    if (next !== first) response = await attempt(next);
   }
 
   const text = await response.text();

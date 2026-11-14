@@ -274,7 +274,19 @@ export const statusForApi = (status: AgentStatus) => STATUS_TO_API[status];
 // ---------------------------------------------------------------------------
 export async function listEmployees(): Promise<Agent[]> {
   const page = await apiFetch<EmployeePage>("/employees?page=1&page_size=100");
-  return page.items.map(toAgent);
+  const records = page?.items ?? [];
+
+  // One record the dashboard cannot read must not cost the visitor the other
+  // employees - including the one just created.
+  const agents: Agent[] = [];
+  for (const record of records) {
+    try {
+      agents.push(toAgent(record));
+    } catch (error) {
+      console.error(`[employees] ${record?.id ?? "unknown"} could not be read`, error);
+    }
+  }
+  return agents;
 }
 
 export async function getEmployee(id: string): Promise<Agent> {

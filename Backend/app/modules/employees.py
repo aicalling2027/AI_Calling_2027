@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from collections.abc import Sequence
 from typing import Any
@@ -60,6 +61,8 @@ from app.schemas.employee import (
     PromptVersionOut,
     VoiceCatalogItem,
 )
+
+logger = logging.getLogger(__name__)
 
 # Lifecycle states in which the provider deployment must stay down.
 _STOPPED_STATES = (str(EmployeeStatus.PAUSED), str(EmployeeStatus.ARCHIVED))
@@ -148,11 +151,39 @@ def list_employees(
     stmt = stmt.options(selectinload(Employee.languages))
     rows, total = paginate(db, stmt, params)
 
-    items = [EmployeeOut.model_validate(row) for row in rows]
-    bindings = _bindings_for(db, [item.id for item in items])
-    sources = {row.id: row for row in rows}
+    # Each row is serialised on its own: one drifted legacy record must not
+    # blank the whole workspace, which would hide every other employee - and
+    # the one just created - behind a single 500. The offender is named in the
+    # log instead, so the row can be repaired.
+    items: list[EmployeeOut] = []
+    sources: dict[str, Employee] = {}
+    for row in rows:
+        try:
+            items.append(EmployeeOut.model_validate(row))
+        except Exception:  # noqa: BLE001 - see comment above
+            logger.warning(
+                "employee %s could not be serialised and was left out of the list",
+                row.id,
+                exc_info=True,
+            )
+            continue
+        sources[row.id] = row
+
+    # The phone-line decoration reads a second table; a missing row there is
+    # cosmetic and must not cost the visitor their employee list either.
+    try:
+        bindings = _bindings_for(db, list(sources))
+    except Exception:  # noqa: BLE001
+        logger.warning("agent bindings could not be read for the employee list", exc_info=True)
+        bindings = {}
+
     for item in items:
-        item.calling = _calling_out(sources[item.id], bindings.get(item.id))
+        try:
+            item.calling = _calling_out(sources[item.id], bindings.get(item.id))
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "calling status unavailable for employee %s", item.id, exc_info=True
+            )
     return items, total
 
 

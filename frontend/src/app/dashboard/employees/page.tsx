@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   Loader2,
   Pause,
@@ -39,7 +40,15 @@ const STATUS_VARIANT: Record<Agent["status"], "success" | "warning" | "secondary
 };
 
 export default function EmployeesPage() {
-  const { agents, agentsStatus, updateAgent, dedupeAgents, importAgents } = useWorkspace();
+  const {
+    agents,
+    agentsStatus,
+    agentsError,
+    refreshAgents,
+    updateAgent,
+    dedupeAgents,
+    importAgents,
+  } = useWorkspace();
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("All");
   const [language, setLanguage] = React.useState("All");
@@ -208,6 +217,31 @@ export default function EmployeesPage() {
         </div>
       </div>
 
+      {agentsStatus === "error" ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-start gap-2 rounded-xl border border-line bg-cream/60 px-4 py-3 text-xs text-ink"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#9a6b00]" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">The saved employee list could not be read.</p>
+            <p className="mt-0.5 leading-relaxed text-ink-soft">
+              {agentsError ?? "The employee service did not answer."}{" "}
+              {agents.length > 0
+                ? "The employees below were read earlier; retry to refresh them."
+                : "Retry once the service is reachable - nothing has been lost."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refreshAgents()}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       {notice ? (
         <p className="rounded-lg bg-mist-soft px-3 py-2 text-xs text-ink-soft" role="status">
           {notice}
@@ -219,15 +253,18 @@ export default function EmployeesPage() {
           <Loader2 className="size-4 animate-spin" />
           Loading your employees from the database…
         </div>
-      ) : agentsStatus === "error" ? (
+      ) : agentsStatus === "error" && agents.length === 0 ? (
         <EmptyState
           icon={<Users className="size-5" />}
           title="Could not load your employees"
-          description="The employee service did not answer. Check that the backend is running and try again."
+          description={
+            agentsError ??
+            "The employee service did not answer. Check that the backend is reachable and try again."
+          }
           action={
             <button
               type="button"
-              onClick={() => void window.location.reload()}
+              onClick={() => void refreshAgents()}
               className={buttonVariants({ size: "lg" })}
             >
               Try again

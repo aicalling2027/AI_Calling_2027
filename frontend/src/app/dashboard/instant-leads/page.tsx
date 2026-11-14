@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import {
   AlertTriangle,
@@ -29,7 +29,7 @@ import { LanguageDropdown } from "@/components/dashboard/ui/language-dropdown";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { initialsOf, type Lead, type LeadStatus } from "@/content/workspace";
+import { type Lead, type LeadStatus } from "@/content/workspace";
 import { CALL_STEPS, DEFAULT_OUTCOMES, isInstantLead, planFor } from "@/lib/instant-call";
 import { phoneKey } from "@/lib/lead-import";
 import { cn } from "@/lib/utils";
@@ -49,9 +49,13 @@ export default function InstantLeadsPage() {
 
 function InstantLeadsInner() {
   const search = useSearchParams();
+  const router = useRouter();
   const requestedAgent = search.get("agent") ?? "";
   const {
     agents,
+    agentsStatus,
+    agentsError,
+    refreshAgents,
     leads,
     addConversation,
     addLead,
@@ -83,6 +87,10 @@ function InstantLeadsInner() {
   /* The phone number of the lead this session just created, so its row can be
      marked instead of leaving the person to hunt for it in the table. */
   const [justCalled, setJustCalled] = React.useState<string | null>(null);
+  /* The employee the link named when the screen opened. Kept apart from the
+     current pick so the "opened from that workspace" note does not follow a
+     later selection. */
+  const [openedFrom] = React.useState(requestedAgent);
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
 
   React.useEffect(() => {
@@ -113,6 +121,15 @@ function InstantLeadsInner() {
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
+  };
+
+  /* Picking an employee writes `?agent=` as well, so a refresh or a link copied
+     from the address bar keeps the same employee in the form. */
+  const choose = (id: string) => {
+    const found = agents.find((item) => item.id === id);
+    setAgentChoice(id);
+    if (found) setLanguage(found.defaultLanguage);
+    router.replace(`/dashboard/instant-leads?agent=${id}`, { scroll: false });
   };
 
   const call = () => {
@@ -227,7 +244,7 @@ function InstantLeadsInner() {
             The languages, the capabilities and the outcome list are read from the
             employee you pick, so the lead record matches what it can actually do.
           </p>
-          {agent && agent.id === requestedAgent ? (
+          {agent && agent.id === openedFrom ? (
             <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-cobalt-deep">
               <Check className="size-3" aria-hidden />
               Opened from {agent.name}&apos;s workspace, with that employee selected.
@@ -235,6 +252,97 @@ function InstantLeadsInner() {
           ) : null}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                  Employee for this call
+                </span>
+                <Link
+                  href="/dashboard/employees"
+                  className="text-[11px] font-medium text-cobalt hover:underline"
+                >
+                  Manage employees
+                </Link>
+              </div>
+
+              {agentsStatus === "loading" ? (
+                <div className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-mist-soft px-3 py-2.5 text-[11px] text-ink-soft">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Loading your employees…
+                </div>
+              ) : agents.length === 0 ? (
+                <div className="mt-2 rounded-lg border border-dashed border-line bg-mist-soft px-3 py-2.5 text-[11px] leading-relaxed text-ink-soft">
+                  {agentsStatus === "error" ? (
+                    <>
+                      {agentsError ?? "Your employees could not be read."}{" "}
+                      <button
+                        type="button"
+                        onClick={() => void refreshAgents()}
+                        className="font-semibold text-cobalt underline"
+                      >
+                        Retry
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      No employees on this account yet.{" "}
+                      <Link
+                        href="/dashboard/employees/new"
+                        className="font-semibold text-cobalt underline"
+                      >
+                        Build one
+                      </Link>{" "}
+                      and it appears here to take the call.
+                    </>
+                  )}
+                </div>
+              ) : (
+                <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {agents.map((item) => {
+                    const chosen = item.id === agentId;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          onClick={() => choose(item.id)}
+                          aria-pressed={chosen}
+                          className={cn(
+                            "flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                            chosen
+                              ? "border-cobalt bg-cobalt-tint/40"
+                              : "border-line bg-surface hover:bg-mist",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "grid size-8 shrink-0 place-items-center rounded-lg text-[11px] font-semibold",
+                              item.tone,
+                            )}
+                            aria-hidden
+                          >
+                            {item.initials}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-xs font-semibold text-ink">
+                                {item.name}
+                              </span>
+                              {chosen ? (
+                                <Check className="size-3.5 shrink-0 text-cobalt" aria-hidden />
+                              ) : null}
+                            </span>
+                            <span className="block truncate text-[11px] text-ink-soft">
+                              {item.purpose}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
             <Field label="Contact name" htmlFor="instant-name">
               <TextInput
                 id="instant-name"
@@ -278,25 +386,6 @@ function InstantLeadsInner() {
                 onChange={(event) => setIdentity(event.target.value)}
                 placeholder="POL-884213"
                 autoComplete="off"
-              />
-            </Field>
-            <Field label="Employee" htmlFor="instant-agent">
-              <CategoryDropdown
-                id="instant-agent"
-                label="Employee"
-                value={agentId}
-                onChange={(next) => {
-                  const found = agents.find((item) => item.id === next);
-                  setAgentChoice(next);
-                  if (found) setLanguage(found.defaultLanguage);
-                }}
-                options={agents.map((item) => ({
-                  value: item.id,
-                  label: item.name,
-                  description: item.purpose,
-                  badge: initialsOf(item.name),
-                  accent: "#185adb",
-                }))}
               />
             </Field>
             <Field label="Language" htmlFor="instant-language">

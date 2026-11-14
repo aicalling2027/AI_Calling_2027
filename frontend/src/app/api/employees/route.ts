@@ -15,7 +15,13 @@ export async function GET() {
   if (denied) return denied;
 
   try {
-    return NextResponse.json({ items: await listEmployees() });
+    // Session-scoped data: a cached copy would show the previous list - or an
+    // empty one - until the CDN revalidates, which reads as "my new employee
+    // vanished".
+    return NextResponse.json(
+      { items: await listEmployees() },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return failure(error);
   }

@@ -43,6 +43,8 @@ type AgentsStatus = "loading" | "ready" | "error";
 type WorkspaceState = {
   agents: Agent[];
   agentsStatus: AgentsStatus;
+  /** Why the last employee read failed, so the screen can say so. */
+  agentsError: string | null;
   leads: Lead[];
   /** Whether the list on screen came from the database or only from seeds. */
   leadsStatus: AgentsStatus;
@@ -124,6 +126,7 @@ export type WorkspaceStore = WorkspaceState & WorkspaceActions;
 const initialState: WorkspaceState = {
   agents: [],
   agentsStatus: "loading",
+  agentsError: null,
   leads: seedLeads,
   leadsStatus: "loading",
   leadsError: null,
@@ -159,6 +162,10 @@ function mergeLocal(current: Agent | undefined, next: Agent): Agent {
 }
 
 type AgentPayload = { agent?: Agent; items?: Agent[]; error?: { message?: string } };
+
+/** The server's own wording when it gave one, so the screen is not guessing. */
+const reasonOf = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 async function readAgent(response: Response, fallback: string): Promise<Agent> {
   const body = (await response.json().catch(() => null)) as AgentPayload | null;
@@ -199,6 +206,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         agents: items.map((item) => mergeLocal(known.get(item.id), item)),
         agentsStatus: "ready",
+        agentsError: null,
       };
     });
   }, []);
@@ -213,7 +221,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((error: unknown) => {
         console.error("[workspace] load employees", error);
-        if (!cancelled) setState((prev) => ({ ...prev, agentsStatus: "error" }));
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            agentsStatus: "error",
+            agentsError: reasonOf(error, "The employee service did not answer."),
+          }));
+        }
       });
     return () => {
       cancelled = true;
@@ -225,7 +239,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       applyAgents(await fetchAgents());
     } catch (error) {
       console.error("[workspace] load employees", error);
-      setState((prev) => ({ ...prev, agentsStatus: "error" }));
+      setState((prev) => ({
+        ...prev,
+        agentsStatus: "error",
+        agentsError: reasonOf(error, "The employee service did not answer."),
+      }));
     }
   }, [applyAgents]);
 
