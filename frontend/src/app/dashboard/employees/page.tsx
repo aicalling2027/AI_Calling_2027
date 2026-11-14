@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Loader2,
   Pause,
+  Phone,
   Play,
   Plus,
   RefreshCw,
@@ -335,6 +336,13 @@ export default function EmployeesPage() {
               </p>
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-hairline pt-3">
+                <Link
+                  href={`/dashboard/instant-leads?agent=${agent.id}`}
+                  className="inline-flex h-7 items-center gap-1 rounded-md bg-cobalt px-2 text-[11px] font-medium text-white transition-colors hover:bg-cobalt-deep"
+                >
+                  <Phone className="size-3" />
+                  Instant lead
+                </Link>
                 <Link
                   href={`/dashboard/talk?agent=${agent.id}`}
                   className="inline-flex h-7 items-center gap-1 rounded-md bg-cobalt-tint px-2 text-[11px] font-medium text-cobalt-deep transition-colors hover:bg-cobalt-tint/70"

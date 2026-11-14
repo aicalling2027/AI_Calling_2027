@@ -31,6 +31,7 @@ import {
 } from "@/components/dashboard/ui/kit";
 import { SelectCard } from "@/components/dashboard/ui/select-card";
 import { VoicePreview } from "@/components/dashboard/ui/voice-preview";
+import { InstantLeadPanel } from "@/components/dashboard/instant-lead-panel";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -134,11 +135,6 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
   const [rules, setRules] = React.useState(agent?.rules ?? "");
   const [closingLine, setClosingLine] = React.useState(agent?.closingLine ?? "");
   const [closingRules, setClosingRules] = React.useState(agent?.closingRules ?? "");
-  const [contact, setContact] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [callResult, setCallResult] = React.useState<string | null>(null);
-  const [formError, setFormError] = React.useState<string | null>(null);
   const [sourceName, setSourceName] = React.useState("");
   const [sourceKind, setSourceKind] = React.useState<"PDF" | "DOCX" | "TXT" | "URL" | "FAQ">("PDF");
   const [name, setName] = React.useState(agent?.name ?? "");
@@ -178,55 +174,6 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
     } finally {
       setDeploying(false);
     }
-  };
-
-  const startInstantLead = () => {
-    if (!contact.trim()) {
-      setFormError("Contact name is required.");
-      return;
-    }
-    if (phone.replace(/\D/g, "").length < 10) {
-      setFormError("Enter a phone number with at least 10 digits.");
-      return;
-    }
-    setFormError(null);
-    const id = store.addConversation({
-      contact: contact.trim(),
-      phone,
-      agentId: agent.id,
-      direction: "Outbound",
-      outcome: "Callback requested",
-      sentiment: "Neutral",
-      duration: "1:48",
-      credits: 5,
-      startedAt: "Just now",
-      summary: notes.trim()
-        ? `Call placed from the ${agent.name} workspace. ${notes.trim()}`
-        : `Call placed from the ${agent.name} workspace with the default script.`,
-      transcript: [
-        { who: "Agent", text: agent.greeting },
-        { who: "Customer", text: notes.trim() || "Haan, boliye." },
-        {
-          who: "Agent",
-          text: "Thank you. I have noted the details and will call back at the time you suggested.",
-        },
-      ],
-    });
-    store.addLead({
-      name: contact.trim(),
-      phone,
-      email: "",
-      source: "Instant leads",
-      agentId: agent.id,
-      status: "Contacted",
-      followUp: "Tomorrow, 11:00 am",
-      lastContact: "just now",
-      summary: notes.trim() || `Instant lead created from ${agent.name}.`,
-    });
-    setCallResult(id);
-    setContact("");
-    setPhone("");
-    setNotes("");
   };
 
   const addSource = () => {
@@ -330,6 +277,13 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
+              href={`/dashboard/instant-leads?agent=${agent.id}`}
+              className={buttonVariants({ size: "lg" })}
+            >
+              <Phone aria-hidden />
+              Instant lead
+            </Link>
+            <Link
               href={`/dashboard/talk?agent=${agent.id}`}
               className={buttonVariants({ variant: "outline", size: "lg" })}
             >
@@ -343,7 +297,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
                   status: active ? "Paused" : "Active",
                 })
               }
-              className={buttonVariants({ size: "lg" })}
+              className={buttonVariants({ variant: "outline", size: "lg" })}
             >
               {active ? <Pause aria-hidden /> : <Play aria-hidden />}
               {active ? "Pause" : "Activate"}
@@ -524,90 +478,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
       ) : null}
 
       {tab === "instant" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-line bg-surface p-4">
-            <h2 className="text-sm font-semibold text-ink">Start an instant lead</h2>
-            <p className="mt-0.5 text-xs text-ink-soft">
-              {agent.name} calls the contact within 30 seconds using the saved script.
-            </p>
-            <div className="mt-4 space-y-3">
-              <Field label="Contact name" htmlFor="instant-contact">
-                <TextInput
-                  id="instant-contact"
-                  value={contact}
-                  onChange={(event) => setContact(event.target.value)}
-                  placeholder="Rohit Sharma"
-                />
-              </Field>
-              <Field label="Phone number" htmlFor="instant-phone">
-                <TextInput
-                  id="instant-phone"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+91 98204 11822"
-                  inputMode="tel"
-                />
-              </Field>
-              <Field
-                label="Context for the employee"
-                hint="Optional. The employee opens with the saved greeting."
-                htmlFor="instant-notes"
-              >
-                <TextArea
-                  id="instant-notes"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={3}
-                  placeholder="Asked about the family floater renewal."
-                />
-              </Field>
-              {formError ? (
-                <p role="alert" className="text-xs text-destructive">
-                  {formError}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={startInstantLead}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-cobalt px-3.5 text-sm font-medium text-white transition-colors hover:bg-cobalt-deep"
-              >
-                <Phone className="size-4" />
-                Start call
-              </button>
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-line bg-surface p-4">
-            <h2 className="text-sm font-semibold text-ink">What happens next</h2>
-            <ol className="mt-3 space-y-2.5">
-              {[
-                "The call is queued and the number is dialled from the active line.",
-                "The employee follows the call script and captures the outcome.",
-                "The contact appears in Leads & results with a summary.",
-                "Credits are deducted for the connected duration only.",
-              ].map((step, index) => (
-                <li key={step} className="flex gap-2.5 text-xs leading-relaxed text-ink-soft">
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-mist text-[10px] font-semibold text-ink">
-                    {index + 1}
-                  </span>
-                  {step}
-                </li>
-              ))}
-            </ol>
-            {callResult ? (
-              <div className="mt-4 rounded-lg bg-[#e6f5ec] p-3 text-xs text-[#1c7a4c]">
-                <p className="font-semibold">Call queued</p>
-                <p className="mt-0.5">
-                  Reference {callResult.toUpperCase()}. The lead and the summary are now in the
-                  leads module.
-                </p>
-                <Link href="/dashboard/leads" className="mt-1.5 inline-block font-semibold underline">
-                  Open Leads &amp; results
-                </Link>
-              </div>
-            ) : null}
-          </section>
-        </div>
+        <InstantLeadPanel agent={agent} onEditScript={() => setTab("script")} />
       ) : null}
 
       {tab === "script" ? (

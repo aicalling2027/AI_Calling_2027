@@ -44,6 +44,10 @@ type WorkspaceState = {
   agents: Agent[];
   agentsStatus: AgentsStatus;
   leads: Lead[];
+  /** Whether the list on screen came from the database or only from seeds. */
+  leadsStatus: AgentsStatus;
+  /** Why the last read or write failed, so the screen can say so. */
+  leadsError: string | null;
   campaigns: Campaign[];
   numbers: PhoneNumberRecord[];
   conversations: Conversation[];
@@ -84,6 +88,8 @@ type WorkspaceActions = {
   /** Pull the agents that already exist in your connected account in as employees. */
   importAgents: () => Promise<ImportSummary>;
   addLead: (input: Omit<Lead, "id">, remoteId?: string) => void;
+  /** Re-read the lead list: after a refused write, or to retry a failed read. */
+  refreshLeads: () => Promise<void>;
   updateLead: (id: string, patch: Partial<Lead>) => void;
   removeLead: (id: string) => void;
   addCampaign: (input: {
@@ -119,6 +125,8 @@ const initialState: WorkspaceState = {
   agents: [],
   agentsStatus: "loading",
   leads: seedLeads,
+  leadsStatus: "loading",
+  leadsError: null,
   campaigns: seedCampaigns,
   numbers: seedNumbers,
   conversations: seedConversations,
@@ -309,11 +317,25 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     fetchLeads()
       .then((items) => {
-        if (!cancelled) setState((prev) => ({ ...prev, leads: items }));
+        if (cancelled) return;
+        setState((prev) => ({
+          ...prev,
+          leads: items,
+          leadsStatus: "ready",
+          leadsError: null,
+        }));
       })
       .catch((error: unknown) => {
-        // An unreachable backend must not blank the screen mid-session.
+        // An unreachable backend must not blank the screen mid-session, but it
+        // must not look like "no leads yet" either: the flag lets the screen
+        // say the list could not be read.
         console.error("[workspace] load leads", error);
+        if (cancelled) return;
+        setState((prev) => ({
+          ...prev,
+          leadsStatus: "error",
+          leadsError: error instanceof Error ? error.message : "Leads could not be loaded.",
+        }));
       });
     return () => {
       cancelled = true;
@@ -323,9 +345,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const refreshLeads = React.useCallback(async () => {
     try {
       const items = await fetchLeads();
-      setState((prev) => ({ ...prev, leads: items }));
+      setState((prev) => ({
+        ...prev,
+        leads: items,
+        leadsStatus: "ready",
+        leadsError: null,
+      }));
     } catch (error) {
       console.error("[workspace] load leads", error);
+      setState((prev) => ({
+        ...prev,
+        leadsStatus: "error",
+        leadsError: error instanceof Error ? error.message : "Leads could not be loaded.",
+      }));
     }
   }, []);
 
@@ -373,14 +405,23 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           setState((prev) => ({
             ...prev,
             leads: prev.leads.map((lead) => (lead.id === temporaryId ? stored : lead)),
+            leadsStatus: "ready",
+            leadsError: null,
           }));
         })
         .catch((error: unknown) => {
+          // The row stays exactly where it is. The call already happened, so
+          // dropping it would hide a lead the employee just spoke to; the
+          // banner reports that the save did not reach the server.
           console.error("[workspace] add lead", error);
-          void refreshLeads();
+          setState((prev) => ({
+            ...prev,
+            leadsError:
+              error instanceof Error ? error.message : "The lead could not be saved.",
+          }));
         });
     },
-    [refreshLeads],
+    [],
   );
 
   /**
@@ -644,6 +685,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       dedupeAgents,
       importAgents,
       addLead,
+      refreshLeads,
       updateLead,
       removeLead,
       addCampaign,
@@ -672,6 +714,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       dedupeAgents,
       importAgents,
       addLead,
+      refreshLeads,
       updateLead,
       removeLead,
       addCampaign,

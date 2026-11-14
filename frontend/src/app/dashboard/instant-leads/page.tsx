@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import {
+  AlertTriangle,
   Check,
   Clock,
   Loader2,
@@ -27,102 +29,42 @@ import { LanguageDropdown } from "@/components/dashboard/ui/language-dropdown";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { initialsOf, type LeadStatus } from "@/content/workspace";
+import { initialsOf, type Lead, type LeadStatus } from "@/content/workspace";
+import { CALL_STEPS, DEFAULT_OUTCOMES, isInstantLead, planFor } from "@/lib/instant-call";
+import { phoneKey } from "@/lib/lead-import";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Queued", "Dialling the number", "Connected", "Completing the call"];
-
-/** Used only while an employee has not declared its own outcome list. */
-const DEFAULT_OUTCOMES = [
-  "Interested",
-  "Callback requested",
-  "Appointment scheduled",
-  "Not interested",
-  "No answer",
-];
-
-type CallPlan = {
-  /** A call that was never picked up must not look like a completed one. */
-  connected: boolean;
-  status: LeadStatus;
-  followUp: string;
-  sentiment: "Positive" | "Neutral" | "Negative" | "Unknown";
-  closing: string;
-};
-
 /**
- * Turns the one outcome an employee reports into the rest of the record: the
- * lead status, the follow-up slot, the sentiment and the last line of the
- * transcript. Ordered so "unqualified" is matched before "qualified".
+ * The screen reads `?agent=` so an employee's workspace can hand over to it
+ * with that employee already picked. `useSearchParams` needs a boundary, so
+ * the page itself only renders the inner component.
  */
-function planFor(outcome: string): CallPlan {
-  const key = outcome.toLowerCase();
-
-  if (key.includes("appointment") || key.includes("booked")) {
-    return {
-      connected: true,
-      status: "Appointment",
-      followUp: "Tomorrow, 11:00 am",
-      sentiment: "Positive",
-      closing: "I have booked that slot and sent the confirmation on WhatsApp.",
-    };
-  }
-  if (key.includes("no answer") || key.includes("failed") || key.includes("unreachable")) {
-    return {
-      connected: false,
-      status: "Contacted",
-      followUp: "Today, 7:00 pm",
-      sentiment: "Unknown",
-      closing: "No answer after 30 seconds. The script was not played and a retry is booked for the evening slot.",
-    };
-  }
-  if (
-    key.includes("not interested") ||
-    key.includes("unqualified") ||
-    key.includes("not qualified") ||
-    key.includes("do not call")
-  ) {
-    return {
-      connected: true,
-      status: "Not interested",
-      followUp: "No follow-up",
-      sentiment: "Negative",
-      closing: "Understood. I have noted that and will not call again.",
-    };
-  }
-  if (
-    key.includes("callback") ||
-    key.includes("call back") ||
-    key.includes("follow-up") ||
-    key.includes("follow up") ||
-    key.includes("transfer") ||
-    key.includes("human")
-  ) {
-    return {
-      connected: true,
-      status: "Contacted",
-      followUp: "Today, 6:00 pm",
-      sentiment: "Neutral",
-      closing: "Theek hai, main aapko suggest kiye gaye samay par call karwa dunga.",
-    };
-  }
-  return {
-    connected: true,
-    status: "Qualified",
-    followUp: "Today, 4:00 pm",
-    sentiment: "Positive",
-    closing: "I have shared the details on WhatsApp and noted everything in the system.",
-  };
+export default function InstantLeadsPage() {
+  return (
+    <React.Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-mist" />}>
+      <InstantLeadsInner />
+    </React.Suspense>
+  );
 }
 
-export default function InstantLeadsPage() {
-  const { agents, leads, addConversation, addLead } = useWorkspace();
+function InstantLeadsInner() {
+  const search = useSearchParams();
+  const requestedAgent = search.get("agent") ?? "";
+  const {
+    agents,
+    leads,
+    addConversation,
+    addLead,
+    refreshLeads,
+    leadsStatus,
+    leadsError,
+  } = useWorkspace();
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [identity, setIdentity] = React.useState("");
-  const [agentId, setAgentId] = React.useState(agents[0]?.id ?? "");
-  const [language, setLanguage] = React.useState(agents[0]?.defaultLanguage ?? "Hindi");
+  const [agentChoice, setAgentChoice] = React.useState("");
+  const [language, setLanguage] = React.useState("");
   const [outcomeChoice, setOutcomeChoice] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [consent, setConsent] = React.useState(false);
@@ -138,6 +80,9 @@ export default function InstantLeadsPage() {
     credits: number;
     summary: string;
   } | null>(null);
+  /* The phone number of the lead this session just created, so its row can be
+     marked instead of leaving the person to hunt for it in the table. */
+  const [justCalled, setJustCalled] = React.useState<string | null>(null);
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
 
   React.useEffect(() => {
@@ -145,7 +90,14 @@ export default function InstantLeadsPage() {
     return () => pending.forEach(clearTimeout);
   }, []);
 
-  const agent = agents.find((item) => item.id === agentId) ?? agents[0];
+  // The employee list arrives after the first paint, so the employee is
+  // resolved during the render: the one the person picked, else the one the
+  // link asked for (`?agent=`), else the first on the account.
+  const agent =
+    agents.find((item) => item.id === agentChoice) ??
+    agents.find((item) => item.id === requestedAgent) ??
+    agents[0];
+  const agentId = agent?.id ?? "";
   /* Everything below is read from the selected employee, so the form can only
      offer a language it speaks and an outcome it is allowed to report. */
   const outcomes = agent?.outcomes.length ? agent.outcomes : DEFAULT_OUTCOMES;
@@ -155,7 +107,9 @@ export default function InstantLeadsPage() {
     ? agent.languages
     : [agent?.defaultLanguage ?? "Hindi"];
   const spokenLanguage = languages.includes(language) ? language : languages[0];
-  const instantLeads = leads.filter((lead) => lead.source === "Instant leads");
+  const instantLeads = leads.filter(isInstantLead);
+  const justAdded = (lead: Lead) =>
+    justCalled !== null && phoneKey(lead.phone) === phoneKey(justCalled);
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
@@ -183,6 +137,7 @@ export default function InstantLeadsPage() {
     setPhase("calling");
     setStep(1);
     setResult(null);
+    setJustCalled(null);
 
     const credits = plan.connected ? 5 : 0;
     const summary = `${outcome} on a ${spokenLanguage} call with ${name.trim()}.${
@@ -224,6 +179,7 @@ export default function InstantLeadsPage() {
         summary,
       });
       setStep(4);
+      setJustCalled(phone);
       setResult({
         id,
         outcome,
@@ -271,6 +227,12 @@ export default function InstantLeadsPage() {
             The languages, the capabilities and the outcome list are read from the
             employee you pick, so the lead record matches what it can actually do.
           </p>
+          {agent && agent.id === requestedAgent ? (
+            <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-cobalt-deep">
+              <Check className="size-3" aria-hidden />
+              Opened from {agent.name}&apos;s workspace, with that employee selected.
+            </p>
+          ) : null}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Contact name" htmlFor="instant-name">
@@ -325,7 +287,7 @@ export default function InstantLeadsPage() {
                 value={agentId}
                 onChange={(next) => {
                   const found = agents.find((item) => item.id === next);
-                  setAgentId(next);
+                  setAgentChoice(next);
                   if (found) setLanguage(found.defaultLanguage);
                 }}
                 options={agents.map((item) => ({
@@ -455,7 +417,7 @@ export default function InstantLeadsPage() {
             </div>
 
             <ol className="mt-3 space-y-2">
-              {STEPS.map((label, index) => {
+              {CALL_STEPS.map((label, index) => {
                 // A call nobody answered stops after the dial: the later steps
                 // must not turn green and claim a conversation happened.
                 const done = step > index + 1 && (plan.connected || index < 2);
@@ -550,6 +512,29 @@ export default function InstantLeadsPage() {
         <LeadImportCard employeeId={agentId} />
       </div>
 
+      {leadsStatus === "error" ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-start gap-2 rounded-xl border border-line bg-cream/60 px-4 py-3 text-xs text-ink"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#9a6b00]" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">The saved lead list could not be read.</p>
+            <p className="mt-0.5 leading-relaxed text-ink-soft">
+              {leadsError ?? "The server did not answer."} Leads added on this screen
+              stay here; retry to read the saved list again.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refreshLeads()}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
       <section className="rounded-xl border border-line bg-surface">
         <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
           <h2 className="text-sm font-semibold text-ink">Recent instant leads</h2>
@@ -578,13 +563,25 @@ export default function InstantLeadsPage() {
               </thead>
               <tbody className="divide-y divide-hairline">
                 {instantLeads.map((lead) => (
-                  <tr key={lead.id}>
+                  <tr key={lead.id} className={justAdded(lead) ? "bg-cobalt-tint/30" : undefined}>
                     <td className="px-4 py-2.5">
-                      <p className="font-medium text-ink">{lead.name}</p>
+                      <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
+                        {lead.name}
+                        {justAdded(lead) ? <Badge variant="outline">Just added</Badge> : null}
+                      </p>
                       <p className="text-[11px] text-ink-soft">{lead.phone}</p>
                     </td>
                     <td className="px-4 py-2.5 text-ink-soft">
-                      {agents.find((item) => item.id === lead.agentId)?.name ?? "Unassigned"}
+                      {lead.agentId ? (
+                        <Link
+                          href={`/dashboard/employees/${lead.agentId}`}
+                          className="transition-colors hover:text-ink hover:underline"
+                        >
+                          {agents.find((item) => item.id === lead.agentId)?.name ?? "Open employee"}
+                        </Link>
+                      ) : (
+                        "Unassigned"
+                      )}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge
