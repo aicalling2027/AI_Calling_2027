@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { ApiError } from "@/lib/api/aotms";
+import { apiBaseLabel } from "@/lib/api/base-url";
 
 /**
  * Turn a failed backend call into a response for the browser.
@@ -37,7 +38,10 @@ export function failure(error: unknown, scope: FailureScope = EMPLOYEE_SCOPE): N
     );
   }
 
-  console.error(`[api/${scope.tag}]`, error);
+  // Not an ApiError: the request never produced a response, so name the origin
+  // and the failure instead of leaving a bare "unavailable" in the logs.
+  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  console.error(`[api/${scope.tag}] ${apiBaseLabel()} unreachable (${detail})`);
   return NextResponse.json(
     { error: { code: scope.code, message: scope.message } },
     { status: 500 },

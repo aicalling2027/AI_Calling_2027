@@ -1,3 +1,5 @@
+import { apiBaseUrl } from "@/lib/api/base-url";
+
 /**
  * Server-side client for the OWN AI FastAPI service.
  *
@@ -14,7 +16,7 @@
  *                        `npm run dev` works against a local backend
  */
 
-const API_BASE = (process.env.AOTMS_API_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+const API_BASE = apiBaseUrl();
 const API_PREFIX = "/api/v1";
 
 const STATIC_TOKEN = (process.env.AOTMS_API_TOKEN ?? "").trim();

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { apiBaseUrl } from "@/lib/api/base-url";
+
 /**
  * One voice preview, proxied to the FastAPI service.
  *
@@ -7,7 +9,7 @@ import { NextResponse } from "next/server";
  * catalogue, so this route stays a thin pass-through: no caller text, no
  * exposed API key, no widened CORS.
  */
-const API_BASE = (process.env.AOTMS_API_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+const API_BASE = apiBaseUrl();
 
 /**
  * Speaker ids are either a legacy slug (`shubh`) or a dashed UUID

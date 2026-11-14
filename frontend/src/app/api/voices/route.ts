@@ -1,5 +1,7 @@
 import { connection, NextResponse } from "next/server";
 
+import { apiBaseLabel, apiBaseUrl } from "@/lib/api/base-url";
+
 /**
  * Public voice catalogue for the landing page.
  *
@@ -7,7 +9,7 @@ import { connection, NextResponse } from "next/server";
  * server-side, and CORS never has to be widened for the marketing domain.
  * Point `AOTMS_API_URL` at the deployed API in production.
  */
-const API_BASE = (process.env.AOTMS_API_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+const API_BASE = apiBaseUrl();
 
 type VoicePayload = { items: unknown[]; source: "live" };
 
@@ -26,9 +28,12 @@ export async function GET() {
     if (!Array.isArray(items) || items.length === 0) throw new Error("empty catalogue");
 
     return NextResponse.json<VoicePayload>({ items, source: "live" });
-  } catch {
+  } catch (error) {
     // The section keeps the catalogue bundled in `content/home`, so an API
-    // outage degrades to static content instead of an error state.
+    // outage degrades to static content instead of an error state. The reason
+    // still has to reach the deployment logs: a silent fallback once hid a
+    // missing AOTMS_API_URL for weeks.
+    console.error(`[api/voices] ${apiBaseLabel()} unreachable (${String(error)})`);
     return NextResponse.json({ items: null, source: "fallback" });
   }
 }
