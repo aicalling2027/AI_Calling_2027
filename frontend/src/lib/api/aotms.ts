@@ -1,4 +1,4 @@
-import { apiBaseUrl } from "@/lib/api/base-url";
+import { apiBaseLabel, apiBaseUrl } from "@/lib/api/base-url";
 
 /**
  * Server-side client for the OWN AI FastAPI service.
@@ -62,16 +62,41 @@ function readError(payload: unknown, status: number): ApiError {
 }
 
 async function accessToken(): Promise<string> {
-  if (STATIC_TOKEN && !staticTokenRejected) return STATIC_TOKEN;
+  if (STATIC_TOKEN && !staticTokenRejected) {
+    if (isHeaderSafe(STATIC_TOKEN)) return STATIC_TOKEN;
+    // A token pasted with a stray newline or a smart quote makes `fetch` throw
+    // before a request is ever made, which used to read as "service unavailable".
+    staticTokenRejected = true;
+    console.warn(
+      "[api] AOTMS_API_TOKEN is not a valid header value; using the service account instead.",
+    );
+  }
   if (cachedToken && cachedToken.expiresAt > Date.now() + 15_000) return cachedToken.token;
 
-  const response = await fetch(`${API_BASE}${API_PREFIX}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: SERVICE_EMAIL, password: SERVICE_PASSWORD }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
+  const login = () =>
+    fetch(`${API_BASE}${API_PREFIX}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: SERVICE_EMAIL, password: SERVICE_PASSWORD }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+
+  let response: Response;
+  try {
+    response = await login();
+  } catch (error) {
+    // A refused socket is worth one more try; a timeout is not - the screen is
+    // already waiting and the backend is not answering.
+    if (isTimeout(error)) throw unreachable("/auth/login", error);
+    console.warn("[api] the login connection failed; retrying once");
+    try {
+      response = await login();
+    } catch (retry) {
+      throw unreachable("/auth/login", retry);
+    }
+  }
+
   const body = (await response.json().catch(() => null)) as
     | { access_token?: string; expires_in?: number }
     | null;
@@ -91,6 +116,37 @@ type ApiRequest = {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
 };
+
+/** `fetch` rejects synchronously on control or non-ASCII characters. */
+const isHeaderSafe = (token: string) => /^[\x21-\x7e]+$/.test(token);
+
+const isTimeout = (error: unknown) =>
+  error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+
+/**
+ * A request that produced no response at all, named.
+ *
+ * `fetch` throws for a refused socket, a DNS failure, a timeout or an invalid
+ * header, and that throw used to reach the browser as "the service is
+ * unavailable" - true but useless, because it hid which hop failed and why.
+ * undici keeps the real cause on `error.cause`, so it is reported here.
+ */
+function unreachable(path: string, error: unknown): ApiError {
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  const code = (cause as { code?: string } | null)?.code;
+  const detail =
+    cause instanceof Error
+      ? `${cause.name}${code ? ` ${code}` : ""}: ${cause.message}`
+      : error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
+  console.error(`[api] ${apiBaseLabel()} ${path} threw (${detail})`);
+  return new ApiError(
+    502,
+    "backend_unreachable",
+    `The backend at ${apiBaseLabel()} could not be reached (${detail}).`,
+  );
+}
 
 /**
  * Call the backend as the workspace service account.
@@ -119,17 +175,31 @@ export async function apiFetch<T>(path: string, init: ApiRequest = {}): Promise<
     try {
       return await send(token);
     } catch (error) {
-      const timedOut =
-        error instanceof Error &&
-        (error.name === "TimeoutError" || error.name === "AbortError");
-      if (!timedOut || !isRead) throw error;
-      console.warn(`[api] ${path} timed out once; retrying`);
-      return send(token);
+      // A read that produced no response is usually a sleeping backend (Render
+      // spins down); one retry turns that into a slow screen rather than an
+      // error the visitor cannot act on.
+      if (!isRead) throw unreachable(path, error);
+      console.warn(`[api] ${path} produced no response; retrying once`);
+      try {
+        return await send(token);
+      } catch (retry) {
+        throw unreachable(path, retry);
+      }
     }
   };
 
   const first = await accessToken();
-  let response = await attempt(first);
+  let response: Response;
+  try {
+    response = await attempt(first);
+  } catch (error) {
+    // A provisioned token that cannot even be delivered must not take the
+    // dashboard down with it.
+    if (first !== STATIC_TOKEN || staticTokenRejected) throw error;
+    staticTokenRejected = true;
+    response = await attempt(await accessToken());
+  }
+
   if (response.status === 401 || response.status === 403) {
     // The credential in hand was refused: drop whatever produced it and ask
     // for a fresh one, once.
