@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 
-import { Container } from "@/components/layout/container";
-import { Section, SectionHeader } from "@/components/layout/section";
-import { BulletPanel } from "@/components/sections/bullet-panel";
-import { CardGrid } from "@/components/sections/cards";
 import { CtaBand } from "@/components/sections/cta-band";
 import { FaqSection } from "@/components/sections/faq";
 import { PageHero } from "@/components/sections/page-hero";
+import { VoiceCatalogue } from "@/components/sections/voice-catalogue";
+import { voices } from "@/content/home";
 import { voicesPage } from "@/content/marketing";
+import { VOICE_PLANS, VOICE_TIER_ORDER } from "@/content/voice-catalogue";
 
 export const metadata: Metadata = {
   title: "Voices",
   description:
-    "Choose the voice and language an AOTMS AI employee speaks. The published catalogue is still being confirmed.",
+    "Play every AOTMS voice in the languages it speaks, filter by language, mode and gender, and see the per-minute rate for each one.",
   alternates: { canonical: "/voices" },
 };
 
@@ -26,78 +25,57 @@ export default function VoicesPage() {
         note={voicesPage.note}
         breadcrumb={[{ label: "Voices" }]}
         actions={[
-          { label: "Request a sample", href: "/contact", tone: "primary" },
+          { label: "Hear a sample", href: "#catalogue", tone: "primary" },
           { label: "See what is included", href: "/pricing", tone: "secondary" },
         ]}
-        aside={
-          <BulletPanel
-            title="Catalogue status"
-            badge="Pending"
-            items={[
-              "Language list not finalised",
-              "Voice samples not published",
-              "Pronunciation library in progress",
-              "Custom voice cloning not confirmed",
-            ]}
-            footer="This panel is intentionally a status list, not a feature claim."
-          />
-        }
+        aside={<RatePanel />}
       />
 
-      <Section>
-        <Container>
-          <SectionHeader
-            eyebrow="Languages"
-            title="The languages AOTMS plans to support."
-            body="Codes and names below describe the intended catalogue. Every sample is marked pending until audio is published."
-          />
-
-          <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {voicesPage.languages.map((voice) => (
-              <li
-                key={voice.code}
-                className="card card-lift flex items-center justify-between gap-4 px-4 py-3.5"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink">
-                    {voice.language}
-                  </p>
-                  <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-ink-soft">
-                    {voice.code}
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full border border-dashed border-hairline px-2.5 py-1 text-[0.65rem] font-medium text-ink-soft">
-                  {voice.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      </Section>
-
-      <Section tone="raised">
-        <Container>
-          <SectionHeader
-            eyebrow="Voice quality"
-            title="What a usable voice has to do."
-            body="These are the qualities the catalogue is being built against."
-          />
-          <CardGrid items={voicesPage.qualities} columns={4} className="mt-10" />
-        </Container>
-      </Section>
+      <VoiceCatalogue catalog={voices.catalog} />
 
       <FaqSection
         title="Voice questions."
-        body="Anything about the catalogue that is not confirmed is marked as such rather than presented as a feature."
+        body="Rates, names and samples, answered the way they behave on a real call."
         items={voicesPage.faq}
       />
 
       <CtaBand
-        title="Hear a voice before you commit."
-        body="Ask the team for a live sample in the language you actually plan to use."
-        primary={{ label: "Request a sample", href: "/contact" }}
+        title="Found the voice? Hear it on your own script."
+        body="Build an employee with that voice, add one real case, and listen to the call before you commit to a rollout."
+        primary={{ label: "Start free", href: "/free-trial" }}
         secondary={{ label: "Talk to us", href: "/contact" }}
       />
     </>
+  );
+}
+
+/** The two rate bands, stated once at the top so every card can stay short. */
+function RatePanel() {
+  return (
+    <div className="panel p-5">
+      <p className="eyebrow">Sample rates</p>
+      <ul className="mt-3 divide-y divide-line">
+        {VOICE_TIER_ORDER.map((tier) => {
+          const plan = VOICE_PLANS[tier];
+          return (
+            <li key={tier} className="flex items-baseline justify-between gap-4 py-3">
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-ink">{plan.label}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">
+                  {plan.blurb}
+                </span>
+              </span>
+              <span className="shrink-0 text-base font-semibold text-ink">
+                ₹{plan.rate}
+                <span className="text-[0.7rem] font-normal text-ink-soft">/min</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 border-t border-line pt-3 text-[0.7rem] leading-relaxed text-ink-soft">
+        Billed per connected minute only. A call that never connects is not billed.
+      </p>
+    </div>
   );
 }

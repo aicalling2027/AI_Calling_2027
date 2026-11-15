@@ -1,9 +1,11 @@
 /**
  * Pricing, Voices, Solutions and Revenue Systems copy.
  *
- * PLACEHOLDER policy: AOTMS has not approved prices, plan tiers, customer
- * logos or performance figures, so none appear here. Where a fact is missing
- * the page says so explicitly instead of inventing one.
+ * PLACEHOLDER policy: AOTMS has not approved plan prices, customer logos or
+ * performance figures, so none appear here. The one exception is the pair of
+ * voice rates on the Voices page (premium and standard, per connected minute),
+ * which are approved for publication. Where a fact is missing the page says so
+ * explicitly instead of inventing one.
  */
 
 import type { CardItem, StepItem } from "@/components/sections/cards";
@@ -20,7 +22,7 @@ export const pricingPage = {
   // TODO(AOTMS): replace once the commercial model is approved.
   summary:
     "AOTMS plans are quoted per account rather than published as fixed tiers. Tell us your call volume and languages and the team will map it to a plan.",
-  note: "No prices are listed on this page because no commercial model has been approved for publication yet.",
+  note: "Plan prices are not published yet. The two voice rates on the Voices page - ₹7 and ₹5 per connected minute - are the only rates confirmed for publication.",
   factors: [
     {
       title: "Call volume",
@@ -92,68 +94,41 @@ export const pricingPage = {
 /* ------------------------------------------------------------------- voices */
 
 export const voicesPage = {
-  eyebrow: "Voices",
-  title: "Choose how your AI employee sounds.",
+  eyebrow: "Voice catalogue",
+  title: "Hear the voice in the language it will speak.",
   summary:
-    "Every AI employee runs on a voice you choose. The AOTMS catalogue is still being assembled, so this page shows the intended structure rather than final samples.",
-  note: "Audio samples and the confirmed language list are pending. Nothing on this page is a published commitment.",
-  // TODO(AOTMS): replace with the confirmed voice catalogue.
-  languages: [
-    { language: "Hindi", code: "hi-IN", status: "Sample pending" },
-    { language: "English (India)", code: "en-IN", status: "Sample pending" },
-    { language: "English (US)", code: "en-US", status: "Sample pending" },
-    { language: "Tamil", code: "ta-IN", status: "Sample pending" },
-    { language: "Telugu", code: "te-IN", status: "Sample pending" },
-    { language: "Kannada", code: "kn-IN", status: "Sample pending" },
-    { language: "Malayalam", code: "ml-IN", status: "Sample pending" },
-    { language: "Marathi", code: "mr-IN", status: "Sample pending" },
-    { language: "Bengali", code: "bn-IN", status: "Sample pending" },
-    { language: "Gujarati", code: "gu-IN", status: "Sample pending" },
-    { language: "Punjabi", code: "pa-IN", status: "Sample pending" },
-    { language: "Odia", code: "or-IN", status: "Sample pending" },
-  ],
-  qualities: [
-    {
-      title: "Natural pacing",
-      body: "Sentences are spoken at a conversational pace rather than read out at a constant speed.",
-      icon: "headphones",
-    },
-    {
-      title: "Language switching",
-      body: "The intended behaviour is to follow the caller when they change language mid-conversation.",
-      icon: "languages",
-    },
-    {
-      title: "Pronunciation control",
-      body: "Brand names, product names and place names can be corrected so they are spoken consistently.",
-      icon: "message",
-    },
-    {
-      title: "Tone by use case",
-      body: "A collection call and a support call should not sound the same; tone is set per AI employee.",
-      icon: "sparkles",
-    },
-  ] satisfies CardItem[],
+    "Every AI employee runs on one voice. Play any voice below in any language it speaks, rate the sample, and keep the ones your customers follow.",
+  note: "Samples are synthesised on demand, so the first play of a voice takes a few seconds.",
+  catalogue: {
+    eyebrow: "Catalogue",
+    title: "Filter, listen, keep the ones that sound right.",
+    body: "Choosing a language does two things at once: it plays the sample in that language, and it writes each voice's name the way that language says it. Shubh in English is शुभ in Hindi and சுப் in Tamil.",
+  },
   faq: [
     {
-      question: "When will samples be available?",
+      question: "How is a voice billed?",
       answer:
-        "Once the voice catalogue is confirmed. Ask the team for a live sample if you need to evaluate one before then.",
+        "Each voice sits in one of two bands, billed per connected minute: Premium at ₹7 and Standard at ₹5. A call that is never connected is not billed.",
+    },
+    {
+      question: "Why does one voice have a different name in each language?",
+      answer:
+        "A voice is introduced in English and takes the local spelling everywhere else - Shubh, शुभ, சுப். The card shows the name in whichever language you have selected, the same one the sample is spoken in.",
+    },
+    {
+      question: "Does the sample sound like the call?",
+      answer:
+        "It is the same speaker that answers the phone. The sentence is fixed for the sample, so judge the language and the pacing rather than the words.",
+    },
+    {
+      question: "Can I change the voice later?",
+      answer:
+        "Yes. The voice is set per AI employee, so two campaigns can sound different. Changing it leaves earlier transcripts and recordings as they were.",
     },
     {
       question: "Can we use our own recorded voice?",
       answer:
-        "Custom voice cloning is not part of the confirmed scope. Treat it as unconfirmed until AOTMS states otherwise in writing.",
-    },
-    {
-      question: "Does every language sound equally natural?",
-      answer:
-        "Quality differs by language and provider. Evaluate the specific languages you plan to use rather than assuming parity.",
-    },
-    {
-      question: "Can one account use several voices?",
-      answer:
-        "Yes — a voice is set per AI employee, so different campaigns can sound different.",
+        "Voice cloning is not part of the published catalogue. Ask the team in writing if you need it before a rollout.",
     },
   ] satisfies FaqItem[],
 };

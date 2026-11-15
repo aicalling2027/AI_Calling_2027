@@ -18,14 +18,24 @@ const API_BASE = apiBaseUrl();
  */
 const VOICE_ID = /^[a-z0-9][a-z0-9-]{1,40}$/i;
 
-export async function GET(_request: Request, context: { params: Promise<{ voice: string }> }) {
+/** A BCP-47 code, which is all the backend accepts alongside a voice. */
+const LANGUAGE = /^[a-z]{2,3}(-[A-Z]{2})?$/;
+
+export async function GET(request: Request, context: { params: Promise<{ voice: string }> }) {
   const { voice } = await context.params;
   if (!VOICE_ID.test(voice)) {
     return NextResponse.json({ message: "Unknown voice." }, { status: 404 });
   }
 
+  // The sample can be spoken in any language the voice is offered in, so the
+  // caller may name one. It is a query parameter, not caller text: the sentence
+  // is still read from the backend's own catalogue.
+  const requested = new URL(request.url).searchParams.get("language");
+  const language = requested && LANGUAGE.test(requested) ? requested : null;
+  const query = language ? `?language=${encodeURIComponent(language)}` : "";
+
   try {
-    const response = await fetch(`${API_BASE}/api/v1/voices/${voice}/preview`, {
+    const response = await fetch(`${API_BASE}/api/v1/voices/${voice}/preview${query}`, {
       cache: "no-store",
       // Bulbul usually answers in a couple of seconds; the first call for a
       // voice also pays for the API's own cache fill.
