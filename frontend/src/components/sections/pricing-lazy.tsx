@@ -7,13 +7,13 @@ import { PricingSkeleton } from "@/components/sections/pricing-skeleton";
 import type { PricingPlan } from "@/content/plans";
 
 /**
- * The animated grid is its own chunk. Browsers that never reach this section
- * never download it; the skeleton holds the space until they do.
+ * The comparison table is its own chunk. Browsers that never reach this
+ * section never download it; the skeleton holds the space until they do.
  */
-const PricingCards = dynamic(
+const PricingComparison = dynamic(
   () =>
-    import("@/components/sections/pricing-cards").then(
-      (module) => module.PricingCards,
+    import("@/components/sections/pricing-table").then(
+      (module) => module.PricingComparison,
     ),
   { ssr: false, loading: () => <PricingSkeleton /> },
 );
@@ -56,7 +56,7 @@ export function LazyPricingGrid({ plans }: { plans: PricingPlan[] }) {
 
   return (
     <div ref={anchor}>
-      {requested ? <PricingCards plans={plans} /> : <PricingSkeleton />}
+      {requested ? <PricingComparison plans={plans} /> : <PricingSkeleton />}
     </div>
   );
 }

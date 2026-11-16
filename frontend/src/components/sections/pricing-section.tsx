@@ -1,7 +1,11 @@
 import { Container } from "@/components/layout/container";
 import { LazyPricingGrid } from "@/components/sections/pricing-lazy";
 import { FlowButton } from "@/components/ui/flow-button";
-import { landingPlans, pricingIntro } from "@/content/plans";
+import {
+  ANNUAL_MONTHS_CHARGED,
+  landingPlans,
+  pricingIntro,
+} from "@/content/plans";
 import { formatCount, formatInr } from "@/lib/money";
 
 export function PricingSection() {
@@ -36,7 +40,7 @@ export function PricingSection() {
                   {formatInr(plan.priceInr)}
                   <span className="text-sm font-normal text-ink-soft">
                     {" "}
-                    / {plan.period}
+                    / month
                   </span>
                 </p>
                 <dl className="mt-4 space-y-1.5 text-sm">
@@ -62,6 +66,9 @@ export function PricingSection() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-xs text-ink-soft">
+            Annual billing charges {ANNUAL_MONTHS_CHARGED} months for twelve.
+          </p>
         </noscript>
 
         <div className="mt-6 flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
