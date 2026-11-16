@@ -779,11 +779,14 @@ def _persona(persona_id: str) -> dict[str, object]:
     }
 
 
-#: The voices sold on the premium rate. The frontend prices the same three
-#: (``PREMIUM_VOICES`` in ``src/content/voice-catalogue.ts``); a voice added in
-#: one place has to be added in the other, or a card would print one band and a
-#: code from the other.
-_PREMIUM_SPEAKERS: Final[frozenset[str]] = frozenset({"shubh", "tanya", "anand"})
+#: The voices sold on the premium rate: every base speaker, which is the set
+#: the provider publishes a profile and a working preview for. The frontend
+#: prices the same set (``PREMIUM_VOICE_IDS`` in ``src/content/voices.ts``); a
+#: voice added in one place has to be added in the other, or a card would print
+#: one band and a code from the other.
+_PREMIUM_SPEAKERS: Final[frozenset[str]] = frozenset(
+    str(profile["id"]) for profile in _BASE_PROFILES
+)
 
 
 def code_for(voice_id: str, taken: dict[str, int]) -> str:
@@ -816,7 +819,7 @@ def _with_codes(
 #: Both model families in one list: the base speakers first, then the personas.
 #:
 #: The base speakers lead because they are the voices an employee can be moved
-#: onto without changing anything else, and because the featured three are among
+#: onto without changing anything else, and because the premium band is exactly
 #: them. Everything after that is the rest of the provider's catalogue. Codes
 #: follow this order, so they stay put for as long as it does.
 VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = _with_codes(
@@ -941,6 +944,57 @@ class PhoneNumberStatus(StrEnum):
     INACTIVE = "inactive"
     PENDING = "pending"
     RELEASED = "released"
+
+
+#: Where a number can be bought, and what it costs.
+#:
+#: The carrier exposes no inventory API this deployment can reach, so every
+#: ``block`` is a fixed pool of eight numbers: the same eight on every search,
+#: and a number stops being offered as soon as any workspace holds it. Prices
+#: are per month in rupees; ``setup_cost_inr`` is charged once, when the number
+#: is reserved. A block is the digits after the dial code, so the full number is
+#: ``dial_code + block + NN`` and always lands in E.164 range.
+TELEPHONY_MARKETS: Final[tuple[dict[str, object], ...]] = (
+    {
+        "country_code": "IN",
+        "country": "India",
+        "dial_code": "+91",
+        "provider": "aotms_sip",
+        "capabilities": ("inbound", "outbound"),
+        "regions": (
+            {"region": "Mumbai", "block": "22671230", "monthly_cost_inr": 499, "setup_cost_inr": 0},
+            {"region": "Delhi", "block": "11456710", "monthly_cost_inr": 499, "setup_cost_inr": 0},
+            {"region": "Bengaluru", "block": "80671240", "monthly_cost_inr": 549, "setup_cost_inr": 0},
+            {"region": "Hyderabad", "block": "40671250", "monthly_cost_inr": 499, "setup_cost_inr": 0},
+            {"region": "Chennai", "block": "44671260", "monthly_cost_inr": 499, "setup_cost_inr": 0},
+        ),
+    },
+    {
+        "country_code": "AE",
+        "country": "United Arab Emirates",
+        "dial_code": "+971",
+        "provider": "aotms_sip",
+        "capabilities": ("inbound", "outbound"),
+        "regions": (
+            {"region": "Dubai", "block": "45551230", "monthly_cost_inr": 1499, "setup_cost_inr": 0},
+            {"region": "Abu Dhabi", "block": "26781230", "monthly_cost_inr": 1499, "setup_cost_inr": 0},
+        ),
+    },
+    {
+        "country_code": "GB",
+        "country": "United Kingdom",
+        "dial_code": "+44",
+        "provider": "aotms_sip",
+        "capabilities": ("inbound", "outbound"),
+        "regions": (
+            {"region": "London", "block": "20718300", "monthly_cost_inr": 899, "setup_cost_inr": 0},
+            {"region": "Manchester", "block": "16149600", "monthly_cost_inr": 799, "setup_cost_inr": 0},
+        ),
+    },
+)
+
+#: How many numbers one block offers.
+NUMBERS_PER_BLOCK: Final[int] = 8
 
 
 class IntegrationStatus(StrEnum):

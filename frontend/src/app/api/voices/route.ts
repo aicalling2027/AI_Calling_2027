@@ -29,7 +29,7 @@ export async function GET() {
 
     return NextResponse.json<VoicePayload>({ items, source: "live" });
   } catch (error) {
-    // `/voices` falls back to the catalogue bundled in `content/home`, so an
+    // `/voices` falls back to the catalogue bundled in `content/voices`, so an
     // API outage degrades to static content instead of an error state. The
     // reason still has to reach the deployment logs: a silent fallback once
     // hid a missing AOTMS_API_URL for weeks.

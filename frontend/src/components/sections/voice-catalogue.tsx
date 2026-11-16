@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Container } from "@/components/layout/container";
 import { Section, SectionHeader } from "@/components/layout/section";
-import type { VoiceSample } from "@/content/home";
+import type { VoiceSample } from "@/content/voices";
 import { voicesPage } from "@/content/marketing";
 import {
   codeOf,

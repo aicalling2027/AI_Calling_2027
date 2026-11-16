@@ -1,7 +1,7 @@
 /**
  * The part of the voice catalogue the provider does not publish.
  *
- * `content/home.ts` holds the catalogue itself - a mirror of the backend's
+ * `content/voices.ts` holds the catalogue itself - a mirror of the backend's
  * `VOICE_PROFILES`, which is what `/api/voices` returns. Two things are ours to
  * decide and are kept here instead: the rate band a voice is billed at, and the
  * words the site uses for the two models behind the codes. A card prints its
@@ -9,7 +9,7 @@
  * as a search alias, so a customer who knows a voice by name still finds it.
  */
 
-import type { VoiceSample } from "@/content/home";
+import { PREMIUM_VOICE_IDS, type VoiceSample } from "@/content/voices";
 
 export type VoiceTier = "premium" | "standard";
 
@@ -28,7 +28,7 @@ export const VOICE_PLANS: Record<VoiceTier, VoicePlan> = {
   premium: {
     label: "Premium",
     rate: 7,
-    blurb: "The featured voices, for the calls that carry the brand.",
+    blurb: "Every base speaker, for the calls that carry the brand.",
   },
   standard: {
     label: "Standard",
@@ -41,11 +41,12 @@ export const VOICE_PLANS: Record<VoiceTier, VoicePlan> = {
 export const VOICE_TIER_ORDER: readonly VoiceTier[] = ["premium", "standard"];
 
 /**
- * Voices billed at the Premium rate. Anything not listed is Standard, so a
- * voice added to the catalogue without a commercial decision here is never
- * silently sold at the higher price.
+ * Voices billed at the Premium rate. The list comes from the catalogue module
+ * because the codes are derived from it too, so a card cannot print a band its
+ * code contradicts. Anything not listed is Standard, so a voice added without
+ * a commercial decision here is never silently sold at the higher price.
  */
-const PREMIUM_VOICES = new Set(["shubh", "tanya", "anand"]);
+const PREMIUM_VOICES = new Set(PREMIUM_VOICE_IDS);
 
 export const tierOf = (id: string): VoiceTier =>
   PREMIUM_VOICES.has(id) ? "premium" : "standard";

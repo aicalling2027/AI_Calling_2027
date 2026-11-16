@@ -76,11 +76,23 @@ def seed_plans(db: Session) -> None:
 
 
 def seed_telephony_providers(db: Session) -> None:
-    existing = set(db.execute(select(TelephonyProvider.code)).scalars().all())
     providers = [
-        ("sarvam", "Sarvam AI SIP", True, True),
+        ("aotms_sip", "AOTMS SIP", True, True),
         ("mock", "Mock provider (development)", True, True),
     ]
+    existing = {
+        row.code: row for row in db.execute(select(TelephonyProvider)).scalars().all()
+    }
+
+    # Earlier builds seeded the upstream vendor under its own name. The product
+    # ships one brand, so the row is relabelled in place instead of leaving a
+    # second entry behind on every database that predates the rename.
+    legacy = existing.pop("sarvam", None)
+    if legacy is not None and "aotms_sip" not in existing:
+        legacy.code = "aotms_sip"
+        legacy.name = "AOTMS SIP"
+        existing["aotms_sip"] = legacy
+
     created = 0
     for code, name, inbound, outbound in providers:
         if code in existing:

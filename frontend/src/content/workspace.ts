@@ -124,10 +124,14 @@ export type PhoneNumberRecord = {
   id: string;
   number: string;
   provider: string;
-  status: "Active" | "Pending" | "Released";
+  status: "Active" | "Pending" | "Inactive" | "Released";
   mode: "Inbound" | "Outbound" | "Both";
   agentId: string | null;
   welcome: string;
+  /** What the workspace calls this line; the city it was bought in by default. */
+  label?: string | null;
+  /** What the carrier bills for it, per month. */
+  monthlyCostInr?: number;
 };
 
 export type TranscriptTurn = { who: "Agent" | "Customer"; text: string };

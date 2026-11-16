@@ -4,7 +4,7 @@ import { CtaBand } from "@/components/sections/cta-band";
 import { FaqSection } from "@/components/sections/faq";
 import { PageHero } from "@/components/sections/page-hero";
 import { VoiceCatalogue } from "@/components/sections/voice-catalogue";
-import { voices } from "@/content/home";
+import { voices } from "@/content/voices";
 import { voicesPage } from "@/content/marketing";
 import { VOICE_PLANS, VOICE_TIER_ORDER } from "@/content/voice-catalogue";
 

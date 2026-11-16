@@ -46,7 +46,7 @@ import {
 import type { SaveOutcome } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { voices as marketingVoices, type VoiceSample } from "@/content/home";
+import { voices as marketingVoices, type VoiceSample } from "@/content/voices";
 import {
   languageCodeOf,
   languagesForVoice,

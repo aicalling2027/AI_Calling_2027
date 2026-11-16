@@ -28,6 +28,12 @@ export const LEAD_SCOPE: FailureScope = {
   message: "The lead service is unavailable. Try again in a moment.",
 };
 
+export const NUMBERS_SCOPE: FailureScope = {
+  tag: "phone-numbers",
+  code: "phone_numbers_unavailable",
+  message: "The phone number service is unavailable. Try again in a moment.",
+};
+
 export function failure(error: unknown, scope: FailureScope = EMPLOYEE_SCOPE): NextResponse {
   if (error instanceof ApiError) {
     const upstreamAuth = error.status === 401 || error.status === 403;

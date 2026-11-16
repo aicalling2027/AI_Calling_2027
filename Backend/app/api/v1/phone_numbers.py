@@ -11,9 +11,13 @@ from app.core.constants import Perm
 from app.modules import phone_numbers
 from app.schemas.common import MessageResponse, Page
 from app.schemas.phone_number import (
+    AvailableNumberOut,
     PhoneNumberCreate,
     PhoneNumberOut,
+    PhoneNumberPurchase,
+    PhoneNumberPurchaseOut,
     PhoneNumberUpdate,
+    TelephonyMarketOut,
     TelephonyProviderOut,
 )
 
@@ -26,6 +30,39 @@ Writer = Annotated[Principal, Depends(require_permissions(Perm.PHONE_NUMBERS_WRI
 @router.get("/providers", response_model=list[TelephonyProviderOut], summary="Telephony providers")
 def list_providers(principal: Reader, db: DbSession) -> list[TelephonyProviderOut]:
     return phone_numbers.list_providers(db)
+
+
+@router.get(
+    "/catalogue",
+    response_model=list[TelephonyMarketOut],
+    summary="Countries and regions a number can be bought in",
+)
+def list_markets(principal: Reader) -> list[TelephonyMarketOut]:
+    return phone_numbers.list_markets()
+
+
+@router.get(
+    "/available",
+    response_model=list[AvailableNumberOut],
+    summary="Numbers available to buy",
+)
+def available_numbers(
+    principal: Reader,
+    db: DbSession,
+    country_code: str | None = None,
+    region: str | None = None,
+    capability: str | None = None,
+    q: str | None = None,
+    limit: int = 24,
+) -> list[AvailableNumberOut]:
+    return phone_numbers.available_numbers(
+        db,
+        country_code=country_code,
+        region=region,
+        capability=capability,
+        query=q,
+        limit=limit,
+    )
 
 
 @router.get("", response_model=Page[PhoneNumberOut], summary="List phone numbers")
@@ -54,6 +91,20 @@ def create_number(
     payload: PhoneNumberCreate, principal: Writer, db: DbSession
 ) -> PhoneNumberOut:
     return phone_numbers.create_number(
+        db, principal.organization, payload, user_id=principal.user_id
+    )
+
+
+@router.post(
+    "/purchase",
+    response_model=PhoneNumberPurchaseOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Buy a number",
+)
+def purchase_number(
+    payload: PhoneNumberPurchase, principal: Writer, db: DbSession
+) -> PhoneNumberPurchaseOut:
+    return phone_numbers.purchase_number(
         db, principal.organization, payload, user_id=principal.user_id
     )
 

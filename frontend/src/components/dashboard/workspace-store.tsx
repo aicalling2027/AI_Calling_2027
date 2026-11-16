@@ -4,7 +4,8 @@
  * One client store for every dashboard module.
  *
  * AI employees are read from and written to the FastAPI database through the
- * `/api/employees` Route Handlers; the rest of the modules still render the
+ * `/api/employees` Route Handlers; phone numbers go through
+ * `/api/phone-numbers` the same way. The rest of the modules still render the
  * demo content in `@/content/workspace` until they are wired the same way.
  * The shapes match the /api/v1 responses, so replacing the remaining seeds is
  * the same data-source change.
@@ -43,6 +44,18 @@ type AgentsStatus = "loading" | "ready" | "error";
 /** What a write tells its caller: the server kept it, or why it did not. */
 export type SaveOutcome = { ok: true } | { ok: false; error: string };
 
+/** A number chosen from the shelf, plus the name and employee for its line. */
+export type BuyNumberInput = {
+  number: string;
+  label?: string;
+  employeeId?: string | null;
+  capabilities?: string[];
+};
+
+export type BuyNumberOutcome =
+  | { ok: true; record: PhoneNumberRecord }
+  | { ok: false; error: string };
+
 type WorkspaceState = {
   agents: Agent[];
   agentsStatus: AgentsStatus;
@@ -55,6 +68,10 @@ type WorkspaceState = {
   leadsError: string | null;
   campaigns: Campaign[];
   numbers: PhoneNumberRecord[];
+  /** Whether the number list came from the database or only from seeds. */
+  numbersStatus: AgentsStatus;
+  /** Why the last number read or write failed, so the screen can say so. */
+  numbersError: string | null;
   conversations: Conversation[];
   invoices: typeof seedInvoices;
   apiKeys: ApiKeyRecord[];
@@ -108,8 +125,14 @@ type WorkspaceActions = {
     schedule: string;
   }) => void;
   setCampaignStatus: (id: string, status: CampaignStatus) => void;
-  addNumber: (input: { number: string; provider: string; mode: PhoneNumberRecord["mode"] }) => void;
-  updateNumber: (id: string, patch: Partial<PhoneNumberRecord>) => void;
+  /** Buy a number from the shelf and add it to the list. Never rejects. */
+  buyNumber: (input: BuyNumberInput) => Promise<BuyNumberOutcome>;
+  /** Save a mode, a name or an employee; reports whether the server kept it. */
+  updateNumber: (id: string, patch: Partial<PhoneNumberRecord>) => Promise<SaveOutcome>;
+  /** Take a line out of service. The row stays for its call history. */
+  releaseNumber: (id: string) => Promise<SaveOutcome>;
+  /** Re-read the number list. Call after a refused write or a failed read. */
+  refreshNumbers: () => Promise<void>;
   addConversation: (input: Omit<Conversation, "id">) => string;
   addKnowledge: (agentId: string, source: Omit<KnowledgeSource, "id" | "addedAt">) => string;
   setKnowledgeStatus: (
@@ -139,6 +162,8 @@ const initialState: WorkspaceState = {
   leadsError: null,
   campaigns: seedCampaigns,
   numbers: seedNumbers,
+  numbersStatus: "loading",
+  numbersError: null,
   conversations: seedConversations,
   invoices: seedInvoices,
   apiKeys: seedApiKeys,
@@ -203,6 +228,36 @@ async function readLead(response: Response, fallback: string): Promise<Lead> {
   return body.lead;
 }
 
+type NumberPayload = {
+  items?: PhoneNumberRecord[];
+  number?: PhoneNumberRecord;
+  purchase?: { record: PhoneNumberRecord };
+  error?: { message?: string };
+};
+
+async function fetchNumbers(): Promise<PhoneNumberRecord[]> {
+  const response = await fetch("/api/phone-numbers", { cache: "no-store" });
+  const body = (await response.json().catch(() => null)) as NumberPayload | null;
+  if (!response.ok) {
+    throw new Error(body?.error?.message ?? "Could not load phone numbers.");
+  }
+  return body?.items ?? [];
+}
+
+async function readNumber(response: Response, fallback: string): Promise<PhoneNumberRecord> {
+  const body = (await response.json().catch(() => null)) as NumberPayload | null;
+  if (!response.ok || !body?.number) throw new Error(body?.error?.message ?? fallback);
+  return body.number;
+}
+
+/**
+ * A stored row keeps only what has a column: the greeting on the routing screen
+ * is a local scratch line, so a re-read must not clear what was typed there.
+ */
+function mergeNumber(current: PhoneNumberRecord | undefined, next: PhoneNumberRecord) {
+  return current ? { ...next, welcome: current.welcome } : next;
+}
+
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<WorkspaceState>(initialState);
 
@@ -240,6 +295,54 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [applyAgents]);
+
+  const applyNumbers = React.useCallback((items: PhoneNumberRecord[]) => {
+    setState((prev) => {
+      const known = new Map(prev.numbers.map((record) => [record.id, record]));
+      return {
+        ...prev,
+        numbers: items.map((item) => mergeNumber(known.get(item.id), item)),
+        numbersStatus: "ready",
+        numbersError: null,
+      };
+    });
+  }, []);
+
+  // The list is read once when the shell mounts; `refreshNumbers` is what the
+  // screens call afterwards (after a refused buy, or a failed save).
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchNumbers()
+      .then((items) => {
+        if (!cancelled) applyNumbers(items);
+      })
+      .catch((error: unknown) => {
+        console.error("[workspace] load phone numbers", error);
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            numbersStatus: "error",
+            numbersError: reasonOf(error, "The phone number service did not answer."),
+          }));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyNumbers]);
+
+  const refreshNumbers = React.useCallback(async () => {
+    try {
+      applyNumbers(await fetchNumbers());
+    } catch (error) {
+      console.error("[workspace] load phone numbers", error);
+      setState((prev) => ({
+        ...prev,
+        numbersStatus: "error",
+        numbersError: reasonOf(error, "The phone number service did not answer."),
+      }));
+    }
+  }, [applyNumbers]);
 
   const refreshAgents = React.useCallback(async () => {
     try {
@@ -538,37 +641,91 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const addNumber = React.useCallback(
-    (input: { number: string; provider: string; mode: PhoneNumberRecord["mode"] }) => {
-      setState((prev) => ({
-        ...prev,
-        numbers: [
-          {
-            id: uid("num"),
-            number: input.number,
-            provider: input.provider,
-            mode: input.mode,
-            status: "Pending",
-            agentId: null,
-            welcome: "",
-          },
-          ...prev.numbers,
-        ],
-      }));
+  const buyNumber = React.useCallback(
+    async (input: BuyNumberInput): Promise<BuyNumberOutcome> => {
+      try {
+        const response = await fetch("/api/phone-numbers/purchase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const body = (await response.json().catch(() => null)) as NumberPayload | null;
+        if (!response.ok || !body?.purchase) {
+          throw new Error(body?.error?.message ?? "The number could not be bought.");
+        }
+        const record = body.purchase.record;
+        setState((prev) => ({
+          ...prev,
+          numbers: [record, ...prev.numbers],
+          numbersError: null,
+        }));
+        return { ok: true, record };
+      } catch (error) {
+        console.error("[workspace] buy number", error);
+        return { ok: false, error: reasonOf(error, "The number could not be bought.") };
+      }
     },
     [],
   );
 
   const updateNumber = React.useCallback(
-    (id: string, patch: Partial<PhoneNumberRecord>) => {
+    (id: string, patch: Partial<PhoneNumberRecord>): Promise<SaveOutcome> => {
       setState((prev) => ({
         ...prev,
         numbers: prev.numbers.map((record) =>
           record.id === id ? { ...record, ...patch } : record,
         ),
       }));
+
+      // The row is already updated on screen; a refusal re-reads the server so
+      // the list never keeps an edit that was rejected.
+      return fetch(`/api/phone-numbers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+        .then(async (response): Promise<SaveOutcome> => {
+          const saved = await readNumber(response, "The change could not be saved.");
+          setState((prev) => ({
+            ...prev,
+            numbers: prev.numbers.map((record) =>
+              record.id === id ? mergeNumber(record, saved) : record,
+            ),
+            numbersError: null,
+          }));
+          return { ok: true };
+        })
+        .catch((error: unknown): SaveOutcome => {
+          console.error("[workspace] save phone number", error);
+          void refreshNumbers();
+          return { ok: false, error: reasonOf(error, "The change could not be saved.") };
+        });
     },
-    [],
+    [refreshNumbers],
+  );
+
+  const releaseNumber = React.useCallback(
+    (id: string): Promise<SaveOutcome> =>
+      fetch(`/api/phone-numbers/${id}`, { method: "DELETE" })
+        .then(async (response): Promise<SaveOutcome> => {
+          if (!response.ok) {
+            const body = (await response.json().catch(() => null)) as NumberPayload | null;
+            throw new Error(body?.error?.message ?? "The number could not be released.");
+          }
+          // The line is gone from the workspace, so it leaves the list too: a
+          // row left behind would keep answering calls that no longer exist.
+          setState((prev) => ({
+            ...prev,
+            numbers: prev.numbers.filter((record) => record.id !== id),
+          }));
+          return { ok: true };
+        })
+        .catch((error: unknown): SaveOutcome => {
+          console.error("[workspace] release phone number", error);
+          void refreshNumbers();
+          return { ok: false, error: reasonOf(error, "The number could not be released.") };
+        }),
+    [refreshNumbers],
   );
 
   const addConversation = React.useCallback((input: Omit<Conversation, "id">) => {
@@ -724,8 +881,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       removeLead,
       addCampaign,
       setCampaignStatus,
-      addNumber,
+      buyNumber,
       updateNumber,
+      releaseNumber,
+      refreshNumbers,
       addConversation,
       addKnowledge,
       setKnowledgeStatus,
@@ -753,8 +912,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       removeLead,
       addCampaign,
       setCampaignStatus,
-      addNumber,
+      buyNumber,
       updateNumber,
+      releaseNumber,
+      refreshNumbers,
       addConversation,
       addKnowledge,
       setKnowledgeStatus,
