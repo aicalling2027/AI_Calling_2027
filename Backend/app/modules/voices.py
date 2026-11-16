@@ -12,6 +12,10 @@ language is chosen by the caller, the sentence is not. An id the catalogue
 knows but publishes no speaker for is refused before it reaches the provider -
 synthesis is requested by speaker name, so forwarding the id could only ever
 produce a provider error.
+
+The catalogue spans two model families whose speaker sets are disjoint, so a
+preview is synthesised with the model its speaker belongs to; the API rejects a
+speaker sent to the other family.
 """
 
 from __future__ import annotations
@@ -64,6 +68,7 @@ def catalog() -> list[VoiceOut]:
             preview_language=str(profile["preview_language"]),
             sample_text=str(profile["sample"]),
             featured=bool(profile["featured"]),
+            model=str(profile["model"]),
         )
         for profile in VOICE_PROFILES
     ]
@@ -73,6 +78,10 @@ def catalog() -> list[VoiceOut]:
 #: without being one of these - the frontend still carries a generation of ids
 #: the provider never published a speaker for.
 _SPEAKERS = frozenset(str(profile["id"]) for profile in VOICE_PROFILES)
+
+#: The model each speaker must be synthesised with. Kept beside the speaker set
+#: so the two cannot disagree about which family a voice belongs to.
+_MODEL_BY_VOICE = {str(profile["id"]): str(profile["model"]) for profile in VOICE_PROFILES}
 
 
 def _sample_text(voice_id: str, language: str | None) -> tuple[str, str]:
@@ -127,7 +136,12 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
             details={"provider": "sarvam"},
         )
 
-    result = sarvam.synthesize(sample_text, speaker=voice_id, language=chosen)
+    result = sarvam.synthesize(
+        sample_text,
+        speaker=voice_id,
+        language=chosen,
+        model=_MODEL_BY_VOICE.get(voice_id),
+    )
 
     # A rejected key is a configuration problem, not a synthesis failure: it has
     # to reach the operator as 503 rather than a generic 502.

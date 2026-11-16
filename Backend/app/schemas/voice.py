@@ -26,6 +26,9 @@ class VoiceOut(APIModel):
     #: what the visitor is about to hear.
     sample_text: str
     featured: bool = False
+    #: The speech model this speaker id belongs to. Speaker ids are not portable
+    #: between models, so the site and the preview endpoint both need it.
+    model: str = "bulbul:v3"
 
 
 class VoicePreview(APIModel):

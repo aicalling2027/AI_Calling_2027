@@ -49,6 +49,23 @@ const PREMIUM_VOICES = new Set(["shubh", "tanya", "anand"]);
 export const tierOf = (id: string): VoiceTier =>
   PREMIUM_VOICES.has(id) ? "premium" : "standard";
 
+/**
+ * The speech model a voice belongs to, in the words the site uses.
+ *
+ * Two families are listed, and their speaker ids are not interchangeable: a
+ * speaker sent to the other model answers 400 instead of audio. The catalogue
+ * says which one a card is, so a visitor comparing two cards that share a name
+ * can see why they sound different.
+ */
+export const VOICE_FAMILIES: Record<string, string> = {
+  "bulbul:v3": "Sarvam v3",
+  "bulbul:v4-flash": "Sarvam v4",
+};
+
+/** The family label for a voice, or an empty string when it names no model. */
+export const familyOf = (voice: { model?: string }): string =>
+  VOICE_FAMILIES[voice.model ?? ""] ?? "";
+
 export const planOf = (id: string): VoicePlan => VOICE_PLANS[tierOf(id)];
 
 /**
@@ -116,7 +133,11 @@ const VOICE_NAMES: Record<string, Record<string, string>> = {
 };
 
 export function nameIn(voice: VoiceSample, language: string): string {
-  return VOICE_NAMES[voice.id]?.[language] ?? voice.name;
+  const direct = VOICE_NAMES[voice.id]?.[language];
+  if (direct) return direct;
+  // A v4 persona id is `<speaker>_<language>_<style>`, and its display name is
+  // the base speaker's, so that speaker's transliteration applies here too.
+  return VOICE_NAMES[voice.id.split("_")[0]]?.[language] ?? voice.name;
 }
 
 /** Language codes written the way their own speakers write them. */
@@ -233,5 +254,9 @@ export function nameOfSlug(
   fallback: string,
   language: string,
 ): string {
-  return VOICE_NAMES[slug]?.[language] ?? fallback;
+  return (
+    VOICE_NAMES[slug]?.[language] ??
+    VOICE_NAMES[slug.split("_")[0]]?.[language] ??
+    fallback
+  );
 }

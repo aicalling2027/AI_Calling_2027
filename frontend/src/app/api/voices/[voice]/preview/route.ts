@@ -12,11 +12,12 @@ import { apiBaseUrl } from "@/lib/api/base-url";
 const API_BASE = apiBaseUrl();
 
 /**
- * Speaker ids are either a legacy slug (`shubh`) or a dashed UUID
- * (`01a0cf16-7021-76f7-a0cc-9d065cdb30a8`); anything else is not worth
- * forwarding.
+ * Speaker ids are a legacy slug (`shubh`), a dashed UUID
+ * (`01a0cf16-7021-76f7-a0cc-9d065cdb30a8`) or a v4 persona
+ * (`ritu_hi_sales`, `<speaker>_<language>_<style>`); anything else is not worth
+ * forwarding. Underscores are what the persona ids are built from.
  */
-const VOICE_ID = /^[a-z0-9][a-z0-9-]{1,40}$/i;
+const VOICE_ID = /^[a-z0-9][a-z0-9_-]{1,60}$/i;
 
 /** A BCP-47 code, which is all the backend accepts alongside a voice. */
 const LANGUAGE = /^[a-z]{2,3}(-[A-Z]{2})?$/;

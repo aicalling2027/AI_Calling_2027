@@ -9,11 +9,13 @@ import { Section, SectionHeader } from "@/components/layout/section";
 import type { VoiceSample } from "@/content/home";
 import { voicesPage } from "@/content/marketing";
 import {
+  familyOf,
   languagesOf,
   nameIn,
   nativeName,
   planOf,
   tierOf,
+  VOICE_FAMILIES,
   VOICE_PLANS,
   VOICE_TIER_ORDER,
   type VoiceTier,
@@ -22,6 +24,13 @@ import { cn } from "@/lib/utils";
 
 /** The visitor's own ratings. The marketing site has no account to store them under. */
 const RATINGS_KEY = "aotms.voice-ratings";
+
+/**
+ * Cards painted before the visitor asks for more. The catalogue is several
+ * hundred voices across two model families, so mounting all of them at once
+ * costs more than the first screen can show.
+ */
+const PAGE_SIZE = 24;
 
 /**
  * Sample-strip bars. Heights come from the bar index, not Math.random(), so the
@@ -44,6 +53,8 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
   const [language, setLanguage] = useState("all");
   const [tier, setTier] = useState<TierFilter>("all");
   const [gender, setGender] = useState("all");
+  const [model, setModel] = useState("all");
+  const [expanded, setExpanded] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -99,6 +110,16 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
     setLanguage(next);
   };
 
+  /**
+   * Any filter change narrows the list, so the open window closes with it:
+   * otherwise a visitor who filtered to three voices would still be looking at
+   * a page that had grown to two hundred.
+   */
+  const filterBy = (apply: () => void) => {
+    apply();
+    setExpanded(false);
+  };
+
   const languageOptions = useMemo(() => {
     const seen = new Map<string, string>();
     items.forEach((voice) =>
@@ -117,12 +138,17 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
         }
         if (tier !== "all" && tierOf(voice.id) !== tier) return false;
         if (gender !== "all" && voice.gender !== gender) return false;
+        if (model !== "all" && (voice.model ?? "") !== model) return false;
         return true;
       }),
-    [items, language, tier, gender],
+    [items, language, tier, gender, model],
   );
 
-  const filtered = language !== "all" || tier !== "all" || gender !== "all";
+  const filtered =
+    language !== "all" || tier !== "all" || gender !== "all" || model !== "all";
+
+  /** The cards actually mounted: one page, or all of them once asked. */
+  const shown = expanded ? visible : visible.slice(0, PAGE_SIZE);
 
   /** The language a sample is spoken in: the filter, when this voice offers it. */
   const spokenFor = (voice: VoiceSample) =>
@@ -184,6 +210,8 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
     setLanguage("all");
     setTier("all");
     setGender("all");
+    setModel("all");
+    setExpanded(false);
   };
 
   const selected = items.find((voice) => voice.id === selectedId) ?? null;
@@ -197,17 +225,20 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
           body={voicesPage.catalogue.body}
         />
 
-        {/* Filters: three groups, one selected chip each. */}
+        {/* Filters: four groups, one selected chip each. */}
         <div className="mt-8 space-y-3 rounded-2xl border border-line bg-surface/70 p-4">
           <FilterRow label="Language">
-            <FilterChip active={language === "all"} onClick={() => chooseLanguage("all")}>
+            <FilterChip
+              active={language === "all"}
+              onClick={() => filterBy(() => chooseLanguage("all"))}
+            >
               All languages
             </FilterChip>
             {languageOptions.map((option) => (
               <FilterChip
                 key={option.code}
                 active={language === option.code}
-                onClick={() => chooseLanguage(option.code)}
+                onClick={() => filterBy(() => chooseLanguage(option.code))}
                 title={option.label}
               >
                 {nativeName(option.code)}
@@ -219,20 +250,36 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
           </FilterRow>
 
           <FilterRow label="Mode">
-            <FilterChip active={tier === "all"} onClick={() => setTier("all")}>
+            <FilterChip active={tier === "all"} onClick={() => filterBy(() => setTier("all"))}>
               All modes
             </FilterChip>
             {VOICE_TIER_ORDER.map((value) => (
               <FilterChip
                 key={value}
                 active={tier === value}
-                onClick={() => setTier(value)}
+                onClick={() => filterBy(() => setTier(value))}
                 title={VOICE_PLANS[value].blurb}
               >
                 {VOICE_PLANS[value].label}
                 <span className="ml-1 text-[0.6rem] font-normal opacity-60">
                   ₹{VOICE_PLANS[value].rate}/min
                 </span>
+              </FilterChip>
+            ))}
+          </FilterRow>
+
+          <FilterRow label="Family">
+            <FilterChip active={model === "all"} onClick={() => filterBy(() => setModel("all"))}>
+              Both families
+            </FilterChip>
+            {Object.entries(VOICE_FAMILIES).map(([value, label]) => (
+              <FilterChip
+                key={value}
+                active={model === value}
+                onClick={() => filterBy(() => setModel(value))}
+                title={`Speakers synthesised by ${value}`}
+              >
+                {label}
               </FilterChip>
             ))}
           </FilterRow>
@@ -249,7 +296,7 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
               <FilterChip
                 key={option.value}
                 active={gender === option.value}
-                onClick={() => setGender(option.value)}
+                onClick={() => filterBy(() => setGender(option.value))}
               >
                 {option.label}
               </FilterChip>
@@ -275,9 +322,10 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
         </div>
 
         <ul className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visible.map((voice, index) => {
+          {shown.map((voice, index) => {
             const plan = planOf(voice.id);
             const premium = tierOf(voice.id) === "premium";
+            const family = familyOf(voice);
             const { primary, also } = languagesOf(voice, language);
             const display = nameIn(voice, primary.code);
             // A voice the provider says nothing about gets no tagline rather
@@ -318,11 +366,16 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                           <span className="truncate text-xs text-ink-soft">{voice.name}</span>
                         ) : null}
                       </div>
-                      {tagline ? (
-                        <p className="mt-0.5 truncate text-xs text-ink-soft">
-                          {tagline}
-                        </p>
-                      ) : null}
+                      <div className="mt-0.5 flex items-center gap-2">
+                        {tagline ? (
+                          <p className="truncate text-xs text-ink-soft">{tagline}</p>
+                        ) : null}
+                        {family ? (
+                          <span className="ml-auto shrink-0 rounded-full bg-mist px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.1em] text-ink-soft">
+                            {family}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <span
                       className={cn(
@@ -496,10 +549,22 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
           })}
         </ul>
 
+        {shown.length < visible.length ? (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="btn-glass rounded-full px-5 py-2.5 text-sm font-semibold text-cobalt"
+            >
+              Show {visible.length - shown.length} more voices
+            </button>
+          </div>
+        ) : null}
+
         {visible.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-line bg-surface/60 px-5 py-10 text-center">
             <p className="text-sm text-ink-soft">
-              No voice matches those three filters yet.
+              No voice matches those filters yet.
             </p>
             <button
               type="button"

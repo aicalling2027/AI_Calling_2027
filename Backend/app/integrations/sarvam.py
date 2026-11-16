@@ -138,9 +138,19 @@ _TTS_LANGUAGE_ALIASES = {"or-IN": "od-IN"}
 
 
 def synthesize(
-    text: str, *, speaker: str | None = None, language: str | None = None
+    text: str,
+    *,
+    speaker: str | None = None,
+    language: str | None = None,
+    model: str | None = None,
 ) -> ProviderResponse:
-    """Convert text to base64 audio using Bulbul."""
+    """Convert text to base64 audio using Bulbul.
+
+    ``model`` must be the family the speaker belongs to: ``bulbul:v3`` and
+    ``bulbul:v4-flash`` publish disjoint speaker sets, and sending an id to the
+    other model comes back as a 400 rather than audio. It defaults to the
+    configured model for callers that only ever use one family.
+    """
     if not configured():
         return simulated(PROVIDER, {"audios": [], "encoding": "simulated"})
 
@@ -149,7 +159,7 @@ def synthesize(
         "inputs": [collapse_whitespace(text)],
         "target_language_code": _TTS_LANGUAGE_ALIASES.get(target, target),
         "speaker": speaker or settings.sarvam_default_speaker,
-        "model": settings.sarvam_tts_model,
+        "model": model or settings.sarvam_tts_model,
         "speech_sample_rate": 22050,
     }
     return request_json(

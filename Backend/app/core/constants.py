@@ -134,61 +134,14 @@ SUPPORTED_LANGUAGES: Final[dict[str, str]] = {
 
 DEFAULT_LANGUAGE: Final[str] = "en-IN"
 
-#: Every speaker id an employee may be configured with.
-#:
-#: Three generations live here on purpose. The nine names at the top are the
-#: original Bulbul presets, and employees already saved with one of them must
-#: keep validating - dropping them would turn an unrelated edit into a 422.
-#: The names below them are the rest of the model's speaker set, added so an
-#: employee can be built on any voice the catalogue publishes. The UUIDs after
-#: that are the ids an older copy of the catalogue issued, kept for the rows
-#: that still carry one.
+#: Catalogue ids an older copy of the catalogue issued, kept for the rows that
+#: still carry one. The speech API has no speaker for any of them, so they can
+#: be stored but not synthesised; ``SUPPORTED_VOICES`` merges them in below.
 #:
 #: ``"unspecified"`` is the honest label for a speaker the provider does not
 #: describe: guessing male/female would print a claim we cannot verify in
 #: front of a customer.
-SUPPORTED_VOICES: Final[dict[str, str]] = {
-    # -- Original presets, kept for existing rows -------------------------
-    "shubh": "male",
-    "tanya": "female",
-    "anand": "male",
-    "sunny": "male",
-    "mani": "male",
-    "kabir": "male",
-    "priya": "female",
-    "kavya": "female",
-    "ritu": "female",
-    # -- The rest of the speaker set --------------------------------------
-    # Keep this block in step with ``VOICE_PROFILES``: a speaker the catalogue
-    # lists but this map rejects is a 422 on save.
-    "aditya": "male",
-    "ashutosh": "unspecified",
-    "neha": "female",
-    "rahul": "male",
-    "pooja": "female",
-    "rohan": "unspecified",
-    "simran": "female",
-    "amit": "unspecified",
-    "dev": "unspecified",
-    "ishita": "unspecified",
-    "shreya": "female",
-    "ratan": "unspecified",
-    "varun": "unspecified",
-    "manan": "unspecified",
-    "sumit": "unspecified",
-    "roopa": "unspecified",
-    "aayan": "unspecified",
-    "advait": "unspecified",
-    "tarun": "unspecified",
-    "gokul": "male",
-    "vijay": "male",
-    "shruti": "unspecified",
-    "suhani": "female",
-    "mohit": "unspecified",
-    "kavitha": "unspecified",
-    "rehan": "unspecified",
-    "soham": "unspecified",
-    "rupali": "unspecified",
+_LEGACY_VOICE_IDS: Final[dict[str, str]] = {
     # -- Older catalogue ids ----------------------------------------------
     "01a0cf16-7021-76f7-a0cc-9d065cdb30a8": "unspecified",
     "01a0cf16-5726-7055-8622-322e53f6bc77": "unspecified",
@@ -369,6 +322,13 @@ PREVIEW_LINES: Final[dict[str, str]] = {
 PREVIEW_LANGUAGE: Final[str] = "en-IN"
 
 
+#: The models the speech API publishes speakers under. A speaker id belongs to
+#: exactly one of them - the API answers 400 for an id from the other family - so
+#: every catalogue entry carries the model its id must be synthesised with.
+VOICE_MODEL_V3: Final[str] = "bulbul:v3"
+VOICE_MODEL_V4: Final[str] = "bulbul:v4-flash"
+
+
 def _voice(
     voice_id: str,
     name: str,
@@ -377,6 +337,7 @@ def _voice(
     use_case: str = "",
     *,
     featured: bool = False,
+    model: str = VOICE_MODEL_V3,
 ) -> dict[str, object]:
     """One catalogue entry, with the fields every voice shares filled in."""
     return {
@@ -389,6 +350,7 @@ def _voice(
         "preview_language": PREVIEW_LANGUAGE,
         "sample": PREVIEW_LINES[PREVIEW_LANGUAGE],
         "featured": featured,
+        "model": model,
     }
 
 
@@ -407,7 +369,7 @@ def _voice(
 #:
 #: Order is display order: the featured three lead, the rest follow the order
 #: the provider lists its speakers in.
-VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
+_BASE_PROFILES: Final[tuple[dict[str, object], ...]] = (
     _voice("shubh", "Shubh", "male", "Confident & bold", "Sales", featured=True),
     _voice("tanya", "Tanya", "female", "Friendly & modern", "Support", featured=True),
     _voice("anand", "Anand", "male", "Warm & reassuring", "Reminders", featured=True),
@@ -448,6 +410,388 @@ VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
     _voice("soham", "Soham", "unspecified"),
     _voice("rupali", "Rupali", "unspecified"),
 )
+
+#: The label each base speaker already carries, keyed by its name.
+#:
+#: A v4 persona id names the speaker it was built from - ``ritu_hi_sales`` is the
+#: ``ritu`` voice - so a persona inherits that speaker's published label instead
+#: of going blank. Where the base speaker has no label, the persona has none
+#: either: the provider publishes nothing else to go on.
+_GENDER_BY_BASE: Final[dict[str, str]] = {
+    str(profile["id"]): str(profile["gender"]) for profile in _BASE_PROFILES
+}
+
+#: Every ``bulbul:v4-flash`` persona the provider publishes, grouped by the
+#: language each one is tuned for.
+#:
+#: A v4 speaker id is ``<voice>_<language>_<style>`` and the id itself is what
+#: the synthesis endpoint accepts, so it is stored as-is: unlike the base
+#: speakers there is no separate slug to translate. Grouped by language because
+#: that is how the provider lists them, and because the language segment is the
+#: one the voice was tuned for - the cue the catalogue leads each card with.
+_V4_PERSONA_IDS: Final[tuple[str, ...]] = (
+    # -- Hindi -------------------------------------------------------------
+    "aayan_hi_conversational",
+    "amit_hi_conversational",
+    "ashutosh_hi_conversational",
+    "kabir_hi_conversational",
+    "kavya_hi_conversational",
+    "manan_hi_conversational",
+    "rahul_hi_conversational",
+    "sumit_hi_conversational",
+    "aditya_hi_conversational",
+    "aditya_hi_sales",
+    "anand_hi_documentary",
+    "anand_hi_news",
+    "aparna_hi_customer",
+    "aparna_hi_kyc",
+    "ashok_hi_character",
+    "ashok_hi_news",
+    "chhavi_hi_kids",
+    "ishita_hi_ads",
+    "ishita_hi_edtech",
+    "ishita_hi_banking",
+    "ishita_hi_ads_informal",
+    "ishita_hi_devotional",
+    "ishita_hi_numbers",
+    "ishita_hi_social",
+    "kunal_hi_kids",
+    "mahesh_hi_documentary",
+    "mani_hi_devotional",
+    "mani_hi_conversational",
+    "mohit_hi_conversational",
+    "nachiket_hi_devotional",
+    "priya_hi_recovery",
+    "ratan_hi_latenight",
+    "ratan_hi_customer_expressive",
+    "ratan_hi_documentary",
+    "ratan_hi_devotional",
+    "ratan_hi_recovery",
+    "ratan_hi_social",
+    "ratan_hi_sports",
+    "ratan_hi_latenight_warm",
+    "rehan_hi_social",
+    "ritu_hi_customer_utility",
+    "ritu_hi_kids",
+    "ritu_hi_conversation",
+    "ritu_hi_customer",
+    "ritu_hi_edtech",
+    "ritu_hi_ads_formal",
+    "ritu_hi_banking",
+    "ritu_hi_ads_informal",
+    "ritu_hi_insurance",
+    "ritu_hi_edtech_bot",
+    "ritu_hi_medical",
+    "ritu_hi_sales",
+    "ritu_hi_reels",
+    "ritu_hi_social",
+    "ritu_hi_customer_warm",
+    "ritu_hi_social_lively",
+    "roopa_hi_companion",
+    "roopa_hi_narration",
+    "roopa_hi_recovery",
+    "roopa_hi_market",
+    "roopa_hi_conversational",
+    "sanchita_hi_assistant",
+    "sanchita_hi_edtech",
+    "sanchita_hi_banking",
+    "sanchita_hi_feedback",
+    "sanchita_hi_ads_formal",
+    "sanchita_hi_ads_informal",
+    "sanchita_hi_interview",
+    "sanchita_hi_romantic",
+    "sanchita_hi_market",
+    "sanchita_hi_social",
+    "sanchita_hi_kyc",
+    "sarika_hi_conversation",
+    "shalini_hi_companion",
+    "shalini_hi_social",
+    "shreya_hi_conversational",
+    "shreya_hi_news",
+    "shruti_hi_edtech",
+    "shubh_hi_customer",
+    "shubh_hi_ecomm",
+    "shubh_hi_stories_mixed",
+    "shubh_hi_devotional",
+    "shubh_hi_ads",
+    "shubh_hi_recovery",
+    "shubh_hi_stories_dramatic",
+    "simran_hi_assistant",
+    "simran_hi_narration",
+    "simran_hi_automobile",
+    "simran_hi_conversation",
+    "simran_hi_news_breaking",
+    "simran_hi_social_energetic",
+    "simran_hi_social_excited",
+    "simran_hi_latenight",
+    "simran_hi_news",
+    "simran_hi_recovery",
+    "simran_hi_sales",
+    "suchitra_hi_ecomm",
+    "suhani_hi_social",
+    "sunny_hi_ads",
+    "sunny_hi_reels",
+    "tarun_hi_conversational",
+    "tarun_hi_sales",
+    "chaitra_hi_customer",
+    "shilpa_hi_narration",
+    "tanya_hi_narration",
+    "aarti_hi_customer",
+    "advait_hi_character",
+    "aryaman_hi_ads",
+    "chirag_hi_social",
+    "girish_hi_devotional",
+    "mukul_hi_ads",
+    "mukul_hi_suspense",
+    "suman_hi_companion",
+    "vaibhav_hi_social",
+    "vandana_hi_ecomm",
+    "vipul_hi_social",
+    # -- English ------------------------------------------------------------
+    "aditi_en_stories",
+    "aparna_en_companion",
+    "aparna_en_edtech",
+    "ashwin_en_sports",
+    "ashwin_en_sports_energetic",
+    "chandrika_en_stories",
+    "dev_en_recovery",
+    "dev_en_conversational",
+    "deven_en_conversation",
+    "ishita_en_customer",
+    "ishita_en_medical",
+    "ishita_en_numbers",
+    "ishita_en_social",
+    "ishita_en_stories",
+    "kalpit_en_edtech",
+    "nachiket_en_ads",
+    "neha_en_customer",
+    "neha_en_latenight",
+    "nupur_en_kids",
+    "ojas_en_social",
+    "ritu_en_edtech",
+    "ritu_en_latenight",
+    "ritu_en_medical",
+    "ritu_en_reels",
+    "rohan_en_recovery",
+    "roopa_en_conversational",
+    "rustom_en_suspense",
+    "sanchita_en_companion",
+    "sanchita_en_insurance",
+    "sanchita_en_recovery",
+    "sanchita_en_market",
+    "sanchita_en_social",
+    "shabana_en_edtech",
+    "shalini_en_companion",
+    "shalini_en_customer",
+    "shubh_en_narration",
+    "shubh_en_numbers",
+    "shubh_en_ads",
+    "shubh_en_recovery",
+    "shubh_en_audiobook",
+    "shubh_en_narration_gentle",
+    "shubh_en_sports",
+    "simran_en_narration",
+    "simran_en_automobile",
+    "simran_en_conversation",
+    "simran_en_customer",
+    "simran_en_edtech",
+    "simran_en_edtech_bot",
+    "simran_en_sales",
+    "simran_en_recovery",
+    "simran_en_ads",
+    "simran_en_therapist",
+    "sunny_en_social",
+    "varun_en_ads",
+    "varun_en_suspense",
+    "zarina_en_conversation",
+    "amelia_en_conversational",
+    "sophia_en_conversational",
+    "girish_en_documentary",
+    "girish_en_devotional",
+    "payal_en_edtech",
+    "sarang_en_narration",
+    # -- English-Hindi code-mixed -------------------------------------------
+    "ishita_enhi_companion",
+    "ishita_enhi_customer",
+    "ishita_enhi_customer_expressive",
+    "sanchita_enhi_companion",
+    "shalini_enhi_companion",
+    "shalini_enhi_customer",
+    "shubh_enhi_companion",
+    "shubh_enhi_ads",
+    "shubh_enhi_banking",
+    "simran_enhi_companion",
+    "simran_enhi_customer",
+    "simran_enhi_banking_expressive",
+    "sunny_enhi_customer",
+    # -- Bengali ------------------------------------------------------------
+    "arnab_bn_conversation",
+    "roopa_bn_conversational",
+    "bimal_bn_suspense",
+    # -- Gujarati -----------------------------------------------------------
+    "bhavik_gu_conversation",
+    "pooja_gu_conversational",
+    "pooja_gu_customer",
+    # -- Kannada ------------------------------------------------------------
+    "chaitra_kn_conversation",
+    "chaitra_kn_narration",
+    "chetan_kn_conversation",
+    "suchitra_kn_narration",
+    # -- Marathi ------------------------------------------------------------
+    "ishita_mr_conversational",
+    "mrunal_mr_narration",
+    "neha_mr_narration",
+    "nilesh_mr_conversation",
+    "ritu_mr_insurance",
+    "ritu_mr_narration",
+    "rupali_mr_stories",
+    "soham_mr_narration",
+    "mukul_mr_stories",
+    # -- Punjabi ------------------------------------------------------------
+    "anand_pa_conversation",
+    "anand_pa_customer",
+    "harpreet_pa_narration",
+    "jaspal_pa_banking",
+    # -- Tamil --------------------------------------------------------------
+    "gokul_ta_narration",
+    "aravind_ta_ads",
+    "aravind_ta_suspense",
+    "vijay_ta_narration",
+    # -- Telugu -------------------------------------------------------------
+    "kavitha_te_conversation",
+    "kavitha_te_narration",
+    "pooja_te_conversation",
+    "tarun_te_narration",
+)
+
+#: The language segment of a persona id, as the speech code that renders it.
+#:
+#: ``enhi`` is the provider's own token for English-Hindi code-mixed delivery;
+#: it plays through English, which is the script its line is written in.
+_PERSONA_LANGUAGE: Final[dict[str, str]] = {
+    "hi": "hi-IN",
+    "en": "en-IN",
+    "enhi": "en-IN",
+    "bn": "bn-IN",
+    "gu": "gu-IN",
+    "kn": "kn-IN",
+    "mr": "mr-IN",
+    "pa": "pa-IN",
+    "ta": "ta-IN",
+    "te": "te-IN",
+}
+
+#: What each style segment means, in the words the site uses for a use case.
+#:
+#: Only the provider's own vocabulary is translated here - no style is added or
+#: reworded beyond making its token readable - so the catalogue cannot claim a
+#: delivery the voice does not have.
+_STYLE_LABELS: Final[dict[str, str]] = {
+    "conversational": "Conversational",
+    "conversation": "Conversation",
+    "customer": "Customer care",
+    "customer_warm": "Customer care (warm)",
+    "customer_expressive": "Customer care (expressive)",
+    "customer_utility": "Customer care (bills and account)",
+    "sales": "Sales",
+    "recovery": "Payment recovery",
+    "banking": "Banking",
+    "banking_expressive": "Banking (expressive)",
+    "kyc": "KYC",
+    "insurance": "Insurance",
+    "edtech": "EdTech",
+    "edtech_bot": "EdTech bot",
+    "ads": "Ads",
+    "ads_formal": "Ads (formal)",
+    "ads_informal": "Ads (informal)",
+    "narration": "Narration",
+    "narration_gentle": "Narration (gentle)",
+    "stories": "Stories",
+    "stories_mixed": "Stories (code-mixed)",
+    "stories_dramatic": "Stories (dramatic)",
+    "audiobook": "Audiobook",
+    "news": "News",
+    "news_breaking": "Breaking news",
+    "documentary": "Documentary",
+    "sports": "Sports",
+    "sports_energetic": "Sports (energetic)",
+    "kids": "Kids",
+    "devotional": "Devotional",
+    "social": "Social media",
+    "social_lively": "Social media (lively)",
+    "social_energetic": "Social media (energetic)",
+    "social_excited": "Social media (excited)",
+    "reels": "Reels",
+    "latenight": "Late night",
+    "latenight_warm": "Late night (warm)",
+    "numbers": "Numbers",
+    "market": "Market updates",
+    "automobile": "Automobile",
+    "therapist": "Therapist",
+    "companion": "Companion",
+    "assistant": "Assistant",
+    "feedback": "Feedback",
+    "interview": "Interview",
+    "romantic": "Romantic",
+    "character": "Character",
+    "suspense": "Suspense",
+    "medical": "Medical",
+    "ecomm": "E-commerce",
+}
+
+
+def _style_label(style: str) -> str:
+    """The readable use case for a persona's style segment."""
+    return _STYLE_LABELS.get(style) or style.replace("_", " ").capitalize()
+
+
+def _persona(persona_id: str) -> dict[str, object]:
+    """One v4 persona, read from the parts of its id.
+
+    The id is ``<voice>_<language>_<style>``; everything the catalogue prints
+    about the voice comes from there, which is why nothing here is hand-written
+    per speaker. ``personality`` stays empty: the provider publishes a style and
+    a tuned language, not a tone.
+    """
+    speaker, _, rest = persona_id.partition("_")
+    language_key, _, style = rest.partition("_")
+    language = _PERSONA_LANGUAGE[language_key]
+    return {
+        "id": persona_id,
+        "name": speaker.capitalize(),
+        "gender": _GENDER_BY_BASE.get(speaker, "unspecified"),
+        "personality": "",
+        "use_case": _style_label(style),
+        "languages": SPEECH_LANGUAGES,
+        # The language the voice was tuned for is the one it should lead with.
+        "preview_language": language,
+        "sample": PREVIEW_LINES[language],
+        "featured": False,
+        "model": VOICE_MODEL_V4,
+    }
+
+
+#: Both families in one list: the base speakers first, then the v4 personas.
+#:
+#: The base speakers lead because they are the voices an employee can be moved
+#: onto without changing anything else, and because the featured three are among
+#: them. Everything after that is the rest of the provider's catalogue.
+VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
+    *_BASE_PROFILES,
+    *(_persona(persona_id) for persona_id in _V4_PERSONA_IDS),
+)
+
+#: Every speaker id an employee may be configured with.
+#:
+#: Derived from the catalogue rather than copied beside it: a voice the site
+#: lists but this map rejects is a 422 on save, so the two cannot be allowed to
+#: drift. The legacy UUIDs are merged in because rows written by an older
+#: catalogue still carry them - they have no speaker, but rejecting them would
+#: turn an unrelated edit into an error.
+SUPPORTED_VOICES: Final[dict[str, str]] = {
+    **_LEGACY_VOICE_IDS,
+    **{str(profile["id"]): str(profile["gender"]) for profile in VOICE_PROFILES},
+}
 
 SUPPORTED_MODELS: Final[dict[str, dict[str, object]]] = {
     "sarvam-m": {

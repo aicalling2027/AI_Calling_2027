@@ -67,6 +67,11 @@ export type VoiceSample = {
   /** The exact line the preview endpoint synthesises. */
   sample_text: string;
   featured: boolean;
+  /**
+   * The speech model the voice is synthesised with. Speaker ids are not
+   * portable between the two families, so the card names the one it belongs to.
+   */
+  model: string;
 };
 
 /**
@@ -196,6 +201,9 @@ export const voices = {
       preview_language: PREVIEW_LANGUAGE,
       sample_text: PREVIEW_LINE,
       featured,
+      // Every base speaker is synthesised by the stable model; the v4 personas
+      // only arrive with the live catalogue.
+      model: "bulbul:v3",
     }),
   ) satisfies VoiceSample[],
 };

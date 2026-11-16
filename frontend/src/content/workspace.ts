@@ -677,12 +677,25 @@ export const modelById = (id: ModelId) =>
  *
  * Employees saved before the catalogue moved to ids hold a slug, so both are
  * accepted; without that an existing employee would silently display the first
- * voice in the list.
+ * voice in the list. A voice that only the live catalogue publishes - a v4
+ * persona, whose id is `<speaker>_<language>_<style>` - has no bundled entry, so
+ * it is described from its own id rather than borrowing another voice's name.
  */
-export const voiceById = (id: VoiceId) =>
-  VOICES.find((voice) => voice.id === id) ??
-  VOICES.find((voice) => voice.slug === id) ??
-  VOICES[0];
+export const voiceById = (id: VoiceId) => {
+  const known =
+    VOICES.find((voice) => voice.id === id) ?? VOICES.find((voice) => voice.slug === id);
+  if (known) return known;
+
+  const speaker = id.split("_")[0];
+  return {
+    id,
+    slug: id,
+    name: speaker.charAt(0).toUpperCase() + speaker.slice(1),
+    gender: "Unspecified",
+    language: ALL_LANGUAGES_LABEL,
+    tone: "",
+  } satisfies Voice;
+};
 
 export const templateById = (id: string) =>
   TEMPLATES.find((template) => template.id === id) ?? TEMPLATES[0];
