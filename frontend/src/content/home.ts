@@ -105,7 +105,7 @@ const SPEECH_LANGUAGES: VoiceSample["languages"] = [
  *
  * Mirrors `PREVIEW_LINES` in `Backend/app/core/constants.py`: one short clause,
  * written in its own script because the speech API reads the text as written.
- * The catalogue payload only carries the default line, so the band reads its
+ * The catalogue payload only carries the default line, so `/voices` reads its
  * own copy to show what the sample will actually say in the chosen language.
  */
 export const PREVIEW_LINES: Record<string, string> = {
@@ -192,8 +192,8 @@ const VOICE_SEEDS: readonly VoiceSeed[] = [
  *
  * The backend numbers the three featured voices `PM-01..03` and every other
  * voice `SD-01..` in catalogue order. `VOICE_SEEDS` is written in that same
- * order, so the same rule reproduces the live codes exactly - the band reads the
- * same before `/api/voices` answers and while it is unreachable.
+ * order, so the same rule reproduces the live codes exactly - `/voices` reads
+ * the same codes before `/api/voices` answers and while it is unreachable.
  */
 function withCodes<T extends { featured: boolean }>(
   rows: T[],
@@ -206,18 +206,16 @@ function withCodes<T extends { featured: boolean }>(
   });
 }
 
+/**
+ * The bundled catalogue, kept for `/voices` and the dashboard's voice picker.
+ * The landing page does not list voices.
+ *
+ * Mirrors VOICE_PROFILES in Backend/app/core/constants.py so the catalogue
+ * renders with real content before /api/voices answers - and stays intact if
+ * the API is unreachable. The order below is the backend's, which is what makes
+ * the derived codes (PM-01, SD-01...) agree with the live catalogue.
+ */
 export const voices = {
-  eyebrow: "Hear our voices",
-  title: "Voices your customers can follow.",
-  body: "Real AOTMS speakers, generated for your language and your script - not stock recordings. Play any voice below and keep the one your customers trust.",
-  sourceLive: "Live catalogue",
-  sourceBundled: "Curated catalogue",
-  footnote:
-    "Each sample is one short line, synthesised on demand in the language you pick. Every voice speaks all eleven of our speech languages.",
-  // Mirrors VOICE_PROFILES in Backend/app/core/constants.py so the band renders
-  // with real content before /api/voices answers - and stays intact if the API
-  // is unreachable. The order below is the backend's, which is what makes the
-  // derived codes (PM-01, SD-01...) agree with the live catalogue.
   catalog: withCodes(
     VOICE_SEEDS.map(([id, name, gender, personality, use_case, featured]) => ({
       id,

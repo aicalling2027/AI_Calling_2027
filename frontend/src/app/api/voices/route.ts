@@ -3,7 +3,7 @@ import { connection, NextResponse } from "next/server";
 import { apiBaseLabel, apiBaseUrl } from "@/lib/api/base-url";
 
 /**
- * Public voice catalogue for the landing page.
+ * Public voice catalogue behind `/voices`.
  *
  * The browser only ever talks to this origin: the FastAPI service URL stays
  * server-side, and CORS never has to be widened for the marketing domain.
@@ -29,10 +29,10 @@ export async function GET() {
 
     return NextResponse.json<VoicePayload>({ items, source: "live" });
   } catch (error) {
-    // The section keeps the catalogue bundled in `content/home`, so an API
-    // outage degrades to static content instead of an error state. The reason
-    // still has to reach the deployment logs: a silent fallback once hid a
-    // missing AOTMS_API_URL for weeks.
+    // `/voices` falls back to the catalogue bundled in `content/home`, so an
+    // API outage degrades to static content instead of an error state. The
+    // reason still has to reach the deployment logs: a silent fallback once
+    // hid a missing AOTMS_API_URL for weeks.
     console.error(`[api/voices] ${apiBaseLabel()} unreachable (${String(error)})`);
     return NextResponse.json({ items: null, source: "fallback" });
   }

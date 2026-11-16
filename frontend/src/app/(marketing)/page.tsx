@@ -8,7 +8,6 @@ import { HowItWorks } from "@/components/sections/how-it-works";
 import { Integrations } from "@/components/sections/integrations";
 import { PricingSection } from "@/components/sections/pricing-section";
 import { UseCases } from "@/components/sections/use-cases";
-import { VoiceSamples } from "@/components/sections/voice-samples";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -23,7 +22,6 @@ export default function HomePage() {
       <Hero />
       <Integrations />
       <HowItWorks />
-      <VoiceSamples />
       <UseCases />
       <FeatureGrid />
       <ApiSection />
