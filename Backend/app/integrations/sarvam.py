@@ -131,6 +131,12 @@ def _first_message(payload: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Text to speech / speech to text
 # ---------------------------------------------------------------------------
+#: Codes this codebase uses that the speech API spells differently. Odia is
+#: accepted as ``or-IN`` everywhere else (BCP-47) but the synthesis endpoint
+#: only knows ``od-IN``, so the two have to be reconciled before the request.
+_TTS_LANGUAGE_ALIASES = {"or-IN": "od-IN"}
+
+
 def synthesize(
     text: str, *, speaker: str | None = None, language: str | None = None
 ) -> ProviderResponse:
@@ -138,9 +144,10 @@ def synthesize(
     if not configured():
         return simulated(PROVIDER, {"audios": [], "encoding": "simulated"})
 
+    target = language or DEFAULT_LANGUAGE
     body = {
         "inputs": [collapse_whitespace(text)],
-        "target_language_code": language or DEFAULT_LANGUAGE,
+        "target_language_code": _TTS_LANGUAGE_ALIASES.get(target, target),
         "speaker": speaker or settings.sarvam_default_speaker,
         "model": settings.sarvam_tts_model,
         "speech_sample_rate": 22050,

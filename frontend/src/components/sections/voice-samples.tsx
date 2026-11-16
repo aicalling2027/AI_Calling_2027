@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Container } from "@/components/layout/container";
-import { voices, type VoiceSample } from "@/content/home";
+import { voices, PREVIEW_LINES, type VoiceSample } from "@/content/home";
+import { nativeName, VOICE_LANGUAGES } from "@/content/voice-catalogue";
 import { cn } from "@/lib/utils";
 
 /** Favourites live in the visitor's browser: the landing page has no account. */
@@ -30,10 +31,38 @@ const AVATAR_TINTS = [
 
 type CatalogueSource = "bundled" | "live";
 
+/**
+ * How many voices the home page band shows. The catalogue holds every speaker
+ * the model publishes, which is a comparison the /voices page is built for -
+ * here it would bury the rest of the page, so the band shows a slice and links
+ * to the full list.
+ */
+const BAND_LIMIT = 9;
+
+/** The provider leaves some speakers unlabelled; say so rather than guess. */
+const GENDER_LABEL: Record<VoiceSample["gender"], string> = {
+  female: "Female",
+  male: "Male",
+  unspecified: "Not stated",
+};
+
+/**
+ * The language a card's sample is actually synthesised in.
+ *
+ * The audio is only ever in one language at a time, so the card has to name
+ * that one rather than the first entry of the voice's list - a card that plays
+ * English must not be labelled Hindi.
+ */
+const spokenCodeOf = (voice: VoiceSample, language: string): string =>
+  language !== "all" && voice.languages.some((item) => item.code === language)
+    ? language
+    : voice.preview_language;
+
 export function VoiceSamples() {
   const [catalog, setCatalog] = useState<VoiceSample[]>(voices.catalog);
   const [source, setSource] = useState<CatalogueSource>("bundled");
   const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState("all");
   const [gender, setGender] = useState("all");
   const [useCase, setUseCase] = useState("all");
   const [favourites, setFavourites] = useState<string[]>([]);
@@ -84,14 +113,24 @@ export function VoiceSamples() {
 
   useEffect(() => () => audioRef.current?.pause(), []);
 
+  // Most speakers publish no use case, so the empty string is not an option.
   const useCaseOptions = useMemo(
-    () => Array.from(new Set(catalog.map((voice) => voice.use_case))),
+    () =>
+      Array.from(new Set(catalog.map((voice) => voice.use_case))).filter(
+        Boolean,
+      ),
     [catalog],
   );
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
     return catalog.filter((voice) => {
+      if (
+        language !== "all" &&
+        !voice.languages.some((item) => item.code === language)
+      ) {
+        return false;
+      }
       if (gender !== "all" && voice.gender !== gender) return false;
       if (useCase !== "all" && voice.use_case !== useCase) return false;
       if (!term) return true;
@@ -105,7 +144,10 @@ export function VoiceSamples() {
         .toLowerCase()
         .includes(term);
     });
-  }, [catalog, gender, query, useCase]);
+  }, [catalog, gender, language, query, useCase]);
+
+  /** The slice of matches this band renders; the rest live on /voices. */
+  const band = visible.slice(0, BAND_LIMIT);
 
   const toggleFavourite = useCallback((id: string) => {
     setFavourites((current) => {
@@ -132,8 +174,11 @@ export function VoiceSamples() {
 
       audioRef.current?.pause();
       setLoadingId(voice.id);
+      const spoken = spokenCodeOf(voice, language);
       try {
-        const response = await fetch(`/api/voices/${voice.id}/preview`);
+        const response = await fetch(
+          `/api/voices/${voice.id}/preview?language=${encodeURIComponent(spoken)}`,
+        );
         if (!response.ok) throw new Error(`preview ${response.status}`);
         const payload: { audio_base64?: string; encoding?: string } =
           await response.json();
@@ -155,7 +200,7 @@ export function VoiceSamples() {
         setLoadingId(null);
       }
     },
-    [playingId],
+    [language, playingId],
   );
 
   return (
@@ -203,6 +248,18 @@ export function VoiceSamples() {
           </label>
           <div className="flex gap-3">
             <FilterSelect
+              label="Language"
+              value={language}
+              onChange={setLanguage}
+              options={[
+                { value: "all", label: "All languages" },
+                ...VOICE_LANGUAGES.map((item) => ({
+                  value: item.code,
+                  label: item.label,
+                })),
+              ]}
+            />
+            <FilterSelect
               label="Use case"
               value={useCase}
               onChange={setUseCase}
@@ -219,6 +276,7 @@ export function VoiceSamples() {
                 { value: "all", label: "All voices" },
                 { value: "female", label: "Female" },
                 { value: "male", label: "Male" },
+                { value: "unspecified", label: "Not stated" },
               ]}
             />
           </div>
@@ -232,11 +290,12 @@ export function VoiceSamples() {
 
         {/* Voice cards: one card per voice, the strip at the bottom is the player. */}
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((voice, index) => {
+          {band.map((voice, index) => {
             const playing = playingId === voice.id;
             const busy = loadingId === voice.id;
             const saved = favourites.includes(voice.id);
             const extraLanguages = voice.languages.length - 1;
+            const spoken = spokenCodeOf(voice, language);
 
             return (
               <li key={voice.id} className="h-full">
@@ -256,7 +315,8 @@ export function VoiceSamples() {
                         {voice.name}
                       </h3>
                       <p className="mt-0.5 truncate text-xs text-ink-soft">
-                        {voice.personality}
+                        {voice.personality ||
+                          `Speaks ${voice.languages.length} languages`}
                       </p>
                     </div>
                     {voice.featured ? (
@@ -286,18 +346,23 @@ export function VoiceSamples() {
                   </div>
 
                   <p className="line-clamp-3 text-sm leading-relaxed text-ink-soft">
-                    {voice.sample_text}
+                    {PREVIEW_LINES[spoken] ?? voice.sample_text}
                   </p>
 
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 text-[0.68rem]">
+                    {voice.use_case ? (
+                      <span className="rounded-full bg-mist px-2.5 py-1 font-medium text-ink-soft">
+                        {voice.use_case}
+                      </span>
+                    ) : null}
                     <span className="rounded-full bg-mist px-2.5 py-1 font-medium text-ink-soft">
-                      {voice.use_case}
+                      {GENDER_LABEL[voice.gender]}
                     </span>
-                    <span className="rounded-full bg-mist px-2.5 py-1 font-medium capitalize text-ink-soft">
-                      {voice.gender}
-                    </span>
-                    <span className="rounded-full bg-mist px-2.5 py-1 font-medium text-ink-soft">
-                      {voice.languages[0]?.label}
+                    <span
+                      title={`This sample plays in ${voice.languages.find((item) => item.code === spoken)?.label ?? spoken}`}
+                      className="rounded-full bg-mist px-2.5 py-1 font-medium text-ink-soft"
+                    >
+                      {nativeName(spoken)}
                       {extraLanguages > 0 ? ` +${extraLanguages}` : ""}
                     </span>
                   </div>
@@ -306,7 +371,7 @@ export function VoiceSamples() {
                     <button
                       type="button"
                       onClick={() => void togglePreview(voice)}
-                      aria-label={`${playing ? "Pause" : "Play"} ${voice.name}'s sample`}
+                      aria-label={`${playing ? "Pause" : "Play"} ${voice.name}'s sample in ${nativeName(spoken)}`}
                       className="btn-glass inline-flex size-9 shrink-0 items-center justify-center rounded-full text-cobalt"
                     >
                       {busy ? (
@@ -359,6 +424,18 @@ export function VoiceSamples() {
           <p className="mt-6 rounded-2xl border border-dashed border-line bg-surface/60 px-5 py-10 text-center text-sm text-ink-soft">
             No voice matches those filters yet.
           </p>
+        ) : visible.length > band.length ? (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface/70 px-4 py-3">
+            <p className="text-xs text-ink-soft">
+              Showing {band.length} of {visible.length} matching voices.
+            </p>
+            <Link
+              href="/voices"
+              className="text-xs font-semibold text-cobalt transition-colors hover:text-cobalt-night"
+            >
+              Hear all {catalog.length} voices
+            </Link>
+          </div>
         ) : null}
 
         <p className="mt-5 text-xs leading-relaxed text-ink-soft">

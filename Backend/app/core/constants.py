@@ -136,14 +136,16 @@ DEFAULT_LANGUAGE: Final[str] = "en-IN"
 
 #: Every speaker id an employee may be configured with.
 #:
-#: Two generations live here on purpose. The nine names at the top are the
+#: Three generations live here on purpose. The nine names at the top are the
 #: original Bulbul presets, and employees already saved with one of them must
-#: keep validating - dropping them would turn an unrelated edit into a 422. The
-#: UUIDs below are the ids the voice catalogue issues today, added so a new
-#: employee can be built against any of them.
+#: keep validating - dropping them would turn an unrelated edit into a 422.
+#: The names below them are the rest of the model's speaker set, added so an
+#: employee can be built on any voice the catalogue publishes. The UUIDs after
+#: that are the ids an older copy of the catalogue issued, kept for the rows
+#: that still carry one.
 #:
-#: ``"unspecified"`` is the honest label for a catalogue id the provider does
-#: not describe: guessing male/female would print a claim we cannot verify in
+#: ``"unspecified"`` is the honest label for a speaker the provider does not
+#: describe: guessing male/female would print a claim we cannot verify in
 #: front of a customer.
 SUPPORTED_VOICES: Final[dict[str, str]] = {
     # -- Original presets, kept for existing rows -------------------------
@@ -156,7 +158,38 @@ SUPPORTED_VOICES: Final[dict[str, str]] = {
     "priya": "female",
     "kavya": "female",
     "ritu": "female",
-    # -- Current catalogue ------------------------------------------------
+    # -- The rest of the speaker set --------------------------------------
+    # Keep this block in step with ``VOICE_PROFILES``: a speaker the catalogue
+    # lists but this map rejects is a 422 on save.
+    "aditya": "male",
+    "ashutosh": "unspecified",
+    "neha": "female",
+    "rahul": "male",
+    "pooja": "female",
+    "rohan": "unspecified",
+    "simran": "female",
+    "amit": "unspecified",
+    "dev": "unspecified",
+    "ishita": "unspecified",
+    "shreya": "female",
+    "ratan": "unspecified",
+    "varun": "unspecified",
+    "manan": "unspecified",
+    "sumit": "unspecified",
+    "roopa": "unspecified",
+    "aayan": "unspecified",
+    "advait": "unspecified",
+    "tarun": "unspecified",
+    "gokul": "male",
+    "vijay": "male",
+    "shruti": "unspecified",
+    "suhani": "female",
+    "mohit": "unspecified",
+    "kavitha": "unspecified",
+    "rehan": "unspecified",
+    "soham": "unspecified",
+    "rupali": "unspecified",
+    # -- Older catalogue ids ----------------------------------------------
     "01a0cf16-7021-76f7-a0cc-9d065cdb30a8": "unspecified",
     "01a0cf16-5726-7055-8622-322e53f6bc77": "unspecified",
     "01a0cf16-73d4-78aa-a416-c593287484db": "unspecified",
@@ -290,129 +323,130 @@ SUPPORTED_VOICES: Final[dict[str, str]] = {
     "01a0cf16-fec7-72d5-8803-5ea3ea7b5e8a": "unspecified",
 }
 
-#: Speaker names the preview endpoint also accepts.
+#: The languages Bulbul can speak. Transcription accepts more, but a preview
+#: is synthesised, so this is the set a voice can actually be heard in.
 #:
-#: A dashboard voice card carries two identifiers: the id an employee is stored
-#: with, and the speaker name a sample can be synthesised from - the speech API
-#: knows speakers by name only. These five have no id of their own in
-#: ``SUPPORTED_VOICES``; they exist so those cards can be heard, and they must
-#: stay in step with the ``slug`` values in the frontend's
-#: ``content/workspace.ts``.
-PREVIEW_SPEAKERS: Final[tuple[str, ...]] = (
-    "aditya",
-    "simran",
-    "rahul",
-    "neha",
-    "shreya",
+#: ``or-IN`` is this codebase's spelling; the speech API calls Odia ``od-IN``
+#: and the adapter translates it before the request goes out. Order is the one
+#: the employee form lists them in - keep this in step with ``VOICE_LANGUAGES``
+#: in the frontend's ``content/voice-catalogue.ts``.
+SPEECH_LANGUAGES: Final[tuple[str, ...]] = (
+    "hi-IN",
+    "en-IN",
+    "mr-IN",
+    "ta-IN",
+    "te-IN",
+    "kn-IN",
+    "ml-IN",
+    "gu-IN",
+    "bn-IN",
+    "pa-IN",
+    "or-IN",
 )
 
-#: The public voice catalogue - what the marketing site lists and what the
-#: preview endpoint synthesises. Every Bulbul speaker can speak every supported
-#: language; ``languages`` lists the ones this deployment actually uses the
-#: voice for, so the UI shows a short, honest set of chips rather than all 18.
+#: The line every preview speaks, per language.
 #:
-#: ``sample`` is fixed server-side: the preview endpoint reads it from here
-#: instead of accepting text from the caller, so it can never be used as a free
-#: text-to-speech proxy.
+#: One short clause on purpose. A preview exists so a listener can judge the
+#: speaker, and it is cached per voice and language, so a long marketing
+#: sentence both buried the voice under the copy and multiplied what had to be
+#: synthesised. Each line says the same thing in its own script, because the
+#: speech API reads the text as written: only the language code tells it how.
+PREVIEW_LINES: Final[dict[str, str]] = {
+    "en-IN": "Hi, this is how I speak.",
+    "hi-IN": "नमस्ते, यह मेरी आवाज़ है।",
+    "bn-IN": "নমস্কার, এটি আমার কণ্ঠ।",
+    "ta-IN": "வணக்கம், இது என் குரல்.",
+    "te-IN": "హాయ్, ఇది నా గొంతు.",
+    "gu-IN": "નમસ્તે, આ મારો અવાજ છે.",
+    "kn-IN": "ನಮಸ್ಕಾರ, ಇದು ನನ್ನ ಧ್ವನಿ.",
+    "ml-IN": "ഹായ്, ഇത് എന്റെ ശബ്ദമാണ്.",
+    "mr-IN": "नमस्कार, हा माझा आवाज आहे.",
+    "pa-IN": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਇਹ ਮੇਰੀ ਆਵਾਜ਼ ਹੈ।",
+    "or-IN": "ନମସ୍କାର, ଏହା ମୋର ସ୍ୱର।",
+}
+
+#: The language a preview leads with when the caller names none.
+PREVIEW_LANGUAGE: Final[str] = "en-IN"
+
+
+def _voice(
+    voice_id: str,
+    name: str,
+    gender: str,
+    personality: str = "",
+    use_case: str = "",
+    *,
+    featured: bool = False,
+) -> dict[str, object]:
+    """One catalogue entry, with the fields every voice shares filled in."""
+    return {
+        "id": voice_id,
+        "name": name,
+        "gender": gender,
+        "personality": personality,
+        "use_case": use_case,
+        "languages": SPEECH_LANGUAGES,
+        "preview_language": PREVIEW_LANGUAGE,
+        "sample": PREVIEW_LINES[PREVIEW_LANGUAGE],
+        "featured": featured,
+    }
+
+
+#: The public voice catalogue - every speaker the speech model publishes, which
+#: is what both the marketing site and the dashboard library list.
+#:
+#: Languages are not decided per voice: one speaker can render every entry in
+#: ``SPEECH_LANGUAGES``, so the list is uniform by design and the UI may offer
+#: all of them for all of them. ``sample`` is fixed server-side - the preview
+#: endpoint reads the sentence from here instead of accepting text from the
+#: caller, so it can never be used as a free text-to-speech proxy.
+#:
+#: ``personality`` and ``use_case`` carry only what the provider publishes about
+#: a voice. An empty string is the honest value where it publishes nothing, and
+#: the site then prints nothing rather than inventing a role for the speaker.
+#:
+#: Order is display order: the featured three lead, the rest follow the order
+#: the provider lists its speakers in.
 VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
-    {
-        "id": "shubh",
-        "name": "Shubh",
-        "gender": "male",
-        "personality": "Confident & bold",
-        "use_case": "Sales",
-        "languages": ("en-IN", "hi-IN", "ta-IN"),
-        "preview_language": "en-IN",
-        "sample": (
-            "Hello, Shubh from AOTMS. I'm calling about the plan you asked "
-            "about - can I take two minutes of your time?"
-        ),
-        "featured": True,
-    },
-    {
-        "id": "tanya",
-        "name": "Tanya",
-        "gender": "female",
-        "personality": "Friendly & modern",
-        "use_case": "Support",
-        "languages": ("en-IN", "hi-IN", "bn-IN"),
-        "preview_language": "hi-IN",
-        "sample": (
-            "नमस्ते! मैं AOTMS से तान्या बोल रही हूँ। आपकी शिकायत दर्ज हो गई है "
-            "और हम आज ही समाधान भेज देंगे।"
-        ),
-        "featured": True,
-    },
-    {
-        "id": "anand",
-        "name": "Anand",
-        "gender": "male",
-        "personality": "Warm & reassuring",
-        "use_case": "Reminders",
-        "languages": ("en-IN", "hi-IN", "te-IN"),
-        "preview_language": "hi-IN",
-        "sample": (
-            "नमस्ते! आनंद बोल रहा हूँ AOTMS से। आपका अपॉइंटमेंट कल सुबह दस बजे "
-            "तय है।"
-        ),
-        "featured": True,
-    },
-    {
-        "id": "sunny",
-        "name": "Sunny",
-        "gender": "male",
-        "personality": "Cheerful & upbeat",
-        "use_case": "Marketing",
-        "languages": ("en-IN", "hi-IN", "ml-IN"),
-        "preview_language": "en-IN",
-        "sample": (
-            "Hi! Sunny from AOTMS with a quick update on this month's "
-            "offer - it takes under a minute."
-        ),
-        "featured": False,
-    },
-    {
-        "id": "mani",
-        "name": "Mani",
-        "gender": "male",
-        "personality": "Calm & composed",
-        "use_case": "Collections",
-        "languages": ("en-IN", "hi-IN", "kn-IN"),
-        "preview_language": "en-IN",
-        "sample": (
-            "Hello, Mani calling from AOTMS about the invoice due this week. "
-            "May I confirm the payment date?"
-        ),
-        "featured": False,
-    },
-    {
-        "id": "kabir",
-        "name": "Kabir",
-        "gender": "male",
-        "personality": "Steady & trustworthy",
-        "use_case": "Renewals",
-        "languages": ("en-IN", "hi-IN", "gu-IN"),
-        "preview_language": "en-IN",
-        "sample": (
-            "Good evening, Kabir from AOTMS. Your plan renews on Friday and "
-            "I wanted to check whether anything needs changing."
-        ),
-        "featured": False,
-    },
-    {
-        "id": "priya",
-        "name": "Priya",
-        "gender": "female",
-        "personality": "Clear & precise",
-        "use_case": "Surveys",
-        "languages": ("en-IN", "hi-IN", "mr-IN"),
-        "preview_language": "en-IN",
-        "sample": (
-            "Hello, this is Priya from AOTMS with a two-question feedback "
-            "call. Shall I continue?"
-        ),
-        "featured": False,
-    },
+    _voice("shubh", "Shubh", "male", "Confident & bold", "Sales", featured=True),
+    _voice("tanya", "Tanya", "female", "Friendly & modern", "Support", featured=True),
+    _voice("anand", "Anand", "male", "Warm & reassuring", "Reminders", featured=True),
+    # The rest of the speaker set. Personality comes from the provider's tone
+    # hint where it publishes one; an entry with no hint stays empty.
+    _voice("aditya", "Aditya", "male", "Professional & clear"),
+    _voice("ritu", "Ritu", "female", "Calm & professional"),
+    _voice("ashutosh", "Ashutosh", "unspecified"),
+    _voice("priya", "Priya", "female", "Clear & precise", "Surveys"),
+    _voice("neha", "Neha", "female", "Warm & conversational"),
+    _voice("rahul", "Rahul", "male", "Professional & relaxed"),
+    _voice("pooja", "Pooja", "female", "Warm & friendly"),
+    _voice("rohan", "Rohan", "unspecified"),
+    _voice("simran", "Simran", "female", "Bright & clear"),
+    _voice("kavya", "Kavya", "female", "Calm & professional"),
+    _voice("amit", "Amit", "unspecified"),
+    _voice("dev", "Dev", "unspecified"),
+    _voice("ishita", "Ishita", "unspecified"),
+    _voice("shreya", "Shreya", "female", "Calm & narrative"),
+    _voice("ratan", "Ratan", "unspecified"),
+    _voice("varun", "Varun", "unspecified"),
+    _voice("manan", "Manan", "unspecified"),
+    _voice("sumit", "Sumit", "unspecified"),
+    _voice("roopa", "Roopa", "unspecified"),
+    _voice("kabir", "Kabir", "male", "Steady & trustworthy", "Renewals"),
+    _voice("aayan", "Aayan", "unspecified"),
+    _voice("advait", "Advait", "unspecified"),
+    _voice("tarun", "Tarun", "unspecified"),
+    _voice("sunny", "Sunny", "male", "Cheerful & upbeat", "Marketing"),
+    _voice("mani", "Mani", "male", "Calm & composed", "Collections"),
+    _voice("gokul", "Gokul", "male", "Mature & narrative"),
+    _voice("vijay", "Vijay", "male", "Mature & authoritative"),
+    _voice("shruti", "Shruti", "unspecified"),
+    _voice("suhani", "Suhani", "female", "Young & energetic"),
+    _voice("mohit", "Mohit", "unspecified"),
+    _voice("kavitha", "Kavitha", "unspecified"),
+    _voice("rehan", "Rehan", "unspecified"),
+    _voice("soham", "Soham", "unspecified"),
+    _voice("rupali", "Rupali", "unspecified"),
 )
 
 SUPPORTED_MODELS: Final[dict[str, dict[str, object]]] = {

@@ -58,7 +58,8 @@ export const howItWorks = {
 export type VoiceSample = {
   id: string;
   name: string;
-  gender: "female" | "male";
+  /** `unspecified` where the provider does not label the speaker. */
+  gender: "female" | "male" | "unspecified";
   personality: string;
   use_case: string;
   languages: { code: string; label: string }[];
@@ -68,6 +69,111 @@ export type VoiceSample = {
   featured: boolean;
 };
 
+/**
+ * The languages a voice can be heard in - the speech API's synthesis set, not
+ * its wider transcription set. Mirrors `SPEECH_LANGUAGES` in the backend.
+ */
+const SPEECH_LANGUAGES: VoiceSample["languages"] = [
+  { code: "hi-IN", label: "Hindi" },
+  { code: "en-IN", label: "English (India)" },
+  { code: "mr-IN", label: "Marathi" },
+  { code: "ta-IN", label: "Tamil" },
+  { code: "te-IN", label: "Telugu" },
+  { code: "kn-IN", label: "Kannada" },
+  { code: "ml-IN", label: "Malayalam" },
+  { code: "gu-IN", label: "Gujarati" },
+  { code: "bn-IN", label: "Bengali" },
+  { code: "pa-IN", label: "Punjabi" },
+  { code: "or-IN", label: "Odia" },
+];
+
+/**
+ * The line every preview speaks, per language.
+ *
+ * Mirrors `PREVIEW_LINES` in `Backend/app/core/constants.py`: one short clause,
+ * written in its own script because the speech API reads the text as written.
+ * The catalogue payload only carries the default line, so the band reads its
+ * own copy to show what the sample will actually say in the chosen language.
+ */
+export const PREVIEW_LINES: Record<string, string> = {
+  "en-IN": "Hi, this is how I speak.",
+  "hi-IN": "नमस्ते, यह मेरी आवाज़ है।",
+  "bn-IN": "নমস্কার, এটি আমার কণ্ঠ।",
+  "ta-IN": "வணக்கம், இது என் குரல்.",
+  "te-IN": "హాయ్, ఇది నా గొంతు.",
+  "gu-IN": "નમસ્તે, આ મારો અવાજ છે.",
+  "kn-IN": "ನಮಸ್ಕಾರ, ಇದು ನನ್ನ ಧ್ವನಿ.",
+  "ml-IN": "ഹായ്, ഇത് എന്റെ ശബ്ദമാണ്.",
+  "mr-IN": "नमस्कार, हा माझा आवाज आहे.",
+  "pa-IN": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਇਹ ਮੇਰੀ ਆਵਾਜ਼ ਹੈ।",
+  "or-IN": "ନମସ୍କାର, ଏହା ମୋର ସ୍ୱର।",
+};
+
+/** The language a sample leads with when the visitor names none. */
+const PREVIEW_LANGUAGE = "en-IN";
+
+/** The line the catalogue carries as `sample_text`, in the default language. */
+const PREVIEW_LINE = PREVIEW_LINES[PREVIEW_LANGUAGE];
+
+/** id, name, gender, personality, use case, featured. */
+type VoiceSeed = readonly [
+  id: string,
+  name: string,
+  gender: VoiceSample["gender"],
+  personality: string,
+  useCase: string,
+  featured: boolean,
+];
+
+/**
+ * The same catalogue the backend publishes, as a seed table.
+ *
+ * The shape is uniform by design: every speaker renders every language the
+ * speech API synthesises, and every preview is the same one short line. Only
+ * personality and use case differ between voices, and both stay empty where
+ * the provider says nothing - inventing a role for a speaker would be a claim
+ * the product cannot support.
+ */
+const VOICE_SEEDS: readonly VoiceSeed[] = [
+  ["shubh", "Shubh", "male", "Confident & bold", "Sales", true],
+  ["tanya", "Tanya", "female", "Friendly & modern", "Support", true],
+  ["anand", "Anand", "male", "Warm & reassuring", "Reminders", true],
+  ["aditya", "Aditya", "male", "Professional & clear", "", false],
+  ["ritu", "Ritu", "female", "Calm & professional", "", false],
+  ["ashutosh", "Ashutosh", "unspecified", "", "", false],
+  ["priya", "Priya", "female", "Clear & precise", "Surveys", false],
+  ["neha", "Neha", "female", "Warm & conversational", "", false],
+  ["rahul", "Rahul", "male", "Professional & relaxed", "", false],
+  ["pooja", "Pooja", "female", "Warm & friendly", "", false],
+  ["rohan", "Rohan", "unspecified", "", "", false],
+  ["simran", "Simran", "female", "Bright & clear", "", false],
+  ["kavya", "Kavya", "female", "Calm & professional", "", false],
+  ["amit", "Amit", "unspecified", "", "", false],
+  ["dev", "Dev", "unspecified", "", "", false],
+  ["ishita", "Ishita", "unspecified", "", "", false],
+  ["shreya", "Shreya", "female", "Calm & narrative", "", false],
+  ["ratan", "Ratan", "unspecified", "", "", false],
+  ["varun", "Varun", "unspecified", "", "", false],
+  ["manan", "Manan", "unspecified", "", "", false],
+  ["sumit", "Sumit", "unspecified", "", "", false],
+  ["roopa", "Roopa", "unspecified", "", "", false],
+  ["kabir", "Kabir", "male", "Steady & trustworthy", "Renewals", false],
+  ["aayan", "Aayan", "unspecified", "", "", false],
+  ["advait", "Advait", "unspecified", "", "", false],
+  ["tarun", "Tarun", "unspecified", "", "", false],
+  ["sunny", "Sunny", "male", "Cheerful & upbeat", "Marketing", false],
+  ["mani", "Mani", "male", "Calm & composed", "Collections", false],
+  ["gokul", "Gokul", "male", "Mature & narrative", "", false],
+  ["vijay", "Vijay", "male", "Mature & authoritative", "", false],
+  ["shruti", "Shruti", "unspecified", "", "", false],
+  ["suhani", "Suhani", "female", "Young & energetic", "", false],
+  ["mohit", "Mohit", "unspecified", "", "", false],
+  ["kavitha", "Kavitha", "unspecified", "", "", false],
+  ["rehan", "Rehan", "unspecified", "", "", false],
+  ["soham", "Soham", "unspecified", "", "", false],
+  ["rupali", "Rupali", "unspecified", "", "", false],
+];
+
 export const voices = {
   eyebrow: "Hear our voices",
   title: "Voices your customers can follow.",
@@ -75,124 +181,23 @@ export const voices = {
   sourceLive: "Live catalogue",
   sourceBundled: "Curated catalogue",
   footnote:
-    "Samples are synthesised on demand by Sarvam Bulbul, each in the voice's own language. Every voice also speaks the rest of our Indic set.",
+    "Each sample is one short line, synthesised on demand by Sarvam Bulbul in the language you pick. Every voice speaks all eleven of our speech languages.",
   // Mirrors VOICE_PROFILES in Backend/app/core/constants.py so the band renders
   // with real content before /api/voices answers - and stays intact if the API
   // is unreachable.
-  catalog: [
-    {
-      id: "shubh",
-      name: "Shubh",
-      gender: "male",
-      personality: "Confident & bold",
-      use_case: "Sales",
-      sample_text:
-        "Hello, Shubh from AOTMS. I'm calling about the plan you asked about - can I take two minutes of your time?",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "ta-IN", label: "Tamil" },
-      ],
-      preview_language: "en-IN",
-      featured: true,
-    },
-    {
-      id: "tanya",
-      name: "Tanya",
-      gender: "female",
-      personality: "Friendly & modern",
-      use_case: "Support",
-      sample_text:
-        "नमस्ते! मैं AOTMS से तान्या बोल रही हूँ। आपकी शिकायत दर्ज हो गई है और हम आज ही समाधान भेज देंगे।",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "bn-IN", label: "Bengali" },
-      ],
-      preview_language: "hi-IN",
-      featured: true,
-    },
-    {
-      id: "anand",
-      name: "Anand",
-      gender: "male",
-      personality: "Warm & reassuring",
-      use_case: "Reminders",
-      sample_text:
-        "नमस्ते! आनंद बोल रहा हूँ AOTMS से। आपका अपॉइंटमेंट कल सुबह दस बजे तय है।",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "te-IN", label: "Telugu" },
-      ],
-      preview_language: "hi-IN",
-      featured: true,
-    },
-    {
-      id: "sunny",
-      name: "Sunny",
-      gender: "male",
-      personality: "Cheerful & upbeat",
-      use_case: "Marketing",
-      sample_text:
-        "Hi! Sunny from AOTMS with a quick update on this month's offer - it takes under a minute.",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "ml-IN", label: "Malayalam" },
-      ],
-      preview_language: "en-IN",
-      featured: false,
-    },
-    {
-      id: "mani",
-      name: "Mani",
-      gender: "male",
-      personality: "Calm & composed",
-      use_case: "Collections",
-      sample_text:
-        "Hello, Mani calling from AOTMS about the invoice due this week. May I confirm the payment date?",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "kn-IN", label: "Kannada" },
-      ],
-      preview_language: "en-IN",
-      featured: false,
-    },
-    {
-      id: "kabir",
-      name: "Kabir",
-      gender: "male",
-      personality: "Steady & trustworthy",
-      use_case: "Renewals",
-      sample_text:
-        "Good evening, Kabir from AOTMS. Your plan renews on Friday and I wanted to check whether anything needs changing.",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "gu-IN", label: "Gujarati" },
-      ],
-      preview_language: "en-IN",
-      featured: false,
-    },
-    {
-      id: "priya",
-      name: "Priya",
-      gender: "female",
-      personality: "Clear & precise",
-      use_case: "Surveys",
-      sample_text:
-        "Hello, this is Priya from AOTMS with a two-question feedback call. Shall I continue?",
-      languages: [
-        { code: "en-IN", label: "English (India)" },
-        { code: "hi-IN", label: "Hindi" },
-        { code: "mr-IN", label: "Marathi" },
-      ],
-      preview_language: "en-IN",
-      featured: false,
-    },
-  ] satisfies VoiceSample[],
+  catalog: VOICE_SEEDS.map(
+    ([id, name, gender, personality, use_case, featured]) => ({
+      id,
+      name,
+      gender,
+      personality,
+      use_case,
+      languages: SPEECH_LANGUAGES,
+      preview_language: PREVIEW_LANGUAGE,
+      sample_text: PREVIEW_LINE,
+      featured,
+    }),
+  ) satisfies VoiceSample[],
 };
 
 export const useCases = {

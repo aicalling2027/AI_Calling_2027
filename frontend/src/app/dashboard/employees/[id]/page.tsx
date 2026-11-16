@@ -9,7 +9,6 @@ import {
   Check,
   FileText,
   Loader2,
-  Mic,
   Pause,
   Phone,
   Play,
@@ -29,9 +28,8 @@ import {
   TextArea,
   TextInput,
 } from "@/components/dashboard/ui/kit";
-import { SelectCard } from "@/components/dashboard/ui/select-card";
-import { VoicePreview } from "@/components/dashboard/ui/voice-preview";
 import { InstantLeadPanel } from "@/components/dashboard/instant-lead-panel";
+import { VoicePicker } from "@/components/dashboard/voice-picker";
 import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -42,11 +40,8 @@ import {
   LANGUAGES,
   MODELS,
   OUTCOME_OPTIONS,
-  VOICES,
   initialsOf,
   voiceById,
-  voicePreviewUrl,
-  voiceSampleSources,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +52,7 @@ const TABS = [
   { id: "training", label: "Training" },
   { id: "actions", label: "Actions" },
   { id: "outcomes", label: "Outcomes" },
-  { id: "voices", label: "Voices" },
+  { id: "voices", label: "Voice Library" },
   { id: "settings", label: "Settings" },
 ] as const;
 
@@ -909,38 +904,17 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
 
       {tab === "voices" ? (
         <section className="rounded-xl border border-line bg-surface p-4">
-          <h2 className="text-sm font-semibold text-ink">Voice</h2>
-          <p className="mt-0.5 text-xs text-ink-soft">
-            Changing the voice does not change the script. Preview before you switch.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {VOICES.map((voice, index) => (
-              <SelectCard
-                key={voice.id}
-                selected={agent.voiceId === voice.id}
-                onSelect={() =>
-                  store.updateAgent(agent.id, { voiceId: voice.id, voice: voice.name })
-                }
-                title={voice.name}
-                description={
-                  voice.gender === "Unspecified"
-                    ? voice.tone
-                    : `${voice.gender} · ${voice.tone}`
-                }
-                meta={voice.language}
-                icon={<Mic className="size-4" />}
-              >
-                {/* Same rule as the creation step: no speaker name, no sample. */}
-                {voice.slug ? (
-                  <VoicePreview
-                    sources={voiceSampleSources(voice, index + 1)}
-                    apiUrl={voicePreviewUrl(voice)}
-                    label="Preview"
-                  />
-                ) : null}
-              </SelectCard>
-            ))}
-          </div>
+          <VoicePicker
+            employeeName={agent.name}
+            defaultLanguage={agent.defaultLanguage}
+            selectedId={agent.voiceId}
+            onSelect={(voice) =>
+              store.updateAgent(agent.id, {
+                voiceId: voice.id,
+                voice: voice.name,
+              })
+            }
+          />
         </section>
       ) : null}
 

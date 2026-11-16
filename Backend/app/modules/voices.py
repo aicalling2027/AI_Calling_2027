@@ -2,26 +2,27 @@
 
 The catalogue itself is static reference data (``VOICE_PROFILES``). The only
 work here that reaches a provider is :func:`preview`, which asks Sarvam to
-synthesise a fixed sentence per voice. Samples are cached in-process because
-every visitor plays the same handful of clips, and the preview text never comes
-from the caller.
+synthesise one short line per voice and language. Samples are cached in-process
+because every visitor plays the same handful of clips, and the preview text
+never comes from the caller.
 
-``catalog()`` lists only the marketing voices, but ``preview()`` also answers for
-the dashboard speakers in ``PREVIEW_SPEAKERS``: an operator choosing a voice has
-to hear it before committing. A catalogue id whose speaker is unknown is refused
-before it reaches the provider - synthesis is requested by speaker name, so
-forwarding the id could only ever produce a provider error.
+One speaker can render every language the speech API publishes, so a preview is
+available for every catalogue voice in every one of ``PREVIEW_LINES``: the
+language is chosen by the caller, the sentence is not. An id the catalogue
+knows but publishes no speaker for is refused before it reaches the provider -
+synthesis is requested by speaker name, so forwarding the id could only ever
+produce a provider error.
 """
 
 from __future__ import annotations
 
-import re
 import threading
 import time
 from collections.abc import Iterable
 
 from app.core.constants import (
-    PREVIEW_SPEAKERS,
+    PREVIEW_LANGUAGE,
+    PREVIEW_LINES,
     SUPPORTED_LANGUAGES,
     SUPPORTED_VOICES,
     VOICE_PROFILES,
@@ -68,61 +69,45 @@ def catalog() -> list[VoiceOut]:
     ]
 
 
-#: Speakers an operator can pick in the dashboard have no marketing profile,
-#: so their sample is a neutral line rather than a curated one. The point of a
-#: preview is hearing the speaker, not the copy.
-_FALLBACK_SAMPLE = "Hello, this is a short sample of how this voice sounds."
-_FALLBACK_LANGUAGE = "en-IN"
-
-
-#: Catalogue ids are UUIDs; speaker names are words. That shape is the line
-#: between "a voice we can hear" and "an entry we can only store".
-_CATALOGUE_ID = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+#: Speakers that can actually be synthesised. A catalogue id may be selectable
+#: without being one of these - the frontend still carries a generation of ids
+#: the provider never published a speaker for.
+_SPEAKERS = frozenset(str(profile["id"]) for profile in VOICE_PROFILES)
 
 
 def _sample_text(voice_id: str, language: str | None) -> tuple[str, str]:
     """Resolve the sentence and language to synthesise for ``voice_id``.
 
-    A sample can only be made from a speaker name, so three answers follow:
-    an id with a profile or listed in ``PREVIEW_SPEAKERS`` is synthesised, an
-    id the catalogue knows but that is not a speaker is a 404 saying so, and
-    anything else is a plain 404. Nothing unvetted is forwarded, so this cannot
-    be turned into a probe for arbitrary provider speakers.
+    A sample can only be made from a speaker name, so two answers follow: a
+    catalogue speaker gets the one fixed line in the requested language, and
+    anything else is a 404 - an id the catalogue knows but publishes no speaker
+    for says exactly that, and an id it has never seen is simply unknown. Nothing
+    unvetted is forwarded, so this cannot be turned into a probe for arbitrary
+    provider speakers.
     """
-    profile = next((item for item in VOICE_PROFILES if item["id"] == voice_id), None)
-
-    if profile is None:
-        if voice_id not in SUPPORTED_VOICES and voice_id not in PREVIEW_SPEAKERS:
-            raise NotFoundError(
-                f"Unknown voice '{voice_id}'.",
-                code="voice_not_found",
-            )
-        if _CATALOGUE_ID.match(voice_id):
-            # The voice is selectable, but the catalogue publishes no speaker
-            # for it. Forwarding the id would come back as a provider error and
-            # read as an outage; "no sample yet" is the truth.
-            raise NotFoundError(
-                f"No sample is available for voice '{voice_id}' yet.",
-                code="voice_sample_unavailable",
-            )
-        chosen = language or _FALLBACK_LANGUAGE
-        if chosen not in SUPPORTED_LANGUAGES:
-            raise ValidationError(
-                f"'{chosen}' is not a supported language.",
-                details={"languages": sorted(SUPPORTED_LANGUAGES)},
-            )
-        return _FALLBACK_SAMPLE, chosen
-
-    offered = [str(code) for code in profile["languages"]]  # type: ignore[union-attr]
-    chosen = language or str(profile["preview_language"])
-    if chosen not in offered:
+    chosen = language or PREVIEW_LANGUAGE
+    if chosen not in PREVIEW_LINES:
         raise ValidationError(
-            f"'{voice_id}' is not offered in {chosen}.",
-            details={"languages": offered},
+            f"'{chosen}' is not a language this voice can speak.",
+            details={"languages": sorted(PREVIEW_LINES)},
         )
-    return str(profile["sample"]), chosen
+
+    if voice_id in _SPEAKERS:
+        return PREVIEW_LINES[chosen], chosen
+
+    if voice_id in SUPPORTED_VOICES:
+        # The voice is selectable, but the catalogue publishes no speaker
+        # for it. Forwarding the id would come back as a provider error and
+        # read as an outage; "no sample yet" is the truth.
+        raise NotFoundError(
+            f"No sample is available for voice '{voice_id}' yet.",
+            code="voice_sample_unavailable",
+        )
+
+    raise NotFoundError(
+        f"Unknown voice '{voice_id}'.",
+        code="voice_not_found",
+    )
 
 
 def preview(voice_id: str, language: str | None = None) -> VoicePreview:

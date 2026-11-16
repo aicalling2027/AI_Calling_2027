@@ -242,6 +242,9 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
               { value: "all", label: "All voices" },
               { value: "female", label: "Female" },
               { value: "male", label: "Male" },
+              // Not every speaker ships with a label; the ones that do not
+              // still have to be reachable from the filter bar.
+              { value: "unspecified", label: "Not stated" },
             ].map((option) => (
               <FilterChip
                 key={option.value}
@@ -277,6 +280,11 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
             const premium = tierOf(voice.id) === "premium";
             const { primary, also } = languagesOf(voice, language);
             const display = nameIn(voice, primary.code);
+            // A voice the provider says nothing about gets no tagline rather
+            // than a made-up one.
+            const tagline = [voice.personality, voice.use_case]
+              .filter(Boolean)
+              .join(" · ");
             const chosen = voice.id === selectedId;
             const playing = voice.id === playingId;
             const busy = voice.id === loadingId;
@@ -310,9 +318,11 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                           <span className="truncate text-xs text-ink-soft">{voice.name}</span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-ink-soft">
-                        {voice.personality} · {voice.use_case}
-                      </p>
+                      {tagline ? (
+                        <p className="mt-0.5 truncate text-xs text-ink-soft">
+                          {tagline}
+                        </p>
+                      ) : null}
                     </div>
                     <span
                       className={cn(
@@ -343,15 +353,28 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                       {also.length === 0 ? (
                         <span className="text-[0.7rem] text-ink-soft">This language only</span>
                       ) : (
-                        also.map((item) => (
-                          <span
-                            key={item.code}
-                            title={item.label}
-                            className="rounded-full bg-mist px-2.5 py-1 text-[0.7rem] font-medium text-ink-soft"
-                          >
-                            {nativeName(item.code)}
-                          </span>
-                        ))
+                        <>
+                          {also.slice(0, 5).map((item) => (
+                            <span
+                              key={item.code}
+                              title={item.label}
+                              className="rounded-full bg-mist px-2.5 py-1 text-[0.7rem] font-medium text-ink-soft"
+                            >
+                              {nativeName(item.code)}
+                            </span>
+                          ))}
+                          {also.length > 5 ? (
+                            <span
+                              title={also
+                                .slice(5)
+                                .map((item) => item.label)
+                                .join(", ")}
+                              className="rounded-full bg-mist px-2.5 py-1 text-[0.7rem] font-medium text-ink-soft"
+                            >
+                              +{also.length - 5} more
+                            </span>
+                          ) : null}
+                        </>
                       )}
                     </p>
                   </div>

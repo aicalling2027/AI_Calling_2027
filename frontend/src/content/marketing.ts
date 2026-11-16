@@ -97,8 +97,8 @@ export const voicesPage = {
   eyebrow: "Voice catalogue",
   title: "Hear the voice in the language it will speak.",
   summary:
-    "Every AI employee runs on one voice. Play any voice below in any language it speaks, rate the sample, and keep the ones your customers follow.",
-  note: "Samples are synthesised on demand, so the first play of a voice takes a few seconds.",
+    "Every AI employee runs on one voice. Each speaker here speaks the same eleven languages, so play a voice in the language your customers use, rate the sample, and keep the ones they follow.",
+  note: "Each sample is one short line, synthesised on demand, so the first play of a voice in a new language takes a few seconds.",
   catalogue: {
     eyebrow: "Catalogue",
     title: "Filter, listen, keep the ones that sound right.",

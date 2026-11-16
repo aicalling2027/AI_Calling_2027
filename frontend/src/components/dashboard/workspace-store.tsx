@@ -40,6 +40,9 @@ import {
 
 type AgentsStatus = "loading" | "ready" | "error";
 
+/** What a write tells its caller: the server kept it, or why it did not. */
+export type SaveOutcome = { ok: true } | { ok: false; error: string };
+
 type WorkspaceState = {
   agents: Agent[];
   agentsStatus: AgentsStatus;
@@ -81,7 +84,11 @@ export type NewAgentInput = {
 type WorkspaceActions = {
   /** Creates the employee in the database; calls stay off until enabled. */
   addAgent: (input: NewAgentInput) => Promise<Agent>;
-  updateAgent: (id: string, patch: Partial<Agent>) => void;
+  /**
+   * Saves a change optimistically and reports whether the server kept it.
+   * Never rejects, so an un-awaited call cannot become an unhandled rejection.
+   */
+  updateAgent: (id: string, patch: Partial<Agent>) => Promise<SaveOutcome>;
   /** Re-read every employee. Call after a duplicate pass or a failed save. */
   refreshAgents: () => Promise<void>;
   /** Turn calls on for an employee, deploying the line if there is none. */
@@ -259,7 +266,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateAgent = React.useCallback(
-    (id: string, patch: Partial<Agent>) => {
+    (id: string, patch: Partial<Agent>): Promise<SaveOutcome> => {
       setState((prev) => ({
         ...prev,
         agents: prev.agents.map((agent) =>
@@ -267,14 +274,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         ),
       }));
 
-      // Fire and forget: the row is already updated on screen, and a refusal
-      // re-reads the server so the UI never keeps an edit that was rejected.
-      void fetch(`/api/employees/${id}`, {
+      // The row is already updated on screen; a refusal re-reads the server so
+      // the UI never keeps an edit that was rejected. The caller is told which
+      // of the two happened, because a silent revert reads as success.
+      return fetch(`/api/employees/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       })
-        .then(async (response) => {
+        .then(async (response): Promise<SaveOutcome> => {
           const agent = await readAgent(response, "The change could not be saved.");
           setState((prev) => ({
             ...prev,
@@ -282,10 +290,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               current.id === id ? mergeLocal(current, agent) : current,
             ),
           }));
+          return { ok: true };
         })
-        .catch((error: unknown) => {
+        .catch((error: unknown): SaveOutcome => {
           console.error("[workspace] save employee", error);
           void refreshAgents();
+          return {
+            ok: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "The change could not be saved.",
+          };
         });
     },
     [refreshAgents],
