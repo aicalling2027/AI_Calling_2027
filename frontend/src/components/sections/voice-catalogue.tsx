@@ -9,13 +9,14 @@ import { Section, SectionHeader } from "@/components/layout/section";
 import type { VoiceSample } from "@/content/home";
 import { voicesPage } from "@/content/marketing";
 import {
+  codeOf,
+  editionOf,
   familyOf,
   languagesOf,
-  nameIn,
   nativeName,
   planOf,
   tierOf,
-  VOICE_FAMILIES,
+  VOICE_MODELS,
   VOICE_PLANS,
   VOICE_TIER_ORDER,
   type VoiceTier,
@@ -199,7 +200,7 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
     } catch {
       setPlayingId(null);
       setNotice(
-        `The ${nameIn(voice, spoken)} sample could not be played in ${nativeName(spoken)}. Try again in a moment, or pick another voice.`,
+        `The ${codeOf(voice)} sample could not be played in ${nativeName(spoken)}. Try again in a moment, or pick another voice.`,
       );
     } finally {
       setLoadingId(null);
@@ -268,18 +269,18 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
             ))}
           </FilterRow>
 
-          <FilterRow label="Family">
+          <FilterRow label="Model">
             <FilterChip active={model === "all"} onClick={() => filterBy(() => setModel("all"))}>
-              Both families
+              Both models
             </FilterChip>
-            {Object.entries(VOICE_FAMILIES).map(([value, label]) => (
+            {VOICE_MODELS.map((value) => (
               <FilterChip
                 key={value}
                 active={model === value}
                 onClick={() => filterBy(() => setModel(value))}
-                title={`Speakers synthesised by ${value}`}
+                title={`Voices spoken by ${value}`}
               >
-                {label}
+                {value}
               </FilterChip>
             ))}
           </FilterRow>
@@ -327,7 +328,7 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
             const premium = tierOf(voice.id) === "premium";
             const family = familyOf(voice);
             const { primary, also } = languagesOf(voice, language);
-            const display = nameIn(voice, primary.code);
+            const display = codeOf(voice);
             // A voice the provider says nothing about gets no tagline rather
             // than a made-up one.
             const tagline = [voice.personality, voice.use_case]
@@ -355,16 +356,13 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                         AVATAR_TINTS[index % AVATAR_TINTS.length],
                       )}
                     >
-                      {display.slice(0, 1)}
+                      {editionOf(voice)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <h3 className="truncate text-base font-semibold text-ink">
                           {display}
                         </h3>
-                        {display !== voice.name ? (
-                          <span className="truncate text-xs text-ink-soft">{voice.name}</span>
-                        ) : null}
                       </div>
                       <div className="mt-0.5 flex items-center gap-2">
                         {tagline ? (
@@ -593,11 +591,11 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                   ],
                 )}
               >
-                {nameIn(selected, languagesOf(selected, language).primary.code).slice(0, 1)}
+                {editionOf(selected)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-ink">
-                  {nameIn(selected, languagesOf(selected, language).primary.code)}
+                  {codeOf(selected)}
                   <span className="ml-2 text-xs font-normal text-ink-soft">
                     {languagesOf(selected, language).primary.label}
                   </span>

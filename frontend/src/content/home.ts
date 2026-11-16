@@ -57,6 +57,13 @@ export const howItWorks = {
 /** One entry of `GET /api/v1/voices` - the marketing site's voice catalogue. */
 export type VoiceSample = {
   id: string;
+  /**
+   * What the catalogue prints in place of a name: `PM-01`, `SD-07`. The band
+   * and the edition are both readable from it. Optional so a payload from an
+   * older backend still renders - the name is the fallback.
+   */
+  code?: string;
+  /** The speaker's own name. Search finds a voice by it; cards never show it. */
   name: string;
   /** `unspecified` where the provider does not label the speaker. */
   gender: "female" | "male" | "unspecified";
@@ -68,8 +75,9 @@ export type VoiceSample = {
   sample_text: string;
   featured: boolean;
   /**
-   * The speech model the voice is synthesised with. Speaker ids are not
-   * portable between the two families, so the card names the one it belongs to.
+   * The public name of the model the voice is synthesised with (`AOTMS-V 3B`).
+   * Speaker ids are not portable between the two models, so the card names the
+   * one it belongs to.
    */
   model: string;
 };
@@ -179,19 +187,39 @@ const VOICE_SEEDS: readonly VoiceSeed[] = [
   ["rupali", "Rupali", "unspecified", "", "", false],
 ];
 
+/**
+ * Stamp the bundled catalogue with the codes the backend assigns.
+ *
+ * The backend numbers the three featured voices `PM-01..03` and every other
+ * voice `SD-01..` in catalogue order. `VOICE_SEEDS` is written in that same
+ * order, so the same rule reproduces the live codes exactly - the band reads the
+ * same before `/api/voices` answers and while it is unreachable.
+ */
+function withCodes<T extends { featured: boolean }>(
+  rows: T[],
+): (T & { code: string })[] {
+  const taken = { PM: 0, SD: 0 };
+  return rows.map((row) => {
+    const series = row.featured ? "PM" : "SD";
+    taken[series] += 1;
+    return { ...row, code: `${series}-${String(taken[series]).padStart(2, "0")}` };
+  });
+}
+
 export const voices = {
   eyebrow: "Hear our voices",
   title: "Voices your customers can follow.",
-  body: "Real Bulbul speakers, generated for your language and your script - not stock recordings. Play any voice below and keep the one your customers trust.",
+  body: "Real AOTMS speakers, generated for your language and your script - not stock recordings. Play any voice below and keep the one your customers trust.",
   sourceLive: "Live catalogue",
   sourceBundled: "Curated catalogue",
   footnote:
-    "Each sample is one short line, synthesised on demand by Sarvam Bulbul in the language you pick. Every voice speaks all eleven of our speech languages.",
+    "Each sample is one short line, synthesised on demand in the language you pick. Every voice speaks all eleven of our speech languages.",
   // Mirrors VOICE_PROFILES in Backend/app/core/constants.py so the band renders
   // with real content before /api/voices answers - and stays intact if the API
-  // is unreachable.
-  catalog: VOICE_SEEDS.map(
-    ([id, name, gender, personality, use_case, featured]) => ({
+  // is unreachable. The order below is the backend's, which is what makes the
+  // derived codes (PM-01, SD-01...) agree with the live catalogue.
+  catalog: withCodes(
+    VOICE_SEEDS.map(([id, name, gender, personality, use_case, featured]) => ({
       id,
       name,
       gender,
@@ -201,10 +229,10 @@ export const voices = {
       preview_language: PREVIEW_LANGUAGE,
       sample_text: PREVIEW_LINE,
       featured,
-      // Every base speaker is synthesised by the stable model; the v4 personas
+      // Every base speaker is synthesised by the stable model; the personas
       // only arrive with the live catalogue.
-      model: "bulbul:v3",
-    }),
+      model: "AOTMS-V 3B",
+    })),
   ) satisfies VoiceSample[],
 };
 

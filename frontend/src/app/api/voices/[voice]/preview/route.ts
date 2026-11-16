@@ -38,8 +38,8 @@ export async function GET(request: Request, context: { params: Promise<{ voice: 
   try {
     const response = await fetch(`${API_BASE}/api/v1/voices/${voice}/preview${query}`, {
       cache: "no-store",
-      // Bulbul usually answers in a couple of seconds; the first call for a
-      // voice also pays for the API's own cache fill.
+      // The provider usually answers in a couple of seconds; the first call for
+      // a voice also pays for the API's own cache fill.
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) throw new Error(`preview ${response.status}`);

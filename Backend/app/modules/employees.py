@@ -812,8 +812,8 @@ def test_employee(
     content = str(response.data.get("content") or "").strip()
     if not content:
         raise ProviderError(
-            "Sarvam accepted the request but returned an empty reply.",
-            details={"provider": "sarvam", "status_code": response.status_code},
+            "The conversation model accepted the request but returned an empty reply.",
+            details={"provider": "aotms", "status_code": response.status_code},
         )
 
     return EmployeeTestResponse(

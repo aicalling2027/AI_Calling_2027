@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Container } from "@/components/layout/container";
 import { voices, PREVIEW_LINES, type VoiceSample } from "@/content/home";
-import { nativeName, VOICE_LANGUAGES } from "@/content/voice-catalogue";
+import { codeOf, editionOf, nativeName, VOICE_LANGUAGES } from "@/content/voice-catalogue";
 import { cn } from "@/lib/utils";
 
 /** Favourites live in the visitor's browser: the landing page has no account. */
@@ -22,7 +22,7 @@ const WAVE_HEIGHTS = Array.from(
   (_, index) => 6 + ((index * 53) % 19),
 );
 
-/** One avatar tint per card, in order. There are no portraits, so the initial carries the identity. */
+/** One avatar tint per card, in order. There are no portraits, so the code carries the identity. */
 const AVATAR_TINTS = [
   "bg-cobalt-tint text-cobalt-night",
   "bg-tangerine-tint text-tangerine-ink",
@@ -135,6 +135,7 @@ export function VoiceSamples() {
       if (useCase !== "all" && voice.use_case !== useCase) return false;
       if (!term) return true;
       return [
+        codeOf(voice),
         voice.name,
         voice.personality,
         voice.use_case,
@@ -308,11 +309,11 @@ export function VoiceSamples() {
                         AVATAR_TINTS[index % AVATAR_TINTS.length],
                       )}
                     >
-                      {voice.name.slice(0, 1)}
+                      {editionOf(voice)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate text-sm font-semibold text-ink">
-                        {voice.name}
+                        {codeOf(voice)}
                       </h3>
                       <p className="mt-0.5 truncate text-xs text-ink-soft">
                         {voice.personality ||
@@ -328,7 +329,7 @@ export function VoiceSamples() {
                       type="button"
                       onClick={() => toggleFavourite(voice.id)}
                       aria-pressed={saved}
-                      aria-label={`${saved ? "Remove" : "Save"} ${voice.name} ${saved ? "from" : "to"} favourites`}
+                      aria-label={`${saved ? "Remove" : "Save"} ${codeOf(voice)} ${saved ? "from" : "to"} favourites`}
                       className={cn(
                         "-mr-1.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-mist",
                         saved
@@ -371,7 +372,7 @@ export function VoiceSamples() {
                     <button
                       type="button"
                       onClick={() => void togglePreview(voice)}
-                      aria-label={`${playing ? "Pause" : "Play"} ${voice.name}'s sample in ${nativeName(spoken)}`}
+                      aria-label={`${playing ? "Pause" : "Play"} the ${codeOf(voice)} sample in ${nativeName(spoken)}`}
                       className="btn-glass inline-flex size-9 shrink-0 items-center justify-center rounded-full text-cobalt"
                     >
                       {busy ? (

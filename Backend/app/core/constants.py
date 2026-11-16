@@ -328,6 +328,14 @@ PREVIEW_LANGUAGE: Final[str] = "en-IN"
 VOICE_MODEL_V3: Final[str] = "bulbul:v3"
 VOICE_MODEL_V4: Final[str] = "bulbul:v4-flash"
 
+#: What the catalogue calls each model. The two ids above are the provider's own
+#: names and never leave the server: the API and every card print these labels,
+#: so the product reads as one family of AOTMS models rather than resold parts.
+VOICE_MODEL_LABELS: Final[dict[str, str]] = {
+    VOICE_MODEL_V3: "AOTMS-V 3B",
+    VOICE_MODEL_V4: "AOTMS-V 10B",
+}
+
 
 def _voice(
     voice_id: str,
@@ -771,15 +779,53 @@ def _persona(persona_id: str) -> dict[str, object]:
     }
 
 
-#: Both families in one list: the base speakers first, then the v4 personas.
+#: The voices sold on the premium rate. The frontend prices the same three
+#: (``PREMIUM_VOICES`` in ``src/content/voice-catalogue.ts``); a voice added in
+#: one place has to be added in the other, or a card would print one band and a
+#: code from the other.
+_PREMIUM_SPEAKERS: Final[frozenset[str]] = frozenset({"shubh", "tanya", "anand"})
+
+
+def code_for(voice_id: str, taken: dict[str, int]) -> str:
+    """The catalogue code a voice is printed under: ``PM-01``, ``SD-07``.
+
+    Premium voices number from one in their own series and everything else in
+    ``SD``, so the label states the band as well as the edition. ``taken``
+    carries the counters between calls in one pass over the catalogue.
+    """
+    series = "PM" if voice_id in _PREMIUM_SPEAKERS else "SD"
+    taken[series] = taken.get(series, 0) + 1
+    return f"{series}-{taken[series]:02d}"
+
+
+def _with_codes(
+    profiles: tuple[dict[str, object], ...],
+) -> tuple[dict[str, object], ...]:
+    """Stamp every profile with the code the catalogue prints for it.
+
+    Numbering runs in catalogue order, which is the same order the cards are
+    painted in, so ``SD-01`` always sits before ``SD-02`` on the page.
+    """
+    taken: dict[str, int] = {}
+    return tuple(
+        {**profile, "code": code_for(str(profile["id"]), taken)}
+        for profile in profiles
+    )
+
+
+#: Both model families in one list: the base speakers first, then the personas.
 #:
 #: The base speakers lead because they are the voices an employee can be moved
 #: onto without changing anything else, and because the featured three are among
-#: them. Everything after that is the rest of the provider's catalogue.
-VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = (
-    *_BASE_PROFILES,
-    *(_persona(persona_id) for persona_id in _V4_PERSONA_IDS),
+#: them. Everything after that is the rest of the provider's catalogue. Codes
+#: follow this order, so they stay put for as long as it does.
+VOICE_PROFILES: Final[tuple[dict[str, object], ...]] = _with_codes(
+    (
+        *_BASE_PROFILES,
+        *(_persona(persona_id) for persona_id in _V4_PERSONA_IDS),
+    )
 )
+
 
 #: Every speaker id an employee may be configured with.
 #:
@@ -793,16 +839,19 @@ SUPPORTED_VOICES: Final[dict[str, str]] = {
     **{str(profile["id"]): str(profile["gender"]) for profile in VOICE_PROFILES},
 }
 
+#: The conversation models an employee can run on. The ids are the values the
+#: provider's API takes and are stored on every employee row; everything a
+#: caller reads is the public label, so the vendor is never named.
 SUPPORTED_MODELS: Final[dict[str, dict[str, object]]] = {
     "sarvam-m": {
-        "provider": "sarvam",
-        "display_name": "Sarvam M",
+        "provider": "aotms",
+        "display_name": "AOTMS-V 24B",
         "languages": ["hi-IN", "en-IN", "bn-IN", "ta-IN", "te-IN", "gu-IN", "kn-IN", "ml-IN", "mr-IN", "pa-IN", "or-IN"],
         "capabilities": ["chat", "function_calling", "multilingual"],
     },
     "sarvam-2b": {
-        "provider": "sarvam",
-        "display_name": "Sarvam 2B",
+        "provider": "aotms",
+        "display_name": "AOTMS-V 2B",
         "languages": ["hi-IN", "en-IN", "bn-IN", "ta-IN", "te-IN"],
         "capabilities": ["chat", "low_latency"],
     },

@@ -97,12 +97,12 @@ export const voicesPage = {
   eyebrow: "Voice catalogue",
   title: "Hear the voice in the language it will speak.",
   summary:
-    "Every AI employee runs on one voice. The catalogue covers both Sarvam speech families - the base speakers and the tuned personas - and every one of them renders the same eleven languages, so play a voice in the language your customers use, rate the sample, and keep the ones they follow.",
+    "Every AI employee runs on one voice. The catalogue is served by two speech models - AOTMS-V 3B and AOTMS-V 10B - and every voice renders the same eleven languages. Each one carries a code (Premium voices PM-01 upward, Standard voices SD-01 upward), so play a voice in the language your customers use, rate the sample, and keep the ones they follow.",
   note: "Each sample is one short line, synthesised on demand, so the first play of a voice in a new language takes a few seconds.",
   catalogue: {
     eyebrow: "Catalogue",
     title: "Filter, listen, keep the ones that sound right.",
-    body: "Choosing a language does two things at once: it plays the sample in that language, and it writes each voice's name the way that language says it. Shubh in English is शुभ in Hindi and சுப் in Tamil.",
+    body: "A card is labelled by its catalogue code - PM-01, SD-07 - the same wherever the voice is used, so the voice you approved is the voice you book. Choosing a language filters the list to the voices that speak it and plays the sample in it.",
   },
   faq: [
     {
@@ -111,9 +111,9 @@ export const voicesPage = {
         "Each voice sits in one of two bands, billed per connected minute: Premium at ₹7 and Standard at ₹5. A call that is never connected is not billed.",
     },
     {
-      question: "Why does one voice have a different name in each language?",
+      question: "Is a voice the same in every language?",
       answer:
-        "A voice is introduced in English and takes the local spelling everywhere else - Shubh, शुभ, சுப். The card shows the name in whichever language you have selected, the same one the sample is spoken in.",
+        "Yes. A voice keeps its code - PM-01, SD-07 - wherever it is used, and the same speaker answers behind it. Only the language of the sample changes.",
     },
     {
       question: "Does the sample sound like the call?",

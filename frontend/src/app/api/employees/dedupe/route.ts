@@ -7,8 +7,8 @@ import { guardSession } from "@/lib/api/session";
 /**
  * Maintenance: archive employees that repeat a name, keeping the oldest.
  *
- * Nothing is deleted - a repeat is archived and its Sarvam deployment is
- * paused, so the workspace has one agent per name and no call history is lost.
+ * Nothing is deleted - a repeat is archived and its voice-platform deployment
+ * is paused, so the workspace has one agent per name and no call history is lost.
  */
 export async function POST() {
   await connection();

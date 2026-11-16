@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { PhoneNumberRecord } from "@/content/workspace";
 
-const PROVIDERS = ["Sarvam SIP", "Exotel", "Plivo", "Twilio"];
+const PROVIDERS = ["AOTMS SIP", "Exotel", "Plivo", "Twilio"];
 const MODES: PhoneNumberRecord["mode"][] = ["Inbound", "Outbound", "Both"];
 
 export default function PhoneNumbersPage() {
@@ -193,7 +193,7 @@ export default function PhoneNumbersPage() {
       <section className="rounded-xl border border-line bg-cream/60 p-4">
         <h2 className="text-xs font-semibold text-ink">Porting an existing number</h2>
         <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-ink-soft">
-          Numbers bought elsewhere can be ported to Sarvam SIP. Upload the last invoice and
+          Numbers bought elsewhere can be ported to AOTMS SIP. Upload the last invoice and
           the authorised-signatory letter in the add-number dialog; verification usually
           completes in two working days and the line keeps working while it moves.
         </p>

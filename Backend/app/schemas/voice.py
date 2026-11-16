@@ -16,6 +16,11 @@ class VoiceOut(APIModel):
     """A single catalogue entry as the marketing site renders it."""
 
     id: str
+    #: What the catalogue prints in place of a name: ``PM-01``, ``SD-07``. The
+    #: band and the edition are both readable from it.
+    code: str
+    #: The speaker's own name. Never rendered - it is kept so search can still
+    #: find a voice a customer already knows by name.
     name: str
     gender: str
     personality: str
@@ -26,9 +31,9 @@ class VoiceOut(APIModel):
     #: what the visitor is about to hear.
     sample_text: str
     featured: bool = False
-    #: The speech model this speaker id belongs to. Speaker ids are not portable
-    #: between models, so the site and the preview endpoint both need it.
-    model: str = "bulbul:v3"
+    #: The public name of the model this speaker belongs to (``AOTMS-V 3B``).
+    #: Speaker ids are not portable between models, so the site groups by it.
+    model: str = "AOTMS-V 3B"
 
 
 class VoicePreview(APIModel):

@@ -19,6 +19,7 @@ import {
   modelById,
   toneForIndex,
   voiceById,
+  voiceLabel,
 } from "@/content/workspace";
 import { apiFetch } from "@/lib/api/aotms";
 
@@ -62,7 +63,7 @@ type EmployeePage = { items: EmployeeRecord[]; meta?: { total: number } };
 
 export type DedupeResult = { scanned: number; duplicates: number; archivedIds: string[] };
 
-/** What a pull from the Sarvam workspace did, one line per deployment. */
+/** What a pull from the voice platform did, one line per deployment. */
 export type ImportSummary = {
   fetched: number;
   created: number;
@@ -108,7 +109,7 @@ const STATUS_TO_API: Record<AgentStatus, string> = {
   Draft: "draft",
 };
 
-/** Sarvam-M is the default conversation model; only 2B is a distinct id. */
+/** The default conversation model; only 2B is a distinct id. */
 const modelIdOf = (code: string): ModelId =>
   code === "sarvam-2b" ? "sarvam-2b" : "sarvam-24b";
 
@@ -177,7 +178,7 @@ export function toAgent(record: EmployeeRecord): Agent {
     status: STATUS_TO_UI[record.status] ?? "Draft",
     languages,
     defaultLanguage: languageFromCode(record.default_language),
-    voice: voiceById(record.voice).name,
+    voice: voiceLabel(voiceById(record.voice)),
     voiceId: record.voice,
     model: modelById(modelId).name,
     modelId,
@@ -347,7 +348,7 @@ export async function dedupeEmployees(): Promise<DedupeResult> {
 }
 
 /**
- * Pull the agents that already exist on Sarvam into this workspace.
+ * Pull the agents that already exist on the voice platform into this workspace.
  *
  * The backend links each deployment to an employee instead of deploying a new
  * agent, so this is safe to run again: it only refreshes what changed.

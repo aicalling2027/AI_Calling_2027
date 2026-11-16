@@ -7,10 +7,11 @@
  * standard - each with its own rate and note.
  *
  * There are no cards here on purpose. A row carries everything a chooser needs
- * (name in the chosen language, speaker id, gender, what it is best for, the
- * languages it also speaks, a sample control and a rating) in about a third of
- * the height, so a whole catalogue can be compared without scrolling past
- * decoration.
+ * (catalogue code, speaker id, gender, what it is best for, the languages it
+ * also speaks, a sample control and a rating) in about a third of the height,
+ * so a whole catalogue can be compared without scrolling past decoration. The
+ * code is the row's name everywhere on this screen; the speaker's own name is
+ * a search alias only.
  *
  * Two sources feed the catalogue. `/api/voices` is merged over the bundle, so a
  * voice added on the server appears without a redeploy; the bundle paints first
@@ -107,6 +108,13 @@ const cloneDate = (value: string) => {
 };
 
 const takeLength = (value: number) => `${(value / 1000).toFixed(1)}s`;
+
+/**
+ * What a row prints: its catalogue code (PM-01, SD-07), never the speaker's
+ * name. The name fallback only reaches a payload from an older backend.
+ */
+const labelOf = (row: VoiceRow): string =>
+  row.voice.code ?? row.sample?.code ?? row.voice.name;
 
 /**
  * Which language a row leads with: the one being filtered for when the voice
@@ -242,6 +250,7 @@ export function VoicePicker({
           // A live id is a speaker name, so it can be previewed as well as stored.
           slug: item.id,
           name: item.name,
+          code: item.code,
           gender:
             item.gender === "female"
               ? "Female"
@@ -290,6 +299,7 @@ export function VoicePicker({
         if (gender !== "all" && row.gender !== gender) return false;
 
         const haystack = [
+          labelOf(row),
           row.voice.name,
           row.voice.slug,
           row.personality,
@@ -337,14 +347,7 @@ export function VoicePicker({
   /** The employee's current voice, which the "Selected" line and chips describe. */
   const current = rows.find((row) => row.voice.id === selectedId);
   const currentPrimary = current ? primaryFor(current, language) : undefined;
-  const currentName =
-    current && currentPrimary
-      ? nameOfSlug(
-          current.voice.slug || current.voice.id,
-          current.voice.name,
-          currentPrimary.code,
-        )
-      : (current?.voice.name ?? "");
+  const currentName = current ? labelOf(current) : "";
   const currentAlso =
     current && currentPrimary
       ? current.languages.filter((item) => item.code !== currentPrimary.code)
@@ -384,7 +387,7 @@ export function VoicePicker({
     if (!row.voice.slug) {
       setNotice({
         tone: "error",
-        text: `${row.voice.name} has no speaker name on the server, so there is no sample to play.`,
+        text: `${labelOf(row)} has no speaker name on the server, so there is no sample to play.`,
       });
       return;
     }
@@ -411,7 +414,7 @@ export function VoicePicker({
       setPlayingId(null);
       setNotice({
         tone: "error",
-        text: `The ${nameOfSlug(row.voice.slug, row.voice.name, spoken)} sample did not play in ${nativeName(spoken)}. Try again in a moment, or pick another language.`,
+        text: `The ${labelOf(row)} sample did not play in ${nativeName(spoken)}. Try again in a moment, or pick another language.`,
       });
     } finally {
       setLoadingId(null);
@@ -441,8 +444,8 @@ export function VoicePicker({
     // refused save quietly reverses itself and would otherwise read as success.
     setNotice(
       outcome.ok
-        ? { tone: "ok", text: `${employeeName} now speaks with ${row.voice.name}.` }
-        : { tone: "error", text: `${row.voice.name} was not saved. ${outcome.error}` },
+        ? { tone: "ok", text: `${employeeName} now speaks with ${labelOf(row)}.` }
+        : { tone: "error", text: `${labelOf(row)} was not saved. ${outcome.error}` },
     );
   };
 
@@ -474,8 +477,9 @@ export function VoicePicker({
         <div>
           <h2 className="text-base font-semibold text-ink">Voice Library</h2>
           <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-ink-soft">
-            Pick the language first: the names, the chips and the sample all
-            follow it. Changing the voice does not change the script.
+            Pick the language first: the chips and the sample both follow it.
+            Every row is named by its catalogue code. Changing the voice does
+            not change the script.
           </p>
         </div>
         <button
@@ -553,7 +557,7 @@ export function VoicePicker({
             <p className="text-xs text-ink-soft">
               {language === "all"
                 ? "Every voice, in the language it is published in."
-                : `Every voice below speaks ${nativeName(language)}, and the rows are named in it.`}
+                : `Every voice below speaks ${nativeName(language)}. Play a row to hear it in that language.`}
             </p>
           </section>
 
@@ -611,7 +615,7 @@ export function VoicePicker({
             onChange={setQuery}
             placeholder={
               tab === "all"
-                ? "Search by name, id, language or use case"
+                ? "Search by code, name, language or use case"
                 : "Search your cloned voices"
             }
             className="sm:max-w-none"
@@ -889,9 +893,7 @@ function VoiceRowItem({
   onRate: (value: number) => void;
 }) {
   const primary = primaryFor(row, language);
-  const display = primary
-    ? nameOfSlug(row.voice.slug || row.voice.id, row.voice.name, primary.code)
-    : row.voice.name;
+  const display = labelOf(row);
   const headline = row.useCase
     ? `Best for ${row.useCase.toLowerCase()}`
     : row.languages.length >= VOICE_LANGUAGE_COUNT

@@ -36,6 +36,7 @@ import {
   initialsOf,
   templateById,
   voiceById,
+  voiceLabel,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
@@ -143,8 +144,8 @@ export default function NewEmployeePage() {
     setBuilding(true);
 
     try {
-      // One call creates the record and its Sarvam deployment, so the employee
-      // the dashboard opens below already has an agent behind it.
+      // One call creates the record and its voice-platform deployment, so the
+      // employee the dashboard opens below already has an agent behind it.
       const agent = await addAgent({
         name: name.trim(),
         purpose,
@@ -152,7 +153,7 @@ export default function NewEmployeePage() {
         templateKey: templateId,
         languages,
         defaultLanguage,
-        voice: voice.name,
+        voice: voiceLabel(voice),
         voiceId: voice.id,
         model: DEFAULT_MODEL.name,
         modelId: DEFAULT_MODEL.id,

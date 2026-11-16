@@ -42,6 +42,7 @@ import {
   OUTCOME_OPTIONS,
   initialsOf,
   voiceById,
+  voiceLabel,
 } from "@/content/workspace";
 import { cn } from "@/lib/utils";
 
@@ -911,7 +912,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
             onSelect={(voice) =>
               store.updateAgent(agent.id, {
                 voiceId: voice.id,
-                voice: voice.name,
+                voice: voiceLabel(voice),
               })
             }
           />
@@ -1000,7 +1001,7 @@ function EmployeeWorkspace({ agent }: { agent: Agent }) {
             </p>
           </div>
           <p className="mt-3 text-[11px] text-ink-soft">
-            Voice: {voiceById(agent.voiceId).name} · Languages: {agent.languages.join(", ")} ·
+            Voice: {voiceLabel(voiceById(agent.voiceId))} · Languages: {agent.languages.join(", ")} ·
             Available in {LANGUAGES.length} Indian languages
           </p>
         </section>

@@ -5,10 +5,10 @@ import { failure } from "@/lib/api/respond";
 import { guardSession } from "@/lib/api/session";
 
 /**
- * Pull the agents that already exist in the Sarvam workspace in as employees.
+ * Pull the agents that already exist on the voice platform in as employees.
  *
  * Nothing is deployed or deleted here: each remote deployment is linked to an
- * employee, so running this again only refreshes what changed on Sarvam.
+ * employee, so running this again only refreshes what changed there.
  */
 export async function POST() {
   await connection();

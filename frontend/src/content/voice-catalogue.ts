@@ -4,8 +4,9 @@
  * `content/home.ts` holds the catalogue itself - a mirror of the backend's
  * `VOICE_PROFILES`, which is what `/api/voices` returns. Two things are ours to
  * decide and are kept here instead: the rate band a voice is billed at, and the
- * name it goes by in each language it speaks. A Hindi listener hears "शुभ", not
- * "Shubh", and the card has to say the same thing the audio does.
+ * words the site uses for the two models behind the codes. A card prints its
+ * code (`PM-01`, `SD-07`), never the speaker's own name; the name survives only
+ * as a search alias, so a customer who knows a voice by name still finds it.
  */
 
 import type { VoiceSample } from "@/content/home";
@@ -50,21 +51,35 @@ export const tierOf = (id: string): VoiceTier =>
   PREMIUM_VOICES.has(id) ? "premium" : "standard";
 
 /**
- * The speech model a voice belongs to, in the words the site uses.
+ * The models a voice can belong to, in the order the filter lists them.
  *
- * Two families are listed, and their speaker ids are not interchangeable: a
- * speaker sent to the other model answers 400 instead of audio. The catalogue
- * says which one a card is, so a visitor comparing two cards that share a name
- * can see why they sound different.
+ * Separate models, not tiers of one: their speaker ids are not interchangeable,
+ * and a speaker sent to the other model comes back as an error instead of
+ * audio. The catalogue says which one a card is, so two voices that differ only
+ * by model are visibly different.
  */
-export const VOICE_FAMILIES: Record<string, string> = {
-  "bulbul:v3": "Sarvam v3",
-  "bulbul:v4-flash": "Sarvam v4",
-};
+export const VOICE_MODELS: readonly string[] = ["AOTMS-V 3B", "AOTMS-V 10B"];
 
-/** The family label for a voice, or an empty string when it names no model. */
-export const familyOf = (voice: { model?: string }): string =>
-  VOICE_FAMILIES[voice.model ?? ""] ?? "";
+/** The model a voice belongs to, or an empty string when it names none. */
+export const familyOf = (voice: { model?: string }): string => voice.model ?? "";
+
+/**
+ * The label a card prints for a voice: its catalogue code.
+ *
+ * The code names the band and the edition at once. The fallback is the speaker
+ * name, which only a payload from an older backend can reach.
+ */
+export const codeOf = (voice: { code?: string; name: string }): string =>
+  voice.code ?? voice.name;
+
+/**
+ * The edition part of a code, for avatars: `PM-07` -> `07`.
+ *
+ * Two letters would look the same on every card, so the avatar carries the part
+ * that tells one voice from the next.
+ */
+export const editionOf = (voice: { code?: string; name: string }): string =>
+  codeOf(voice).split("-")[1] ?? codeOf(voice).slice(0, 1);
 
 export const planOf = (id: string): VoicePlan => VOICE_PLANS[tierOf(id)];
 
@@ -82,9 +97,12 @@ export const planForVoice = (voice: { id: string; slug: string }): VoicePlan =>
   VOICE_PLANS[tierOfVoice(voice)];
 
 /**
- * The name each voice goes by in each language it speaks. English is the
- * catalogue name, so only the other languages need an entry; a language with
- * no entry falls back to the English name rather than going blank.
+ * The name each voice goes by in each language it speaks.
+ *
+ * Cards print codes, not names, so these are search aliases: they let a
+ * customer who knows a voice as "शुभ" find PM-01. English is the catalogue name,
+ * so only the other languages need an entry; a language with no entry falls
+ * back to the English name rather than going blank.
  */
 const VOICE_NAMES: Record<string, Record<string, string>> = {
   shubh: { "hi-IN": "शुभ", "ta-IN": "சுப்" },
@@ -131,14 +149,6 @@ const VOICE_NAMES: Record<string, Record<string, string>> = {
   soham: { "hi-IN": "सोहम" },
   rupali: { "hi-IN": "रूपाली" },
 };
-
-export function nameIn(voice: VoiceSample, language: string): string {
-  const direct = VOICE_NAMES[voice.id]?.[language];
-  if (direct) return direct;
-  // A v4 persona id is `<speaker>_<language>_<style>`, and its display name is
-  // the base speaker's, so that speaker's transliteration applies here too.
-  return VOICE_NAMES[voice.id.split("_")[0]]?.[language] ?? voice.name;
-}
 
 /** Language codes written the way their own speakers write them. */
 const NATIVE_LANGUAGE: Record<string, string> = {

@@ -1,10 +1,10 @@
 """Voice catalogue and preview samples served to the public site.
 
 The catalogue itself is static reference data (``VOICE_PROFILES``). The only
-work here that reaches a provider is :func:`preview`, which asks Sarvam to
-synthesise one short line per voice and language. Samples are cached in-process
-because every visitor plays the same handful of clips, and the preview text
-never comes from the caller.
+work here that reaches a provider is :func:`preview`, which asks the speech
+service to synthesise one short line per voice and language. Samples are
+cached in-process because every visitor plays the same handful of clips, and the
+preview text never comes from the caller.
 
 One speaker can render every language the speech API publishes, so a preview is
 available for every catalogue voice in every one of ``PREVIEW_LINES``: the
@@ -29,6 +29,7 @@ from app.core.constants import (
     PREVIEW_LINES,
     SUPPORTED_LANGUAGES,
     SUPPORTED_VOICES,
+    VOICE_MODEL_LABELS,
     VOICE_PROFILES,
 )
 from app.core.exceptions import (
@@ -60,6 +61,7 @@ def catalog() -> list[VoiceOut]:
     return [
         VoiceOut(
             id=str(profile["id"]),
+            code=str(profile["code"]),
             name=str(profile["name"]),
             gender=str(profile["gender"]),
             personality=str(profile["personality"]),
@@ -68,7 +70,9 @@ def catalog() -> list[VoiceOut]:
             preview_language=str(profile["preview_language"]),
             sample_text=str(profile["sample"]),
             featured=bool(profile["featured"]),
-            model=str(profile["model"]),
+            # The provider's model id stays on this side of the boundary; the
+            # site groups and badges voices by the public name.
+            model=VOICE_MODEL_LABELS[str(profile["model"])],
         )
         for profile in VOICE_PROFILES
     ]
@@ -132,8 +136,8 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
 
     if not sarvam.configured():
         raise ProviderNotConfiguredError(
-            "Voice previews need SARVAM_API_KEY to be configured.",
-            details={"provider": "sarvam"},
+            "Voice previews are not configured on this deployment.",
+            details={"provider": "speech"},
         )
 
     result = sarvam.synthesize(
@@ -150,8 +154,8 @@ def preview(voice_id: str, language: str | None = None) -> VoicePreview:
     audios = result.data.get("audios")
     if not audios:
         raise ProviderError(
-            "Sarvam accepted the request but returned no audio.",
-            details={"provider": "sarvam", "status_code": result.status_code},
+            "The speech service accepted the request but returned no audio.",
+            details={"provider": "speech", "status_code": result.status_code},
         )
 
     sample = VoicePreview(
