@@ -48,8 +48,27 @@ export const VOICE_TIER_ORDER: readonly VoiceTier[] = ["premium", "standard"];
  */
 const PREMIUM_VOICES = new Set(PREMIUM_VOICE_IDS);
 
+/**
+ * The band a catalogue code names: `PM-07` is Premium, anything else Standard.
+ *
+ * This is the backend's own rule, so a row whose payload carries a code is
+ * priced by what it prints. A voice added to the premium band on the server
+ * arrives as Premium here without a second decision on this side.
+ */
+export const tierOfCode = (code: string): VoiceTier =>
+  code.startsWith("PM-") ? "premium" : "standard";
+
 export const tierOf = (id: string): VoiceTier =>
   PREMIUM_VOICES.has(id) ? "premium" : "standard";
+
+/**
+ * Band for a catalogue row, read from its code when one is present.
+ *
+ * The seed list above still answers for a payload from an older backend, or
+ * for an id that arrives without a catalogue entry.
+ */
+export const tierOfSample = (voice: { id: string; code?: string }): VoiceTier =>
+  voice.code ? tierOfCode(voice.code) : tierOf(voice.id);
 
 /**
  * The models a voice can belong to, in the order the filter lists them.
@@ -84,17 +103,25 @@ export const editionOf = (voice: { code?: string; name: string }): string =>
 
 export const planOf = (id: string): VoicePlan => VOICE_PLANS[tierOf(id)];
 
+export const planOfSample = (voice: { id: string; code?: string }): VoicePlan =>
+  VOICE_PLANS[tierOfSample(voice)];
+
 /**
  * Band for a dashboard voice.
  *
  * The commercial list above is written against the marketing ids, which for a
  * stored voice is its speaker slug: an employee row keeps the catalogue UUID,
- * and a UUID carries no rate decision of its own.
+ * and a UUID carries no rate decision of its own. A row that already carries
+ * a code follows the code, so the band and the printed edition never disagree.
  */
-export const tierOfVoice = (voice: { id: string; slug: string }): VoiceTier =>
-  tierOf(voice.slug || voice.id);
+export const tierOfVoice = (voice: {
+  id: string;
+  slug: string;
+  code?: string;
+}): VoiceTier =>
+  voice.code ? tierOfCode(voice.code) : tierOf(voice.slug || voice.id);
 
-export const planForVoice = (voice: { id: string; slug: string }): VoicePlan =>
+export const planForVoice = (voice: { id: string; slug: string; code?: string }): VoicePlan =>
   VOICE_PLANS[tierOfVoice(voice)];
 
 /**

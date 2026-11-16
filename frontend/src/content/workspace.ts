@@ -8,6 +8,7 @@
  */
 
 import { ALL_LANGUAGES_LABEL } from "@/content/voice-catalogue";
+import { voices as catalogueVoices } from "@/content/voices";
 
 export type AgentStatus = "Active" | "Paused" | "Draft";
 export type ModelId = "sarvam-24b" | "sarvam-2b" | "sarvam-105b";
@@ -333,14 +334,15 @@ export const voiceLabel = (voice: Pick<Voice, "code" | "name">): string =>
 /**
  * The voices the catalogue publishes a name for, in catalogue order.
  *
- * Four rules shape this list:
+ * Five rules shape this list:
  *
  * - `id` is the identifier the catalogue issues and the only value stored on an
  *   employee. It is never rendered: the row shows `code`, so the customer sees
  *   an edition of a voice, not a provider object.
- * - `code` is the label the backend assigns in catalogue order (three premium
- *   voices, then the rest). It has to be copied from there rather than derived
- *   from this list, because the two orders differ.
+ * - `code` is the label the backend assigns in catalogue order, read from the
+ *   bundled catalogue by speaker name rather than copied beside this list. The
+ *   two orders differ, so a hand-written code would put a premium voice under
+ *   an `SD` edition as soon as the band changed.
  * - `slug` is a stable handle for templates, which are written by name, and it
  *   is the speaker name the live preview is synthesised from.
  * - The first fourteen keep the ids the catalogue issued, because employees are
@@ -355,47 +357,57 @@ export const voiceLabel = (voice: Pick<Voice, "code" | "name">): string =>
  * filenames that are accepted, and `voicePreviewUrl` for the live fallback.
  */
 const NAMED_VOICES: Voice[] = [
-  { id: "01a0cf16-7021-76f7-a0cc-9d065cdb30a8", slug: "shubh", name: "Shubh", code: "PM-01", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Confident" },
-  { id: "01a0cf16-5726-7055-8622-322e53f6bc77", slug: "tanya", name: "Tanya", code: "PM-02", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Friendly" },
-  { id: "01a0cf16-73d4-78aa-a416-c593287484db", slug: "anand", name: "Anand", code: "PM-03", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
-  { id: "01a0cf16-6001-7fac-b2c3-96de29fc6cd6", slug: "sunny", name: "Sunny", code: "SD-24", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Cheerful" },
-  { id: "01a0cf16-729b-720b-bf53-1e18c3d5a5da", slug: "mani", name: "Mani", code: "SD-25", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Calm" },
-  { id: "01a0cf16-655d-78cb-8b68-a000a3e4878e", slug: "kabir", name: "Kabir", code: "SD-20", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Steady" },
-  { id: "01a0cf16-6ecd-7a97-b86b-f91eeadd5bd7", slug: "priya", name: "Priya", code: "SD-04", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Precise" },
-  { id: "01a0cf16-6b54-7b44-8dff-e67586a9762a", slug: "kavya", name: "Kavya", code: "SD-10", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Calm" },
-  { id: "01a0cf16-5a52-747d-8900-0a77b9f5402c", slug: "ritu", name: "Ritu", code: "SD-02", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
-  { id: "01a0cf16-68c6-7341-8408-bceec24a6a06", slug: "aditya", name: "Aditya", code: "SD-01", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Clear" },
-  { id: "01a0cf16-5c61-787d-a83f-ae54ce8c0f96", slug: "simran", name: "Simran", code: "SD-09", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Bright" },
-  { id: "01a0cf16-7179-7472-b7df-b7b432d5faa5", slug: "rahul", name: "Rahul", code: "SD-06", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Assured" },
-  { id: "01a0cf16-6c54-746b-815a-2e1cf51a473a", slug: "neha", name: "Neha", code: "SD-05", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Gentle" },
-  { id: "01a0cf16-6a07-7cee-b592-494b2d213be1", slug: "shreya", name: "Shreya", code: "SD-14", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Lively" },
+  { id: "01a0cf16-7021-76f7-a0cc-9d065cdb30a8", slug: "shubh", name: "Shubh", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Confident" },
+  { id: "01a0cf16-5726-7055-8622-322e53f6bc77", slug: "tanya", name: "Tanya", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Friendly" },
+  { id: "01a0cf16-73d4-78aa-a416-c593287484db", slug: "anand", name: "Anand", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
+  { id: "01a0cf16-6001-7fac-b2c3-96de29fc6cd6", slug: "sunny", name: "Sunny", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Cheerful" },
+  { id: "01a0cf16-729b-720b-bf53-1e18c3d5a5da", slug: "mani", name: "Mani", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Calm" },
+  { id: "01a0cf16-655d-78cb-8b68-a000a3e4878e", slug: "kabir", name: "Kabir", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Steady" },
+  { id: "01a0cf16-6ecd-7a97-b86b-f91eeadd5bd7", slug: "priya", name: "Priya", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Precise" },
+  { id: "01a0cf16-6b54-7b44-8dff-e67586a9762a", slug: "kavya", name: "Kavya", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Calm" },
+  { id: "01a0cf16-5a52-747d-8900-0a77b9f5402c", slug: "ritu", name: "Ritu", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
+  { id: "01a0cf16-68c6-7341-8408-bceec24a6a06", slug: "aditya", name: "Aditya", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Clear" },
+  { id: "01a0cf16-5c61-787d-a83f-ae54ce8c0f96", slug: "simran", name: "Simran", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Bright" },
+  { id: "01a0cf16-7179-7472-b7df-b7b432d5faa5", slug: "rahul", name: "Rahul", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Assured" },
+  { id: "01a0cf16-6c54-746b-815a-2e1cf51a473a", slug: "neha", name: "Neha", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Gentle" },
+  { id: "01a0cf16-6a07-7cee-b592-494b2d213be1", slug: "shreya", name: "Shreya", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Lively" },
   // The rest of the speech model's speaker set. Gender stays "Unspecified"
   // where the provider publishes no label; guessing from the name would print
   // an unverified claim beside the voice.
-  { id: "ashutosh", slug: "ashutosh", name: "Ashutosh", code: "SD-03", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "pooja", slug: "pooja", name: "Pooja", code: "SD-07", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
-  { id: "rohan", slug: "rohan", name: "Rohan", code: "SD-08", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "amit", slug: "amit", name: "Amit", code: "SD-11", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "dev", slug: "dev", name: "Dev", code: "SD-12", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "ishita", slug: "ishita", name: "Ishita", code: "SD-13", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "ratan", slug: "ratan", name: "Ratan", code: "SD-15", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "varun", slug: "varun", name: "Varun", code: "SD-16", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "manan", slug: "manan", name: "Manan", code: "SD-17", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "sumit", slug: "sumit", name: "Sumit", code: "SD-18", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "roopa", slug: "roopa", name: "Roopa", code: "SD-19", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "aayan", slug: "aayan", name: "Aayan", code: "SD-21", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "advait", slug: "advait", name: "Advait", code: "SD-22", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "tarun", slug: "tarun", name: "Tarun", code: "SD-23", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "gokul", slug: "gokul", name: "Gokul", code: "SD-26", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Mature" },
-  { id: "vijay", slug: "vijay", name: "Vijay", code: "SD-27", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Authoritative" },
-  { id: "shruti", slug: "shruti", name: "Shruti", code: "SD-28", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "suhani", slug: "suhani", name: "Suhani", code: "SD-29", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Energetic" },
-  { id: "mohit", slug: "mohit", name: "Mohit", code: "SD-30", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "kavitha", slug: "kavitha", name: "Kavitha", code: "SD-31", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "rehan", slug: "rehan", name: "Rehan", code: "SD-32", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "soham", slug: "soham", name: "Soham", code: "SD-33", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
-  { id: "rupali", slug: "rupali", name: "Rupali", code: "SD-34", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "ashutosh", slug: "ashutosh", name: "Ashutosh", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "pooja", slug: "pooja", name: "Pooja", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Warm" },
+  { id: "rohan", slug: "rohan", name: "Rohan", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "amit", slug: "amit", name: "Amit", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "dev", slug: "dev", name: "Dev", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "ishita", slug: "ishita", name: "Ishita", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "ratan", slug: "ratan", name: "Ratan", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "varun", slug: "varun", name: "Varun", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "manan", slug: "manan", name: "Manan", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "sumit", slug: "sumit", name: "Sumit", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "roopa", slug: "roopa", name: "Roopa", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "aayan", slug: "aayan", name: "Aayan", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "advait", slug: "advait", name: "Advait", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "tarun", slug: "tarun", name: "Tarun", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "gokul", slug: "gokul", name: "Gokul", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Mature" },
+  { id: "vijay", slug: "vijay", name: "Vijay", gender: "Male", language: ALL_LANGUAGES_LABEL, tone: "Authoritative" },
+  { id: "shruti", slug: "shruti", name: "Shruti", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "suhani", slug: "suhani", name: "Suhani", gender: "Female", language: ALL_LANGUAGES_LABEL, tone: "Energetic" },
+  { id: "mohit", slug: "mohit", name: "Mohit", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "kavitha", slug: "kavitha", name: "Kavitha", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "rehan", slug: "rehan", name: "Rehan", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "soham", slug: "soham", name: "Soham", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
+  { id: "rupali", slug: "rupali", name: "Rupali", gender: "Unspecified", language: ALL_LANGUAGES_LABEL, tone: "" },
 ];
+
+/**
+ * The code each speaker is printed under, read from the bundled catalogue.
+ *
+ * Keyed by speaker name, the one handle both lists share. A slug the catalogue
+ * does not place keeps no code, and that row prints the speaker's name.
+ */
+const CODE_BY_SLUG: Readonly<Record<string, string>> = Object.fromEntries(
+  catalogueVoices.catalog.map((voice) => [voice.id, voice.code]),
+);
 
 /**
  * Catalogue ids that arrive without a name or a speaker.
@@ -523,7 +535,7 @@ const UNNAMED_VOICE_IDS: VoiceId[] = [
 
 /** Everything the voice picker shows: named voices first, then the rest. */
 export const VOICES: Voice[] = [
-  ...NAMED_VOICES,
+  ...NAMED_VOICES.map((voice) => ({ ...voice, code: CODE_BY_SLUG[voice.slug] })),
   ...UNNAMED_VOICE_IDS.map((id, index) => ({
     id,
     slug: "",
@@ -716,6 +728,10 @@ export const voiceById = (id: VoiceId) => {
 export const templateById = (id: string) =>
   TEMPLATES.find((template) => template.id === id) ?? TEMPLATES[0];
 
+/** The code a speaker is printed under, for seed rows written by name. */
+export const voiceCodeBySlug = (slug: string) =>
+  voiceLabel(voiceById(voiceIdBySlug(slug)));
+
 /** "Meera · Inbound support" style label for selects. */
 export const agentLabel = (agent: { name: string; purpose: string }) =>
   `${agent.name} · ${agent.purpose}`;
@@ -744,7 +760,7 @@ export const seedAgents: Agent[] = [
     status: "Active",
     languages: ["Hindi", "English"],
     defaultLanguage: "Hindi",
-    voice: "PM-01",
+    voice: voiceCodeBySlug("shubh"),
     voiceId: voiceIdBySlug("shubh"),
     model: "AOTMS-V 24B",
     modelId: "sarvam-24b",
@@ -794,7 +810,7 @@ export const seedAgents: Agent[] = [
     status: "Active",
     languages: ["Hindi", "Marathi", "English"],
     defaultLanguage: "Hindi",
-    voice: "SD-10",
+    voice: voiceCodeBySlug("kavya"),
     voiceId: voiceIdBySlug("kavya"),
     model: "AOTMS-V 24B",
     modelId: "sarvam-24b",
@@ -837,7 +853,7 @@ export const seedAgents: Agent[] = [
     status: "Paused",
     languages: ["English", "Tamil"],
     defaultLanguage: "English",
-    voice: "SD-20",
+    voice: voiceCodeBySlug("kabir"),
     voiceId: voiceIdBySlug("kabir"),
     model: "AOTMS-V 2B",
     modelId: "sarvam-2b",

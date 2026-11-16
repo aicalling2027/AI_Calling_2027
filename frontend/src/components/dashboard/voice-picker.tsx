@@ -32,12 +32,12 @@ import {
   Play,
   Plus,
   RotateCcw,
-  Star,
   Trash2,
 } from "lucide-react";
 
 import { VoiceCloneDialog } from "@/components/dashboard/voice-clone-dialog";
 import { CategoryDropdown } from "@/components/dashboard/ui/category-dropdown";
+import { Rating } from "@/components/ui/rating";
 import {
   EmptyState,
   FilterPills,
@@ -993,33 +993,14 @@ function VoiceRowItem({
           </span>
         </button>
 
-        <div
-          role="group"
+        <Rating
+          size="sm"
+          editable
+          rating={rating}
+          onRatingChange={onRate}
           aria-label={`Rate the ${display} sample`}
-          className="flex shrink-0 items-center"
-        >
-          {[1, 2, 3, 4, 5].map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onRate(value)}
-              aria-pressed={rating === value}
-              aria-label={value === 1 ? "Rate 1 star" : `Rate ${value} stars`}
-              title={rating ? `Your rating: ${rating}/5` : "Rate this sample"}
-              className="grid size-6 place-items-center rounded-full transition-colors hover:bg-cream-deep"
-            >
-              <Star
-                aria-hidden
-                className={cn(
-                  "size-3",
-                  rating >= value
-                    ? "fill-tangerine text-tangerine-deep"
-                    : "text-ink-soft/35",
-                )}
-              />
-            </button>
-          ))}
-        </div>
+          className="shrink-0"
+        />
       </div>
     </li>
   );

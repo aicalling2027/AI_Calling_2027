@@ -780,10 +780,11 @@ def _persona(persona_id: str) -> dict[str, object]:
 
 
 #: The voices sold on the premium rate: every base speaker, which is the set
-#: the provider publishes a profile and a working preview for. The frontend
-#: prices the same set (``PREMIUM_VOICE_IDS`` in ``src/content/voices.ts``); a
-#: voice added in one place has to be added in the other, or a card would print
-#: one band and a code from the other.
+#: the provider publishes a profile and a working preview for. :func:`code_for`
+#: numbers them ``PM-01..``, and the site reads the band off that code, so a
+#: speaker added here is Premium everywhere without a second decision there.
+#: ``PREMIUM_VOICE_IDS`` in ``src/content/voices.ts`` mirrors this set for a
+#: payload from a backend older than the codes.
 _PREMIUM_SPEAKERS: Final[frozenset[str]] = frozenset(
     str(profile["id"]) for profile in _BASE_PROFILES
 )

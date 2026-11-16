@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, Loader2, Pause, Play, RotateCcw, Star, X } from "lucide-react";
+import { Check, Loader2, Pause, Play, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Container } from "@/components/layout/container";
 import { Section, SectionHeader } from "@/components/layout/section";
+import { Rating } from "@/components/ui/rating";
 import type { VoiceSample } from "@/content/voices";
 import { voicesPage } from "@/content/marketing";
 import {
@@ -14,8 +15,8 @@ import {
   familyOf,
   languagesOf,
   nativeName,
-  planOf,
-  tierOf,
+  planOfSample,
+  tierOfSample,
   VOICE_MODELS,
   VOICE_PLANS,
   VOICE_TIER_ORDER,
@@ -137,7 +138,7 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
         if (language !== "all" && !voice.languages.some((item) => item.code === language)) {
           return false;
         }
-        if (tier !== "all" && tierOf(voice.id) !== tier) return false;
+        if (tier !== "all" && tierOfSample(voice) !== tier) return false;
         if (gender !== "all" && voice.gender !== gender) return false;
         if (model !== "all" && (voice.model ?? "") !== model) return false;
         return true;
@@ -324,8 +325,8 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
 
         <ul className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((voice, index) => {
-            const plan = planOf(voice.id);
-            const premium = tierOf(voice.id) === "premium";
+            const plan = planOfSample(voice);
+            const premium = tierOfSample(voice) === "premium";
             const family = familyOf(voice);
             const { primary, also } = languagesOf(voice, language);
             const display = codeOf(voice);
@@ -481,32 +482,13 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
-                    <div
-                      role="group"
+                    <Rating
+                      size="sm"
+                      editable
+                      rating={mine}
+                      onRatingChange={(value) => rate(voice.id, value)}
                       aria-label={`Rate the ${display} sample`}
-                      className="flex items-center gap-0.5"
-                    >
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => rate(voice.id, value)}
-                          aria-pressed={mine === value}
-                          aria-label={value === 1 ? "Rate 1 star" : `Rate ${value} stars`}
-                          className="grid size-7 place-items-center rounded-full transition-colors hover:bg-cream-deep"
-                        >
-                          <Star
-                            aria-hidden
-                            className={cn(
-                              "size-3.5",
-                              mine >= value
-                                ? "fill-tangerine text-tangerine-deep"
-                                : "text-ink-soft/40",
-                            )}
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    />
                     <span className="text-[0.66rem] text-ink-soft" aria-live="polite">
                       {mine ? `Your rating ${mine}/5` : "Rate the sample"}
                     </span>
@@ -601,7 +583,7 @@ export function VoiceCatalogue({ catalog }: { catalog: VoiceSample[] }) {
                   </span>
                 </p>
                 <p className="truncate text-xs text-ink-soft">
-                  {planOf(selected.id).label} · ₹{planOf(selected.id).rate} per connected minute
+                  {planOfSample(selected).label} · ₹{planOfSample(selected).rate} per connected minute
                   {ratings[selected.id] ? ` · you rated it ${ratings[selected.id]}/5` : ""}
                 </p>
               </div>

@@ -147,9 +147,12 @@ const VOICE_SEEDS: readonly VoiceSeed[] = [
  * base speakers the backend also prices and numbers `PM-01..37`. Personas only
  * arrive with the live catalogue and are standard.
  *
- * Must stay equal to `_PREMIUM_SPEAKERS` in `Backend/app/core/constants.py`: a
- * voice premium in one place and standard in the other would show a band the
- * code contradicts.
+ * The band is normally read from the code a payload carries
+ * (`tierOfCode` in `content/voice-catalogue.ts`), so this list is the fallback
+ * for an id that arrives without one. It still has to stay equal to
+ * `_PREMIUM_SPEAKERS` in `Backend/app/core/constants.py`: the bundled codes are
+ * stamped from it, and a voice premium in one place and standard in the other
+ * would show a band its own code contradicts.
  */
 export const PREMIUM_VOICE_IDS: readonly string[] = VOICE_SEEDS.map(([id]) => id);
 
