@@ -133,14 +133,6 @@ export const apiSection = {
   ],
 };
 
-export const pricingSection = {
-  eyebrow: "Pricing",
-  // TODO(AOTMS): replace with the approved commercial model.
-  title: "Pricing is being finalised.",
-  body: "AOTMS plans are not published yet. Talk to the team for a quote based on your call volume and languages.",
-  note: "No prices are shown here because none have been approved.",
-};
-
 export const finalCta = {
   title: "Put an AI employee on your next call.",
   body: "Start with one use case, measure the outcome, then expand.",

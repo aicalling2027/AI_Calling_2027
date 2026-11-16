@@ -19,10 +19,9 @@ type LinkItem = { title: string; body: string; icon: IconName; href: string };
 export const pricingPage = {
   eyebrow: "Pricing",
   title: "Pricing that follows your call volume.",
-  // TODO(AOTMS): replace once the commercial model is approved.
   summary:
-    "AOTMS plans are quoted per account rather than published as fixed tiers. Tell us your call volume and languages and the team will map it to a plan.",
-  note: "Plan prices are not published yet. The two voice rates on the Voices page - ₹7 and ₹5 per connected minute - are the only rates confirmed for publication.",
+    "Three plans are published on the home page - Free, Basic and Popular. Larger or mixed volumes are quoted per account from your call count, languages and channels.",
+  note: "Published plan prices are monthly and exclude taxes. Usage beyond a plan's included credits is billed at the per-minute voice rates shown on the Voices page.",
   factors: [
     {
       title: "Call volume",
@@ -64,9 +63,9 @@ export const pricingPage = {
   ] satisfies StepItem[],
   faq: [
     {
-      question: "Why are there no prices on this page?",
+      question: "Where are the plan prices?",
       answer:
-        "The AOTMS commercial model is still being finalised. Publishing a number that later changes would mislead you, so the page asks you to request a quote instead.",
+        "The three monthly plans - Free, Basic and Popular - are listed on the home page, with the AI employees, numbers and credits each one includes. Anything larger is quoted per account.",
     },
     {
       question: "Is there a minimum commitment?",
@@ -86,7 +85,7 @@ export const pricingPage = {
     {
       question: "What happens when we outgrow a plan?",
       answer:
-        "Because plans are quoted per account, moving to a larger volume is a re-quote rather than a migration between fixed tiers.",
+        "Beyond the published plans, moving up is a re-quote per account rather than a migration between fixed tiers.",
     },
   ] satisfies FaqItem[],
 };

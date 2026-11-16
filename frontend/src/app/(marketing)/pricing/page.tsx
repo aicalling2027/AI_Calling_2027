@@ -13,7 +13,7 @@ import { pricingPage } from "@/content/marketing";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "AOTMS pricing follows call volume, languages and channels. Request a written quote for your use case.",
+    "Three monthly AOTMS plans in Indian rupees - Free, Basic and Popular - plus a written quote for larger call volumes, languages and channels.",
   alternates: { canonical: "/pricing" },
 };
 
@@ -44,8 +44,8 @@ export default function PricingPage() {
         <Container>
           <SectionHeader
             eyebrow="How the quote is built"
-            title="Three things decide what you pay."
-            body="Nothing here is a price. These are the variables the team uses when scoping an account."
+            title="Three things decide a larger quote."
+            body="The monthly plans are on the home page. Beyond them, these are the variables the team uses when scoping an account."
           />
           <CardGrid items={pricingPage.factors} columns={3} className="mt-10" />
         </Container>
@@ -85,7 +85,7 @@ export default function PricingPage() {
 
       <FaqSection
         title="Pricing questions."
-        body="If the answer is not here, ask the team directly — nothing about pricing is finalised yet."
+        body="If the answer is not here, ask the team directly."
         items={pricingPage.faq}
       />
 
