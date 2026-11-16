@@ -60,6 +60,17 @@ class LoginRequest(APIModel):
     )
 
 
+class SupabaseExchangeRequest(APIModel):
+    """A Supabase session token, to be traded for a token pair from this API.
+
+    There is deliberately no user id or organization id here: the account and
+    its tenant are decided by the token's ``sub`` and the user's membership.
+    A client cannot name the identity or the workspace it wants.
+    """
+
+    access_token: str = Field(min_length=16, max_length=8192)
+
+
 class RefreshRequest(APIModel):
     refresh_token: str
 

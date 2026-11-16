@@ -11,6 +11,8 @@ import os
 import sys
 import tempfile
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -98,20 +100,57 @@ def employee(client: TestClient, auth: dict[str, str]) -> dict:
 
 @pytest.fixture(scope="session")
 def phone_number(client: TestClient, auth: dict[str, str], employee: dict) -> dict:
-    """An active outbound number bound to the fixture employee."""
-    response = client.post(
-        f"{API}/phone-numbers",
-        headers=auth,
-        json={
-            "number": f"+9198{uuid.uuid4().int % 10**8:08d}",
-            "label": "Test line",
-            "provider": "mock",
-            "capabilities": ["outbound", "inbound"],
-            "employee_id": employee["id"],
-        },
-    )
+    """An active outbound number bound to the fixture employee.
+
+    Created with the plan include lifted for this one call: other test modules
+    fill the shared workspace first, and this fixture must not make the suite
+    order-dependent.
+    """
+    with plan_room():
+        response = client.post(
+            f"{API}/phone-numbers",
+            headers=auth,
+            json={
+                "number": f"+9198{uuid.uuid4().int % 10**8:08d}",
+                "label": "Test line",
+                "provider": "mock",
+                "capabilities": ["outbound", "inbound"],
+                "employee_id": employee["id"],
+            },
+        )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+@contextmanager
+def plan_room(limit: int = 500) -> Iterator[None]:
+    """Temporarily lift the plan's phone-number include.
+
+    The trial plan allows a single number, and the suite shares one workspace,
+    so a path that legitimately holds several numbers would otherwise only see
+    refusals. Enforcement itself has tests of its own.
+    """
+    from dataclasses import replace
+
+    from app.modules import billing
+
+    original = billing.plan_allowance
+
+    def wide(db: object, organization_id: str) -> billing.PlanAllowance:
+        return replace(original(db, organization_id), max_phone_numbers=limit)
+
+    billing.plan_allowance = wide  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        billing.plan_allowance = original  # type: ignore[assignment]
+
+
+@pytest.fixture()
+def roomy_plan() -> Iterator[None]:
+    """Give one test room in the plan's phone-number include."""
+    with plan_room():
+        yield
 
 
 @pytest.fixture()

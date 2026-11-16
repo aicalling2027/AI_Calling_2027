@@ -51,6 +51,13 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     full_name: Mapped[str] = mapped_column(String(160), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(32))
     avatar_url: Mapped[str | None] = mapped_column(String(512))
+    #: The Supabase Auth subject this row belongs to. Null for accounts created
+    #: through ``POST /auth/register``, which sign in with a password instead.
+    #: Deliberately separate from ``organizations.id`` and from any provider id:
+    #: they identify different systems and must never be confused.
+    supabase_user_id: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime)

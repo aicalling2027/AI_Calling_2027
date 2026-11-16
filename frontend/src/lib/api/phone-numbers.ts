@@ -8,8 +8,21 @@
  * directions and no page has to know which is which.
  */
 
-import type { PhoneNumberRecord } from "@/content/workspace";
+import type { NumberRoute, PhoneNumberRecord } from "@/content/workspace";
 import { apiFetch } from "@/lib/api/aotms";
+
+/**
+ * What the provider answered about inbound routing for one number.
+ *
+ * `confirmed` is the field that matters: it is true only when a provider call
+ * came back. An employee chosen here is `pending` and unconfirmed until then.
+ */
+export type NumberRouting = {
+  state: "unconfigured" | "pending" | "active" | "paused" | "failed";
+  confirmed: boolean;
+  detail: string | null;
+  checked_at: string | null;
+};
 
 /** The subset of `PhoneNumberOut` the dashboard reads. */
 export type PhoneNumberRow = {
@@ -23,6 +36,7 @@ export type PhoneNumberRow = {
   capabilities: string[];
   monthly_cost_inr: number;
   created_at: string;
+  routing?: NumberRouting | null;
 };
 
 type PhoneNumberPage = { items: PhoneNumberRow[]; meta?: { total: number } };
@@ -65,6 +79,46 @@ export type AvailableNumberQuery = {
   limit?: number;
 };
 
+export type CarrierCountryCount = { country: string; numbers: number };
+
+/**
+ * How much of the plan's number allowance this workspace holds.
+ *
+ * `current` counts pending, active and switched-off lines because they are all
+ * still held; released ones are not. Absent when no plan is on file.
+ */
+export type NumberQuota = {
+  plan: string;
+  limit: number;
+  current: number;
+  remaining: number;
+};
+
+/**
+ * What this workspace has recorded, read back from the platform.
+ *
+ * There is no carrier half to compare against: Sarvam publishes no API for
+ * rented numbers, so these counts describe the rows stored here that the
+ * workspace attached from the console. `status` is fixed at `manual` for the
+ * same reason - nothing is being synced, so nothing may claim to be.
+ */
+export type InventorySummary = {
+  status: "manual";
+  inventory_source: "manual";
+  /** The voice connection dials through, when one is configured. */
+  connection_id: string | null;
+  checked_at: string;
+  local_total: number;
+  local_active: number;
+  local_pending: number;
+  local_released: number;
+  assigned: number;
+  unassigned: number;
+  by_country: CarrierCountryCount[];
+  /** Null when this workspace has no plan yet, as for a first sign-in. */
+  quota?: NumberQuota | null;
+};
+
 export type PurchaseInput = {
   number: string;
   label?: string;
@@ -77,6 +131,21 @@ export type PurchaseResult = {
   setupCostInr: number;
   /** True while the shelf stands in for the carrier's own inventory API. */
   simulated: boolean;
+};
+
+/** A number rented in the Sarvam console, about to be recorded here. */
+export type AttachInput = {
+  number: string;
+  label?: string;
+  countryCode?: string;
+  employeeId?: string | null;
+  capabilities?: string[];
+};
+
+export type AttachResult = {
+  record: PhoneNumberRecord;
+  /** False when this workspace had already recorded the number. */
+  created: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -130,7 +199,31 @@ const toRecord = (row: PhoneNumberRow): PhoneNumberRecord => ({
   welcome: "",
   label: row.label ?? null,
   monthlyCostInr: row.monthly_cost_inr,
+  routing: toRoute(row.routing),
 });
+
+const ROUTING_TO_UI: Record<string, NumberRoute["state"]> = {
+  unconfigured: "Unconfigured",
+  pending: "Pending",
+  active: "Active",
+  paused: "Paused",
+  failed: "Failed",
+};
+
+/**
+ * The provider's routing answer, in the screen's vocabulary.
+ *
+ * A row with no routing at all stays `null` rather than defaulting to pending:
+ * "nothing is known yet" and "a route is being set up" are different claims.
+ */
+const toRoute = (routing: NumberRouting | null | undefined): NumberRoute | null => {
+  if (!routing) return null;
+  return {
+    state: ROUTING_TO_UI[routing.state] ?? "Pending",
+    confirmed: routing.confirmed === true,
+    detail: routing.detail ?? null,
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -155,6 +248,16 @@ export async function listAvailableNumbers(
   params.set("limit", String(filters.limit ?? 24));
 
   return apiFetch<AvailableNumber[]>(`/phone-numbers/available?${params.toString()}`);
+}
+
+/**
+ * What this workspace has attached, counted.
+ *
+ * Read-only on the backend too, so calling it is safe on every visit: it never
+ * imports a number or changes what the workspace owns.
+ */
+export async function getInventorySummary(): Promise<InventorySummary> {
+  return apiFetch<InventorySummary>("/phone-numbers/sync");
 }
 
 // ---------------------------------------------------------------------------
@@ -198,9 +301,11 @@ export async function updatePhoneNumber(
   let row: PhoneNumberRow | null = null;
 
   if (patch.agentId !== undefined) {
-    const query = patch.agentId ? `?employee_id=${encodeURIComponent(patch.agentId)}` : "";
-    row = await apiFetch<PhoneNumberRow>(`/phone-numbers/${id}/assign${query}`, {
+    // The choice travels in the body; the backend records the assignment so its
+    // history stays intact, and answers with whatever the provider confirmed.
+    row = await apiFetch<PhoneNumberRow>(`/phone-numbers/${id}/assign`, {
       method: "POST",
+      body: { employee_id: patch.agentId },
     });
   }
 
@@ -225,4 +330,30 @@ export async function updatePhoneNumber(
 
 export async function releasePhoneNumber(id: string): Promise<void> {
   await apiFetch<{ message: string }>(`/phone-numbers/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Record a number that was rented in the Sarvam console.
+ *
+ * Attaching is idempotent on the backend: the same number twice answers with the
+ * row that already holds it, and `created` tells the two answers apart. Nothing
+ * is bought here - the line is already rented and billed in the console.
+ */
+export async function attachPhoneNumber(input: AttachInput): Promise<AttachResult> {
+  const attached = await apiFetch<{
+    number: PhoneNumberRow;
+    created: boolean;
+    source: "console";
+  }>("/phone-numbers/attach", {
+    method: "POST",
+    body: {
+      number: input.number,
+      label: input.label?.trim() || null,
+      country_code: input.countryCode || "IN",
+      employee_id: input.employeeId || null,
+      capabilities: input.capabilities ?? ["inbound", "outbound"],
+    },
+  });
+
+  return { record: toRecord(attached.number), created: attached.created };
 }

@@ -71,7 +71,7 @@ export default function InboundCallsPage() {
       <PageHeader
         eyebrow="Inbound calls"
         title="Inbound calls"
-        description="Every number you own, the employee that answers it, and the calls that came in today."
+        description="Every number attached to this organization, the employee that answers it, and the calls that came in today."
         actions={
           <>
             <Link href="/dashboard/phone-numbers" className={buttonVariants({ variant: "outline", size: "lg" })}>
@@ -97,7 +97,7 @@ export default function InboundCallsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">Routing</h2>
           <span className="text-xs text-ink-soft">
-            Changes apply to the next inbound call
+            Saved here first; calls follow once Sarvam confirms
           </span>
         </div>
         <div className="grid gap-4 xl:grid-cols-2">
@@ -242,18 +242,29 @@ function RoutingCard({ record }: { record: PhoneNumberRecord }) {
             <PhoneMissed className="size-3" />
             Calls are not answered
           </span>
+        ) : record.routing?.confirmed && record.routing.state === "Active" ? (
+          <span className="text-[11px] text-ink-soft">
+            {agents.find((agent) => agent.id === record.agentId)?.name ?? "—"} answers this line,
+            confirmed by Sarvam
+          </span>
         ) : (
           <span className="text-[11px] text-ink-soft">
-            {agents.find((agent) => agent.id === record.agentId)?.name ?? "—"} answers this line
+            {agents.find((agent) => agent.id === record.agentId)?.name ?? "—"} is assigned here;
+            Sarvam has not confirmed the route yet
           </span>
         )}
       </div>
 
-      {record.status !== "Active" ? (
-        <p className="mt-2 rounded-lg bg-tangerine-tint/60 px-2.5 py-1.5 text-[11px] text-tangerine-ink">
-          Verification is pending. The line starts routing as soon as the provider confirms it.
+      {record.status === "Released" ? null : record.routing?.confirmed &&
+        record.routing.state === "Active" ? null : record.routing?.state === "Failed" ? (
+        <p className="mt-2 rounded-lg bg-destructive/5 px-2.5 py-1.5 text-[11px] text-destructive">
+          Sarvam could not set this route up. Save again to retry.
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-2 rounded-lg bg-tangerine-tint/60 px-2.5 py-1.5 text-[11px] text-tangerine-ink">
+          This route is not confirmed by Sarvam yet. Calls may not arrive on this line until it is.
+        </p>
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import supabase_auth
 from app.core.config import settings
 from app.core.constants import Role, TRIAL_CREDITS, permissions_for
 from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError
@@ -32,6 +33,7 @@ from app.schemas.auth import (
     MeResponse,
     OrganizationSummary,
     RegisterRequest,
+    SupabaseExchangeRequest,
     TokenPair,
     UpdateProfileRequest,
     UserOut,
@@ -39,6 +41,11 @@ from app.schemas.auth import (
 from app.utils.text import unique_slug
 
 logger = get_logger(__name__)
+
+#: Written to ``users.hashed_password`` for accounts that only sign in through
+#: Supabase. The column is NOT NULL, and the verifier rejects anything that is
+#: not a pbkdf2 hash, so this value can never authenticate a password sign-in.
+_NO_PASSWORD = "!supabase"
 
 
 # ---------------------------------------------------------------------------
@@ -100,29 +107,7 @@ def register(
     db.flush()
 
     organization_name = (payload.organization_name or f"{payload.full_name}'s workspace").strip()
-    slug = unique_slug(
-        organization_name,
-        exists=lambda candidate: bool(
-            db.execute(
-                select(Organization.id).where(Organization.slug == candidate)
-            ).scalar_one_or_none()
-        ),
-    )
-    organization = Organization(name=organization_name[:160], slug=slug)
-    db.add(organization)
-    db.flush()
-
-    membership = OrganizationMember(
-        organization_id=organization.id,
-        user_id=user.id,
-        role=str(Role.OWNER),
-        is_active=True,
-        joined_at=utcnow(),
-    )
-    db.add(membership)
-
-    billing.ensure_credit_account(db, organization.id, initial_balance=TRIAL_CREDITS)
-    billing.ensure_subscription(db, organization.id, plan_code="starter")
+    organization, membership = _create_organization_for(db, user, organization_name)
 
     audit.log_action(
         db,
@@ -182,6 +167,66 @@ def authenticate(
     )
     db.commit()
 
+    return _issue_tokens(
+        db,
+        user=user,
+        organization=organization,
+        role=membership.role if membership else str(Role.SUPER_ADMIN),
+        user_agent=user_agent,
+        ip_address=ip_address,
+    )
+
+
+def exchange_supabase(
+    db: Session,
+    payload: SupabaseExchangeRequest,
+    *,
+    user_agent: str | None = None,
+    ip_address: str | None = None,
+) -> TokenPair:
+    """Trade a verified Supabase session for a token pair issued by this API.
+
+    The Supabase token is proof of *who* signed in and is never accepted as an
+    API credential: every later request is authorised from the backend token
+    returned here. The account is looked up by ``sub``; an organization is
+    created only when the subject signs in for the very first time.
+    """
+    identity = supabase_auth.verify_access_token(payload.access_token)
+
+    user, outcome = _resolve_supabase_user(
+        db, identity, user_agent=user_agent, ip_address=ip_address
+    )
+    if not user.is_active:
+        raise AuthenticationError("This account has been deactivated.")
+
+    membership = get_membership(db, user_id=user.id)
+    if membership is None and not user.is_superadmin:
+        raise AuthenticationError(
+            "This account is not attached to an organization. Contact your administrator."
+        )
+
+    organization = db.get(Organization, membership.organization_id) if membership else None
+    if organization is not None and not organization.is_active:
+        raise AuthenticationError("This organization has been deactivated.")
+
+    user.last_login_at = utcnow()
+    audit.log_action(
+        db,
+        action="auth.supabase_exchange",
+        organization_id=organization.id if organization else None,
+        user_id=user.id,
+        changes={"outcome": outcome},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    db.commit()
+
+    logger.info(
+        "supabase_sign_in",
+        user_id=user.id,
+        organization_id=organization.id if organization else None,
+        outcome=outcome,
+    )
     return _issue_tokens(
         db,
         user=user,
@@ -308,6 +353,151 @@ def update_profile(db: Session, user: User, payload: UpdateProfileRequest) -> Us
 # ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
+def _create_organization_for(
+    db: Session, user: User, organization_name: str
+) -> tuple[Organization, OrganizationMember]:
+    """Create an organization owned by ``user``, with its starting billing.
+
+    Shared by password signup and the first Supabase sign-in so both paths
+    produce exactly the same tenant shape.
+    """
+    organization_name = (
+        organization_name or f"{user.full_name}'s workspace"
+    ).strip()
+    slug = unique_slug(
+        organization_name,
+        exists=lambda candidate: bool(
+            db.execute(
+                select(Organization.id).where(Organization.slug == candidate)
+            ).scalar_one_or_none()
+        ),
+    )
+    organization = Organization(name=organization_name[:160], slug=slug)
+    db.add(organization)
+    db.flush()
+
+    membership = OrganizationMember(
+        organization_id=organization.id,
+        user_id=user.id,
+        role=str(Role.OWNER),
+        is_active=True,
+        joined_at=utcnow(),
+    )
+    db.add(membership)
+
+    billing.ensure_credit_account(db, organization.id, initial_balance=TRIAL_CREDITS)
+    billing.ensure_subscription(db, organization.id, plan_code="starter")
+    return organization, membership
+
+
+def _resolve_supabase_user(
+    db: Session,
+    identity: supabase_auth.SupabaseIdentity,
+    *,
+    user_agent: str | None,
+    ip_address: str | None,
+) -> tuple[User, str]:
+    """Find, link or create the local user the Supabase subject belongs to.
+
+    Returns the user plus the outcome (``existing``, ``linked`` or
+    ``provisioned``) so the caller can audit it. Attaching this identity to an
+    account that already has a password requires a verified email: without
+    that proof, whoever controls the auth project could claim a stranger's
+    account.
+    """
+    user = db.execute(
+        select(User).where(User.supabase_user_id == identity.subject)
+    ).scalar_one_or_none()
+    if user is not None:
+        return user, "existing"
+
+    email = identity.email
+    if not email:
+        raise AuthenticationError(
+            "This sign-in method did not share an email address, so there is no "
+            "account to attach it to. Sign in with email and password."
+        )
+
+    existing = get_user_by_email(db, email)
+    if existing is None:
+        return (
+            _provision_supabase_user(
+                db, identity, email, user_agent=user_agent, ip_address=ip_address
+            ),
+            "provisioned",
+        )
+
+    if existing.supabase_user_id is not None:
+        # A different subject already proves this email. Two identities must
+        # never share one account: the audit trail would become ambiguous.
+        raise AuthenticationError(
+            "This email address is already linked to another sign-in account."
+        )
+    if not identity.email_verified:
+        raise AuthenticationError(
+            "Verify your email address before signing in to this account."
+        )
+
+    existing.supabase_user_id = identity.subject
+    if existing.email_verified_at is None:
+        existing.email_verified_at = utcnow()
+    db.flush()
+    logger.info("supabase_account_linked", user_id=existing.id)
+    return existing, "linked"
+
+
+def _provision_supabase_user(
+    db: Session,
+    identity: supabase_auth.SupabaseIdentity,
+    email: str,
+    *,
+    user_agent: str | None,
+    ip_address: str | None,
+) -> User:
+    """Create a first-time account with its organization and OWNER membership.
+
+    This is the only place a Supabase sign-in writes credentials or tenants,
+    and it runs at most once per subject: the unique index on
+    ``users.supabase_user_id`` rejects a second row for the same identity.
+    """
+    fallback_name = email.split("@")[0].replace(".", " ").replace("_", " ")
+    full_name = (identity.name or fallback_name).strip() or email
+
+    user = User(
+        email=email,
+        # No password exists for this account; the sentinel cannot match.
+        hashed_password=_NO_PASSWORD,
+        full_name=full_name[:160],
+        is_active=True,
+        supabase_user_id=identity.subject,
+        email_verified_at=utcnow() if identity.email_verified else None,
+    )
+    db.add(user)
+    db.flush()
+
+    organization, _ = _create_organization_for(
+        db, user, f"{user.full_name}'s workspace"
+    )
+
+    audit.log_action(
+        db,
+        action="auth.register",
+        organization_id=organization.id,
+        user_id=user.id,
+        resource_type="organization",
+        resource_id=organization.id,
+        description=f"Organization '{organization.name}' created on first sign-in",
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    logger.info(
+        "supabase_account_provisioned",
+        user_id=user.id,
+        organization_id=organization.id,
+    )
+    return user
+
+
 def _issue_tokens(
     db: Session,
     *,

@@ -12,6 +12,7 @@ from typing import Annotated, Callable
 
 from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import Perm, Role, permissions_for
@@ -19,7 +20,12 @@ from app.core.exceptions import AuthenticationError, PermissionDeniedError
 from app.core.logging import get_logger
 from app.core.pagination import PageParams, page_params
 from app.core.security import decode_token
-from app.database.models.organization import ApiKey, Organization, User
+from app.database.models.organization import (
+    ApiKey,
+    Organization,
+    OrganizationMember,
+    User,
+)
 from app.database.session import get_db
 from app.modules import developers
 
@@ -97,6 +103,15 @@ def _principal_from_jwt(db: Session, token: str, request: Request) -> Principal:
     if organization is None or not organization.is_active:
         raise AuthenticationError("The organization for this session is unavailable.")
 
+    # Membership is the authorization boundary, so a token is only as good as
+    # the membership row behind it: removing someone from a workspace must stop
+    # their existing token working, not wait for it to expire. Superadmins are
+    # the one exception - they act across tenants by design.
+    if not user.is_superadmin and not _is_member(db, user.id, organization.id):
+        raise AuthenticationError(
+            "You no longer have access to this workspace. Sign in again."
+        )
+
     role = str(payload.get("role") or Role.MEMBER)
     scopes = payload.get("scopes")
     permissions = frozenset(scopes) if isinstance(scopes, list) else permissions_for(role)
@@ -110,6 +125,18 @@ def _principal_from_jwt(db: Session, token: str, request: Request) -> Principal:
     )
     request.state.principal = principal
     return principal
+
+
+def _is_member(db: Session, user_id: str, organization_id: str) -> bool:
+    """Whether this person still belongs to the workspace their token names."""
+    found = db.execute(
+        select(OrganizationMember.id).where(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id == organization_id,
+            OrganizationMember.is_active.is_(True),
+        )
+    ).first()
+    return found is not None
 
 
 def _principal_from_api_key(db: Session, raw_key: str) -> Principal:

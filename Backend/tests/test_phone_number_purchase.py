@@ -11,29 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from tests.conftest import API
-
-
-@pytest.fixture()
-def roomy_plan(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Lift the plan include.
-
-    The trial plan allows a single number and the session-scoped ``phone_number``
-    fixture already spends it, so a purchase would otherwise only ever be
-    refused. Everything else about the purchase path stays as shipped.
-    """
-    from app.modules import billing
-
-    original = billing.plan_limits
-
-    def wide(db: Any, organization_id: str) -> dict[str, int]:
-        limits = dict(original(db, organization_id))
-        limits["max_phone_numbers"] = 50
-        return limits
-
-    monkeypatch.setattr(billing, "plan_limits", wide)
 
 
 def _shelf(client: Any, auth: dict[str, str], **params: Any) -> list[dict]:
@@ -167,11 +145,21 @@ def test_purchase_still_respects_the_plan_include(client: Any, auth: dict[str, s
     response = _buy(client, auth, chosen["number"])
 
     assert response.status_code == 409
-    assert response.json()["error"]["code"] == "plan_limit_reached"
+    gap = response.json()["error"]
+    assert gap["code"] == "phone_number_limit_reached"
+    # The refusal has to be actionable: which plan, what it allows, what is used.
+    assert gap["details"]["plan"] == "starter"
+    assert gap["details"]["limit"] == 1
+    assert gap["details"]["current"] >= 1
 
 
-def test_released_number_returns_to_the_shelf(client: Any, auth: dict[str, str], roomy_plan):
-    """A release is final for the line but not for the number itself."""
+def test_a_released_line_stays_off_the_shelf(client: Any, auth: dict[str, str], roomy_plan):
+    """Releasing ends the use of the line but keeps the row that holds it.
+
+    The row is what keeps the line's calls, campaigns and assignment history
+    readable, and the number is unique to it, so the shelf must not offer the
+    number to anyone again.
+    """
     chosen = _shelf(client, auth, region="Hyderabad", limit=1)[0]
 
     bought = _buy(client, auth, chosen["number"])
@@ -182,4 +170,6 @@ def test_released_number_returns_to_the_shelf(client: Any, auth: dict[str, str],
     )
     assert released.status_code == 200, released.text
 
-    assert chosen["number"] in {row["number"] for row in _shelf(client, auth, region="Hyderabad")}
+    assert chosen["number"] not in {
+        row["number"] for row in _shelf(client, auth, region="Hyderabad")
+    }

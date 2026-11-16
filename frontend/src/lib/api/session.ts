@@ -4,9 +4,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Route handlers act on the signed-in user's behalf with a server-held backend
- * token, so they must check the session themselves - an anonymous request to
- * `/api/employees` must never reach FastAPI.
+ * Refuse a dashboard request that has no signed-in user behind it.
+ *
+ * This is the gate, not the credential: an anonymous request to
+ * `/api/employees` must never reach FastAPI. Who the caller turns out to be is
+ * established next by `apiFetch`, which exchanges this same session for a
+ * backend token - so the check here and the identity used there cannot drift
+ * apart.
  *
  * Returns `null` when the caller may proceed, or the 401 response to return.
  * When Supabase is not configured there is no session to check and the app is

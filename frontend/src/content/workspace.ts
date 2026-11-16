@@ -121,6 +121,20 @@ export type Campaign = {
   createdAt: string;
 };
 
+/**
+ * Where inbound calls actually land, as the provider answered it.
+ *
+ * `agentId` below is this workspace's intent - the employee someone chose.
+ * This is the provider's answer, and only `confirmed` may be shown as a line
+ * that is answering. A local assignment on its own is never routing.
+ */
+export type NumberRoute = {
+  state: "Unconfigured" | "Pending" | "Active" | "Paused" | "Failed";
+  /** True only when the provider confirmed the route, never for local intent. */
+  confirmed: boolean;
+  detail?: string | null;
+};
+
 export type PhoneNumberRecord = {
   id: string;
   number: string;
@@ -133,6 +147,8 @@ export type PhoneNumberRecord = {
   label?: string | null;
   /** What the carrier bills for it, per month. */
   monthlyCostInr?: number;
+  /** The provider's word on inbound routing; absent when nothing is known. */
+  routing?: NumberRoute | null;
 };
 
 export type TranscriptTurn = { who: "Agent" | "Customer"; text: string };

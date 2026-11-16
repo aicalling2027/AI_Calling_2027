@@ -39,7 +39,15 @@ export function failure(error: unknown, scope: FailureScope = EMPLOYEE_SCOPE): N
     const upstreamAuth = error.status === 401 || error.status === 403;
     const status = upstreamAuth || error.status >= 500 ? 502 : error.status;
     return NextResponse.json(
-      { error: { code: error.code, message: error.message } },
+      {
+        error: {
+          code: error.code,
+          message: error.message,
+          // Present only when the backend explains itself further, such as the
+          // campaigns that still hold a number.
+          ...(error.details ? { details: error.details } : {}),
+        },
+      },
       { status },
     );
   }

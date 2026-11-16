@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { PhoneForwarded, Plus, Search } from "lucide-react";
+import { PhoneForwarded, Plus, RefreshCw } from "lucide-react";
 
 import {
   EmptyState,
@@ -17,157 +17,149 @@ import { useWorkspace } from "@/components/dashboard/workspace-store";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { PhoneNumberRecord } from "@/content/workspace";
-import type { AvailableNumber, TelephonyMarket } from "@/lib/api/phone-numbers";
+import type { InventorySummary } from "@/lib/api/phone-numbers";
+import { cn } from "@/lib/utils";
 
 const MODES: PhoneNumberRecord["mode"][] = ["Inbound", "Outbound", "Both"];
 
-const money = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+/** Reading the counts is its own request, with its own failure states. */
+type InventoryState = "loading" | "ready" | "error";
 
 const statusVariant = (status: PhoneNumberRecord["status"]) =>
   status === "Active" ? "success" : status === "Pending" ? "warning" : "secondary";
 
+/** The server decides identity on digits, so the field checks the same thing. */
+const digitsIn = (value: string) => value.replace(/[^0-9]/g, "");
+
+/** The plan code the backend enforces, written the way the billing screen does. */
+const planName = (code: string) =>
+  code ? code.charAt(0).toUpperCase() + code.slice(1) : "No plan";
+
+/**
+ * What may be said about where calls land, in one sentence.
+ *
+ * Only a route the provider confirmed is called live. The employee chosen here
+ * is this workspace's intent, and saying a line "routes" before Sarvam answered
+ * would claim something nobody verified.
+ */
+const describeRoute = (record: PhoneNumberRecord): string => {
+  if (record.status === "Released") return "The number is released; its records are kept.";
+  if (!record.agentId) return "No employee answers it yet - assign one to route calls.";
+  const route = record.routing;
+  if (route?.confirmed && route.state === "Active") {
+    return "Sarvam confirmed the route, so calls reach its employee now.";
+  }
+  if (route?.state === "Failed") {
+    return "Sarvam could not set the route up. Assign the employee again to retry.";
+  }
+  return "Waiting for Sarvam to confirm the route; calls may not arrive until it does.";
+};
+
 export default function PhoneNumbersPage() {
-  const { numbers, numbersError, refreshNumbers, agents, updateNumber, releaseNumber, buyNumber } =
-    useWorkspace();
+  const {
+    numbers,
+    numbersError,
+    refreshNumbers,
+    agents,
+    updateNumber,
+    releaseNumber,
+    attachNumber,
+  } = useWorkspace();
 
   const [open, setOpen] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [rowError, setRowError] = React.useState<string | null>(null);
 
-  // The purchase form's own state: where to look, what was found, what is chosen.
-  const [markets, setMarkets] = React.useState<TelephonyMarket[]>([]);
-  const [countryCode, setCountryCode] = React.useState("");
-  const [region, setRegion] = React.useState("");
-  const [search, setSearch] = React.useState("");
-  const [shelf, setShelf] = React.useState<AvailableNumber[]>([]);
-  const [shelfStatus, setShelfStatus] = React.useState<"loading" | "ready" | "error">("loading");
-  const [shelfError, setShelfError] = React.useState<string | null>(null);
-  const [chosen, setChosen] = React.useState<AvailableNumber | null>(null);
+  // The attach form: the number as it was rented, and who answers it.
+  const [number, setNumber] = React.useState("");
   const [label, setLabel] = React.useState("");
   const [employeeId, setEmployeeId] = React.useState("");
-  const [buying, setBuying] = React.useState(false);
-  const [buyError, setBuyError] = React.useState<string | null>(null);
+  const [attaching, setAttaching] = React.useState(false);
+  const [attachError, setAttachError] = React.useState<string | null>(null);
 
-  const active = numbers.filter((record) => record.status === "Active").length;
-  const pending = numbers.filter((record) => record.status === "Pending").length;
-  const monthly = numbers
-    .filter((record) => record.status !== "Released")
-    .reduce((total, record) => total + (record.monthlyCostInr ?? 0), 0);
-  const country = markets.find((market) => market.country_code === countryCode);
-  const chosenPrice = chosen?.monthly_cost_inr ?? 0;
+  // The counts: every line stored here, refreshed on demand. Nothing is polled -
+  // a line changes when someone rents one, not every few seconds.
+  const [inventory, setInventory] = React.useState<InventorySummary | null>(null);
+  const [inventoryState, setInventoryState] = React.useState<InventoryState>("loading");
+  const [inventoryError, setInventoryError] = React.useState<string | null>(null);
+  const [inventoryKey, setInventoryKey] = React.useState(0);
 
-  // Where numbers can be bought is a read of its own: it changes when the
-  // carrier adds a market, not when this workspace buys something.
+  const live = numbers.filter((record) => record.status !== "Released");
+  const active = live.filter((record) => record.status === "Active").length;
+  const pending = live.filter((record) => record.status === "Pending").length;
+  const unreleased = numbers.length - live.length;
+
   React.useEffect(() => {
     let cancelled = false;
-    fetch("/api/phone-numbers/catalogue", { cache: "no-store" })
+
+    fetch("/api/phone-numbers/sync", { cache: "no-store" })
       .then(async (response) => {
         const body = (await response.json().catch(() => null)) as
-          | { markets?: TelephonyMarket[]; error?: { message?: string } }
+          | { inventory?: InventorySummary; error?: { message?: string } }
           | null;
-        if (!response.ok) throw new Error(body?.error?.message ?? "Could not load the catalogue.");
-        return body?.markets ?? [];
+        if (!response.ok || !body?.inventory) {
+          throw new Error(body?.error?.message ?? "The counts could not be read.");
+        }
+        return body.inventory;
       })
-      .then((items) => {
-        if (cancelled || items.length === 0) return;
-        setMarkets(items);
-        setCountryCode((current) => current || items[0].country_code);
-        setRegion((current) => current || items[0].regions[0]?.region || "");
+      .then((next) => {
+        if (cancelled) return;
+        setInventory(next);
+        setInventoryError(null);
+        setInventoryState("ready");
       })
       .catch((error: unknown) => {
-        console.error("[phone-numbers] load catalogue", error);
-        if (!cancelled) {
-          setShelfStatus("error");
-          setShelfError(
-            error instanceof Error ? error.message : "The catalogue could not be loaded.",
-          );
-        }
+        if (cancelled) return;
+        console.error("[phone-numbers] inventory counts", error);
+        setInventoryError(error instanceof Error ? error.message : "The counts could not be read.");
+        setInventoryState("error");
       });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [inventoryKey]);
 
-  // Search is a round trip, so it waits for a pause in typing rather than
-  // firing once per keystroke.
-  React.useEffect(() => {
-    if (!open || !countryCode) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams({ country_code: countryCode, limit: "12" });
-      if (region) params.set("region", region);
-      if (search.trim()) params.set("q", search.trim());
+  // Refreshing is a user action, so the loading state belongs to the handler
+  // rather than the effect: the effect only talks to the network.
+  const refreshInventory = () => {
+    setInventoryState("loading");
+    setInventoryKey((key) => key + 1);
+  };
 
-      setShelfStatus("loading");
-      fetch(`/api/phone-numbers/available?${params.toString()}`, {
-        cache: "no-store",
-        signal: controller.signal,
-      })
-        .then(async (response) => {
-          const body = (await response.json().catch(() => null)) as
-            | { numbers?: AvailableNumber[]; error?: { message?: string } }
-            | null;
-          if (!response.ok) throw new Error(body?.error?.message ?? "Could not load numbers.");
-          return body?.numbers ?? [];
-        })
-        .then((items) => {
-          setShelf(items);
-          setShelfError(null);
-          setShelfStatus("ready");
-        })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
-          console.error("[phone-numbers] search", error);
-          setShelfError(error instanceof Error ? error.message : "Numbers could not be loaded.");
-          setShelfStatus("error");
-        });
-    }, 250);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [open, countryCode, region, search]);
-
-  const startPurchase = () => {
-    setChosen(null);
+  const startAttach = () => {
+    setNumber("");
     setLabel("");
     setEmployeeId("");
-    setBuyError(null);
+    setAttachError(null);
     setNotice(null);
-    setSearch("");
     setOpen(true);
   };
 
-  const chooseNumber = (row: AvailableNumber) => {
-    setChosen(row);
-    // The city a line was bought in is the name that stays useful on a list of
-    // ten of them, so it is the default rather than a blank field.
-    setLabel((current) => (current.trim() ? current : `${row.region} line`));
-  };
-
-  const buy = async () => {
-    if (!chosen) return;
-    setBuying(true);
-    setBuyError(null);
-    const outcome = await buyNumber({
-      number: chosen.number,
+  const attach = async () => {
+    if (digitsIn(number).length < 7) {
+      setAttachError("Enter the full number, including the country code.");
+      return;
+    }
+    setAttaching(true);
+    setAttachError(null);
+    const outcome = await attachNumber({
+      number: number.trim(),
       label: label.trim() || undefined,
       employeeId: employeeId || null,
-      capabilities: ["inbound", "outbound"],
     });
-    setBuying(false);
+    setAttaching(false);
     if (!outcome.ok) {
-      setBuyError(outcome.error);
+      setAttachError(outcome.error);
       return;
     }
     setOpen(false);
     setNotice(
-      `Bought ${outcome.record.number} for ${money(chosen.monthly_cost_inr)} a month. ` +
-        (outcome.record.status === "Active"
-          ? "It routes to its employee now."
-          : "Assign an employee to start answering calls on it."),
+      outcome.created
+        ? `Attached ${outcome.record.number}. ${describeRoute(outcome.record)}`
+        : `${outcome.record.number} was already attached to this workspace, so nothing changed.`,
     );
+    refreshInventory();
   };
 
   const saveMode = (id: string, mode: PhoneNumberRecord["mode"]) => {
@@ -184,14 +176,16 @@ export default function PhoneNumbersPage() {
 
   const release = (record: PhoneNumberRecord) => {
     const confirmed = window.confirm(
-      `Release ${record.number}? Calls on it stop immediately, the number goes back to the ` +
-        "shelf and this cannot be undone.",
+      `Release ${record.number}? Calls on it stop immediately. Its call, campaign and ` +
+        "assignment history stays here. Returning the line to Sarvam is a separate step in " +
+        "the console.",
     );
     if (!confirmed) return;
     void releaseNumber(record.id).then((outcome) => {
       setRowError(outcome.ok ? null : outcome.error);
       if (outcome.ok) {
-        setNotice(`Released ${record.number}. It is back on the shelf for anyone to buy.`);
+        setNotice(`Released ${record.number}. Its records are kept.`);
+        refreshInventory();
       }
     });
   };
@@ -201,11 +195,11 @@ export default function PhoneNumbersPage() {
       <PageHeader
         eyebrow="Phone numbers"
         title="Phone numbers"
-        description="Buy numbers, assign the employee that answers each line, and decide whether a line dials out or receives calls."
+        description="Attach a number provisioned for this organization in the OWN AI Sarvam workspace, then choose the employee that answers it and whether it dials out or receives calls."
         actions={
-          <button type="button" onClick={startPurchase} className={buttonVariants({ size: "lg" })}>
+          <button type="button" onClick={startAttach} className={buttonVariants({ size: "lg" })}>
             <Plus aria-hidden />
-            Buy a number
+            Attach Sarvam number
           </button>
         }
       />
@@ -239,40 +233,46 @@ export default function PhoneNumbersPage() {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Numbers" value={String(numbers.length)} hint={`${active} active`} />
-        <StatTile label="Billed monthly" value={money(monthly)} hint="Lines not yet released" />
-        <StatTile label="Pending" value={String(pending)} hint="Waiting for an employee" />
+        <StatTile label="Attached" value={String(live.length)} hint={`${active} active`} />
         <StatTile
-          label="Assigned"
-          value={String(numbers.filter((record) => record.agentId).length)}
-          hint="Answered by an employee"
+          label="Pending"
+          value={String(pending)}
+          hint="Waiting for an employee"
+        />
+        <StatTile
+          label="Answered"
+          value={String(live.filter((record) => record.agentId).length)}
+          hint="Employee assigned"
+        />
+        <StatTile
+          label="Released"
+          value={String(unreleased)}
+          hint="Kept for their history"
         />
       </div>
 
       {numbers.length === 0 ? (
         <EmptyState
           icon={<PhoneForwarded className="size-5" />}
-          title="No numbers yet"
-          description="Buy a number to start making outbound calls and receiving inbound enquiries."
+          title="No numbers attached"
+          description="Numbers are provisioned in the OWN AI Sarvam workspace. Attach the one assigned to your organization to route its calls to an employee."
           action={
-            <button type="button" onClick={startPurchase} className={buttonVariants({ size: "lg" })}>
+            <button type="button" onClick={startAttach} className={buttonVariants({ size: "lg" })}>
               <Plus aria-hidden />
-              Buy a number
+              Attach Sarvam number
             </button>
           }
         />
       ) : (
         <section className="overflow-hidden rounded-xl border border-line bg-surface">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-left text-xs">
+            <table className="w-full min-w-[720px] text-left text-xs">
               <thead>
                 <tr className="border-b border-hairline text-[10px] uppercase tracking-wide text-ink-soft">
                   <th scope="col" className="px-4 py-2.5 font-semibold">Number</th>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">Provider</th>
                   <th scope="col" className="px-4 py-2.5 font-semibold">Mode</th>
                   <th scope="col" className="px-4 py-2.5 font-semibold">Status</th>
                   <th scope="col" className="px-4 py-2.5 font-semibold">Answered by</th>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">Monthly</th>
                   <th scope="col" className="px-4 py-2.5 text-right font-semibold">Action</th>
                 </tr>
               </thead>
@@ -287,7 +287,6 @@ export default function PhoneNumbersPage() {
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-ink-soft">{record.provider}</td>
                     <td className="px-4 py-3">
                       <label className="sr-only" htmlFor={`mode-${record.id}`}>
                         Mode for {record.number}
@@ -312,6 +311,7 @@ export default function PhoneNumbersPage() {
                       <StatusBadge variant={statusVariant(record.status)}>
                         {record.status}
                       </StatusBadge>
+                      <RouteLabel record={record} />
                     </td>
                     <td className="px-4 py-3">
                       <label className="sr-only" htmlFor={`agent-${record.id}`}>
@@ -331,9 +331,6 @@ export default function PhoneNumbersPage() {
                           </option>
                         ))}
                       </SelectInput>
-                    </td>
-                    <td className="px-4 py-3 text-ink-soft">
-                      {record.monthlyCostInr ? money(record.monthlyCostInr) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {record.status === "Released" ? (
@@ -356,20 +353,18 @@ export default function PhoneNumbersPage() {
         </section>
       )}
 
-      <section className="rounded-xl border border-line bg-cream/60 p-4">
-        <h2 className="text-xs font-semibold text-ink">Porting a number you already own</h2>
-        <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-ink-soft">
-          A number bought elsewhere can be moved to AOTMS SIP and keep working while it moves.
-          Porting needs the last invoice and an authorised-signatory letter, so it starts with a
-          message to support rather than a form here. Most ports complete in two working days.
-        </p>
-      </section>
+      <InventoryPanel
+        summary={inventory}
+        state={inventoryState}
+        error={inventoryError}
+        onRefresh={refreshInventory}
+      />
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Buy a number"
-        description="Pick a number from the shelf. It is billed monthly from today and is yours alone."
+        title="Attach Sarvam number"
+        description="Record a number provisioned for this organization in the OWN AI Sarvam workspace so its calls reach an employee here."
         footer={
           <>
             <button
@@ -381,140 +376,42 @@ export default function PhoneNumbersPage() {
             </button>
             <button
               type="button"
-              onClick={() => void buy()}
-              disabled={!chosen || buying}
+              onClick={() => void attach()}
+              disabled={attaching || digitsIn(number).length < 7}
               className={buttonVariants()}
             >
-              {buying
-                ? "Buying…"
-                : chosen
-                  ? `Buy for ${money(chosenPrice)}/mo`
-                  : "Choose a number"}
+              {attaching ? "Attaching…" : "Attach number"}
             </button>
           </>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Country" htmlFor="buy-country">
-            <SelectInput
-              id="buy-country"
-              value={countryCode}
-              onChange={(event) => {
-                const next = markets.find((market) => market.country_code === event.target.value);
-                setCountryCode(event.target.value);
-                setRegion(next?.regions[0]?.region ?? "");
-                setChosen(null);
-              }}
-            >
-              {markets.map((market) => (
-                <option key={market.country_code} value={market.country_code}>
-                  {market.country} ({market.dial_code})
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-          <Field label="City" htmlFor="buy-region" hint="A local prefix is easier to answer.">
-            <SelectInput
-              id="buy-region"
-              value={region}
-              onChange={(event) => {
-                setRegion(event.target.value);
-                setChosen(null);
-              }}
-            >
-              {(country?.regions ?? []).map((item) => (
-                <option key={item.region} value={item.region}>
-                  {item.region} · {money(item.monthly_cost_inr)}/mo
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-        </div>
-
         <Field
-          label="Search"
-          htmlFor="buy-search"
-          hint="Optional — part of the number, e.g. 22671."
+          label="Number"
+          htmlFor="attach-number"
+          hint="As rented in the console. Spaces and the + are ignored; digits decide identity."
         >
-          <div className="relative">
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-soft"
-            />
-            <TextInput
-              id="buy-search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                // The chosen number may not survive the new results, and a
-                // selection the buyer cannot see is a trap.
-                setChosen(null);
-              }}
-              placeholder="Digits"
-              inputMode="numeric"
-              className="pl-8"
-            />
-          </div>
+          <TextInput
+            id="attach-number"
+            value={number}
+            onChange={(event) => setNumber(event.target.value)}
+            placeholder="+91 80 6535 4620"
+            inputMode="tel"
+            autoComplete="tel"
+          />
         </Field>
 
-        <div>
-          <p className="text-xs font-semibold text-ink">Available numbers</p>
-          <div className="mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-line">
-            {shelfStatus === "loading" ? (
-              <p className="px-3 py-4 text-[11px] text-ink-soft">Looking for numbers…</p>
-            ) : shelfStatus === "error" ? (
-              <p className="px-3 py-4 text-[11px] text-destructive">
-                {shelfError ?? "Numbers could not be loaded."}
-              </p>
-            ) : shelf.length === 0 ? (
-              <p className="px-3 py-4 text-[11px] text-ink-soft">
-                Every number here is taken. Try another city or clear the search.
-              </p>
-            ) : (
-              <ul className="divide-y divide-hairline">
-                {shelf.map((row) => (
-                  <li key={row.number}>
-                    <button
-                      type="button"
-                      onClick={() => chooseNumber(row)}
-                      aria-pressed={chosen?.number === row.number}
-                      className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors ${
-                        chosen?.number === row.number
-                          ? "bg-cobalt/5"
-                          : "hover:bg-mist-soft"
-                      }`}
-                    >
-                      <span>
-                        <span className="block font-mono text-xs font-semibold text-ink">
-                          {row.formatted}
-                        </span>
-                        <span className="block text-[11px] text-ink-soft">
-                          {row.region} · {row.capabilities.join(" + ")}
-                        </span>
-                      </span>
-                      <span className="text-[11px] font-medium text-ink-soft">
-                        {money(row.monthly_cost_inr)}/mo
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Name this line" htmlFor="buy-label" hint="Shown on this page only.">
+          <Field label="Name this line" htmlFor="attach-label" hint="Shown on this page only.">
             <TextInput
-              id="buy-label"
+              id="attach-label"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
-              placeholder={chosen ? `${chosen.region} line` : "Mumbai outbound"}
+              placeholder="Mumbai outbound"
             />
           </Field>
-          <Field label="Answered by" htmlFor="buy-agent" hint="Optional — can be set later.">
+          <Field label="Answered by" htmlFor="attach-agent" hint="Optional — can be set later.">
             <SelectInput
-              id="buy-agent"
+              id="attach-agent"
               value={employeeId}
               onChange={(event) => setEmployeeId(event.target.value)}
             >
@@ -528,18 +425,220 @@ export default function PhoneNumbersPage() {
           </Field>
         </div>
 
-        {buyError ? (
+        {attachError ? (
           <p role="alert" className="text-xs text-destructive">
-            {buyError}
+            {attachError}
           </p>
         ) : (
           <p className="text-[11px] leading-relaxed text-ink-soft">
-            {chosen
-              ? `${chosen.formatted} — ${money(chosen.monthly_cost_inr)} a month from ${chosen.country}.`
-              : "Prices are per month; there is no setup fee."}
+            Attaching records the number here. It does not rent, renew, price or release anything
+            with the carrier — the central Sarvam workspace owns that.
           </p>
         )}
+
+        {inventory?.quota ? (
+          <p className="text-[11px] leading-relaxed text-ink-soft">
+            {inventory.quota.remaining > 0
+              ? `${planName(inventory.quota.plan)} plan: ${inventory.quota.current} of ` +
+                `${inventory.quota.limit} numbers held, ${inventory.quota.remaining} more fit.`
+              : `The ${planName(inventory.quota.plan)} plan holds ${inventory.quota.limit} ` +
+                "numbers and all of them are in use. Release one to free a place."}
+          </p>
+        ) : null}
       </Modal>
+    </div>
+  );
+}
+
+/**
+ * Where calls actually land, kept beside the line's own status.
+ *
+ * The two are different facts: a line can be active and still unconfirmed at
+ * the provider, so this says which of those it is rather than repeating
+ * "Active" in a second place.
+ */
+function RouteLabel({ record }: { record: PhoneNumberRecord }) {
+  if (record.status === "Released") return null;
+  if (!record.agentId) {
+    return <p className="mt-1 text-[10px] text-ink-soft">No employee assigned</p>;
+  }
+  const route = record.routing;
+  if (route?.confirmed && route.state === "Active") {
+    return (
+      <p className="mt-1 text-[10px] font-medium text-cobalt-deep">Route confirmed by Sarvam</p>
+    );
+  }
+  if (route?.state === "Failed") {
+    return <p className="mt-1 text-[10px] font-medium text-destructive">Route failed at Sarvam</p>;
+  }
+  return <p className="mt-1 text-[10px] text-ink-soft">Awaiting Sarvam confirmation</p>;
+}
+
+/**
+ * Where the lines come from, and what this workspace holds right now.
+ *
+ * The panel says what it counts. There is no carrier read behind it - Sarvam
+ * publishes no API for rented numbers - so a count that disagreed with the
+ * console would mean an attachment was missed, not that the account changed.
+ */
+function InventoryPanel({
+  summary,
+  state,
+  error,
+  onRefresh,
+}: {
+  summary: InventorySummary | null;
+  state: InventoryState;
+  error: string | null;
+  onRefresh: () => void;
+}) {
+  const checked = summary ? new Date(summary.checked_at) : null;
+  const quota = summary?.quota ?? null;
+  const share =
+    quota && quota.limit > 0 ? Math.min(100, Math.round((quota.current / quota.limit) * 100)) : 0;
+
+  return (
+    <section
+      aria-labelledby="inventory-heading"
+      className="overflow-hidden rounded-xl border border-line bg-surface"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline px-4 py-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 id="inventory-heading" className="text-sm font-semibold text-ink">
+              Central Sarvam workspace
+            </h2>
+            <StatusBadge variant="secondary">Managed by OWN AI</StatusBadge>
+          </div>
+          <p className="mt-0.5 max-w-2xl text-[11px] leading-relaxed text-ink-soft">
+            Renting, pricing, renewal and returning a line all happen in OWN AI&apos;s central
+            Sarvam workspace. This page records which of those numbers belong to this
+            organization and who answers them.
+          </p>
+          <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-ink-soft">
+            Sarvam does not expose rented numbers over an API, so the counts below come from what
+            was attached here, not from the provider.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          {checked ? (
+            <span className="hidden text-[10px] uppercase tracking-[0.12em] text-ink-soft sm:inline">
+              {checked.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={state === "loading"}
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line px-2.5 text-[11px] font-medium text-ink-soft transition-colors hover:bg-mist-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw aria-hidden className={cn("size-3", state === "loading" && "animate-spin")} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {state === "loading" && !summary ? (
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4" aria-hidden>
+          {[0, 1, 2, 3].map((index) => (
+            <div key={index} className="h-16 animate-pulse rounded-lg bg-mist-soft" />
+          ))}
+        </div>
+      ) : null}
+
+      {state === "error" && !summary ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-destructive"
+        >
+          <span>{error ?? "The counts could not be read."}</span>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="font-medium underline underline-offset-2"
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
+
+      {summary ? (
+        <>
+          {quota ? (
+            <div className="border-b border-hairline px-4 py-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+                  {planName(quota.plan)} plan allowance
+                </p>
+                <p className="text-[11px] text-ink">
+                  <span className="font-semibold tabular-nums">{quota.current}</span>
+                  {" of "}
+                  <span className="tabular-nums">{quota.limit}</span> numbers held
+                </p>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-mist" aria-hidden>
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    quota.remaining === 0 ? "bg-destructive" : "bg-cobalt",
+                  )}
+                  style={{ width: `${share}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">
+                {quota.remaining > 0
+                  ? `${quota.remaining} more ${quota.remaining === 1 ? "number fits" : "numbers fit"} ` +
+                    "this plan. Pending and switched-off lines count; released ones do not."
+                  : "The plan is full. Release a number or move to a larger plan before attaching " +
+                    "another."}
+              </p>
+            </div>
+          ) : null}
+
+          <dl className="grid gap-px border-b border-hairline bg-hairline sm:grid-cols-2 xl:grid-cols-4">
+            <CountStat label="Attached" value={summary.local_total} hint="Lines in this workspace" />
+            <CountStat label="Active" value={summary.local_active} hint="Answering or dialing" />
+            <CountStat label="Pending" value={summary.local_pending} hint="No employee yet" />
+            <CountStat
+              label="Released"
+              value={summary.local_released}
+              hint="Records kept, not in use"
+            />
+          </dl>
+
+          {summary.by_country.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-4 py-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+                By country
+              </span>
+              {summary.by_country.map((entry) => (
+                <Badge key={entry.country} variant="outline" className="font-mono">
+                  {entry.country} · {entry.numbers}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+
+          <p className="px-4 py-3 text-[11px] leading-relaxed text-ink-soft">
+            {summary.local_total === 0
+              ? "Nothing attached yet. Attach the number provisioned for this organization here."
+              : `${summary.assigned} of ${summary.local_total} assigned to an employee; ` +
+                `${summary.unassigned} still unassigned.`}
+          </p>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function CountStat({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <div className="bg-surface px-4 py-3">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+        {label}
+      </dt>
+      <dd className="mt-1 text-lg font-semibold tracking-tight text-ink tabular-nums">{value}</dd>
+      {hint ? <dd className="mt-0.5 text-[11px] text-ink-soft">{hint}</dd> : null}
     </div>
   );
 }

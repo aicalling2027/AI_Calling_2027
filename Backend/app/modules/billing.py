@@ -8,6 +8,7 @@ messages and embeddings.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -240,14 +241,74 @@ def resume_subscription(db: Session, organization_id: str, *, user_id: str | Non
     return subscription_detail(db, organization_id)
 
 
+@dataclass(frozen=True, slots=True)
+class PlanAllowance:
+    """One workspace's plan and the quotas that plan grants.
+
+    The code travels with the numbers because a refusal has to name the plan it
+    refers to - "upgrade the plan" is useless advice without it.
+    """
+
+    code: str
+    max_employees: int
+    max_phone_numbers: int
+    included_credits: int
+
+
+def _allowance_for(plan: SubscriptionPlan | None) -> PlanAllowance:
+    """The quotas a plan row grants.
+
+    A missing plan row is treated as the smallest allowance: an unknown plan
+    must never mean unlimited numbers.
+    """
+    if plan is None:
+        return PlanAllowance(
+            code=DEFAULT_PLAN_CODE,
+            max_employees=1,
+            max_phone_numbers=1,
+            included_credits=0,
+        )
+    return PlanAllowance(
+        code=plan.code,
+        max_employees=int(plan.max_employees),
+        max_phone_numbers=int(plan.max_phone_numbers),
+        included_credits=int(plan.included_credits),
+    )
+
+
+def plan_allowance(db: Session, organization_id: str) -> PlanAllowance:
+    """Resolve the subscription plan behind a workspace's quotas.
+
+    Creates the trial subscription when the workspace has none yet, so this is
+    safe on a write path but not on a read-only one.
+    """
+    subscription = ensure_subscription(db, organization_id)
+    return _allowance_for(db.get(SubscriptionPlan, subscription.plan_id))
+
+
+def existing_allowance(
+    db: Session, organization_id: str
+) -> PlanAllowance | None:
+    """The plan already in force, or ``None`` when nothing is subscribed yet.
+
+    Read-only equivalent of :func:`plan_allowance`: reporting the quota must
+    not create the subscription it reports on.
+    """
+    subscription = db.execute(
+        select(Subscription).where(Subscription.organization_id == organization_id)
+    ).scalar_one_or_none()
+    if subscription is None:
+        return None
+    return _allowance_for(db.get(SubscriptionPlan, subscription.plan_id))
+
+
 def plan_limits(db: Session, organization_id: str) -> dict[str, int]:
     """Resolve the quotas enforced when creating employees/numbers."""
-    subscription = ensure_subscription(db, organization_id)
-    plan = db.get(SubscriptionPlan, subscription.plan_id)
+    allowance = plan_allowance(db, organization_id)
     return {
-        "max_employees": plan.max_employees if plan else 1,
-        "max_phone_numbers": plan.max_phone_numbers if plan else 1,
-        "included_credits": plan.included_credits if plan else 0,
+        "max_employees": allowance.max_employees,
+        "max_phone_numbers": allowance.max_phone_numbers,
+        "included_credits": allowance.included_credits,
     }
 
 

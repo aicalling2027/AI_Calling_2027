@@ -44,16 +44,17 @@ type AgentsStatus = "loading" | "ready" | "error";
 /** What a write tells its caller: the server kept it, or why it did not. */
 export type SaveOutcome = { ok: true } | { ok: false; error: string };
 
-/** A number chosen from the shelf, plus the name and employee for its line. */
-export type BuyNumberInput = {
+/** A number rented in the Sarvam console, about to be recorded against the workspace. */
+export type AttachNumberInput = {
   number: string;
   label?: string;
+  countryCode?: string;
   employeeId?: string | null;
   capabilities?: string[];
 };
 
-export type BuyNumberOutcome =
-  | { ok: true; record: PhoneNumberRecord }
+export type AttachNumberOutcome =
+  | { ok: true; record: PhoneNumberRecord; created: boolean }
   | { ok: false; error: string };
 
 type WorkspaceState = {
@@ -125,8 +126,8 @@ type WorkspaceActions = {
     schedule: string;
   }) => void;
   setCampaignStatus: (id: string, status: CampaignStatus) => void;
-  /** Buy a number from the shelf and add it to the list. Never rejects. */
-  buyNumber: (input: BuyNumberInput) => Promise<BuyNumberOutcome>;
+  /** Record a number rented in the console. Never rejects. */
+  attachNumber: (input: AttachNumberInput) => Promise<AttachNumberOutcome>;
   /** Save a mode, a name or an employee; reports whether the server kept it. */
   updateNumber: (id: string, patch: Partial<PhoneNumberRecord>) => Promise<SaveOutcome>;
   /** Take a line out of service. The row stays for its call history. */
@@ -231,8 +232,21 @@ async function readLead(response: Response, fallback: string): Promise<Lead> {
 type NumberPayload = {
   items?: PhoneNumberRecord[];
   number?: PhoneNumberRecord;
-  purchase?: { record: PhoneNumberRecord };
-  error?: { message?: string };
+  attach?: { record: PhoneNumberRecord; created: boolean };
+  error?: {
+    message?: string;
+    /** Why the server refused, e.g. the campaigns that still hold a line. */
+    details?: {
+      campaigns?: { id: string; name: string; status: string }[];
+      deployments?: { id: string; status: string }[];
+      /** Present when the plan's number allowance is full. */
+      limit?: number;
+      current?: number;
+      plan?: string;
+      /** Why an explicitly chosen number cannot carry a call. */
+      reason?: "released" | "inactive" | "outbound_not_supported";
+    };
+  };
 };
 
 async function fetchNumbers(): Promise<PhoneNumberRecord[]> {
@@ -256,6 +270,20 @@ async function readNumber(response: Response, fallback: string): Promise<PhoneNu
  */
 function mergeNumber(current: PhoneNumberRecord | undefined, next: PhoneNumberRecord) {
   return current ? { ...next, welcome: current.welcome } : next;
+}
+
+/**
+ * The server's refusal, with the campaigns named when it named them.
+ *
+ * "Still in use by 1 campaign" says what is wrong; the campaign's name is what
+ * lets someone go and change it.
+ */
+function refusalOf(error: NumberPayload["error"], fallback: string): string {
+  const message = error?.message ?? fallback;
+  const names = (error?.details?.campaigns ?? [])
+    .map((row) => row.name)
+    .filter((name): name is string => Boolean(name));
+  return names.length ? `${message} Blocking campaigns: ${names.join(", ")}.` : message;
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
@@ -641,28 +669,32 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const buyNumber = React.useCallback(
-    async (input: BuyNumberInput): Promise<BuyNumberOutcome> => {
+  const attachNumber = React.useCallback(
+    async (input: AttachNumberInput): Promise<AttachNumberOutcome> => {
       try {
-        const response = await fetch("/api/phone-numbers/purchase", {
+        const response = await fetch("/api/phone-numbers/attach", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
         });
         const body = (await response.json().catch(() => null)) as NumberPayload | null;
-        if (!response.ok || !body?.purchase) {
-          throw new Error(body?.error?.message ?? "The number could not be bought.");
+        if (!response.ok || !body?.attach) {
+          throw new Error(body?.error?.message ?? "The number could not be attached.");
         }
-        const record = body.purchase.record;
+        const { record, created } = body.attach;
         setState((prev) => ({
           ...prev,
-          numbers: [record, ...prev.numbers],
+          // Attaching twice answers with the row that already holds the number,
+          // so it is replaced in place rather than added a second time.
+          numbers: prev.numbers.some((current) => current.id === record.id)
+            ? prev.numbers.map((current) => (current.id === record.id ? record : current))
+            : [record, ...prev.numbers],
           numbersError: null,
         }));
-        return { ok: true, record };
+        return { ok: true, record, created };
       } catch (error) {
-        console.error("[workspace] buy number", error);
-        return { ok: false, error: reasonOf(error, "The number could not be bought.") };
+        console.error("[workspace] attach number", error);
+        return { ok: false, error: reasonOf(error, "The number could not be attached.") };
       }
     },
     [],
@@ -710,13 +742,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         .then(async (response): Promise<SaveOutcome> => {
           if (!response.ok) {
             const body = (await response.json().catch(() => null)) as NumberPayload | null;
-            throw new Error(body?.error?.message ?? "The number could not be released.");
+            throw new Error(refusalOf(body?.error, "The number could not be released."));
           }
-          // The line is gone from the workspace, so it leaves the list too: a
-          // row left behind would keep answering calls that no longer exist.
+          // The row stays so its calls, campaigns and assignment history stay
+          // readable; only the line stops being used.
           setState((prev) => ({
             ...prev,
-            numbers: prev.numbers.filter((record) => record.id !== id),
+            numbers: prev.numbers.map((record) =>
+              record.id === id ? { ...record, status: "Released", agentId: null } : record,
+            ),
           }));
           return { ok: true };
         })
@@ -881,7 +915,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       removeLead,
       addCampaign,
       setCampaignStatus,
-      buyNumber,
+      attachNumber,
       updateNumber,
       releaseNumber,
       refreshNumbers,
@@ -912,7 +946,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       removeLead,
       addCampaign,
       setCampaignStatus,
-      buyNumber,
+      attachNumber,
       updateNumber,
       releaseNumber,
       refreshNumbers,

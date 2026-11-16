@@ -1,4 +1,4 @@
-"""Authentication endpoints: signup, login, token refresh, profile."""
+"""Authentication endpoints: signup, login, single sign-on, refresh, profile."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from app.schemas.auth import (
     OrganizationSummary,
     RefreshRequest,
     RegisterRequest,
+    SupabaseExchangeRequest,
     TokenPair,
     UpdateProfileRequest,
     UserOut,
@@ -51,6 +52,22 @@ def register(payload: RegisterRequest, request: Request, db: DbSession) -> Token
 @router.post("/login", response_model=TokenPair, summary="Exchange credentials for tokens")
 def login(payload: LoginRequest, request: Request, db: DbSession) -> TokenPair:
     return auth.authenticate(db, payload, **_client_meta(request))
+
+
+@router.post(
+    "/supabase/exchange",
+    response_model=TokenPair,
+    summary="Exchange a Supabase session for backend tokens",
+)
+def supabase_exchange(
+    payload: SupabaseExchangeRequest, request: Request, db: DbSession
+) -> TokenPair:
+    """Bridge the dashboard's Supabase sign-in into this API's own tokens.
+
+    The Supabase access token is only proof of identity. What comes back is a
+    token pair issued here, and that is what authorises every later request.
+    """
+    return auth.exchange_supabase(db, payload, **_client_meta(request))
 
 
 @router.post("/refresh", response_model=TokenPair, summary="Rotate the token pair")

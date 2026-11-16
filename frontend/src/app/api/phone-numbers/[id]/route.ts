@@ -39,9 +39,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 /**
  * Release a line.
  *
- * The number goes back to the pool and can be bought again; the row is removed
- * with it, so this is the one action on the screen that cannot be undone. Call
- * records keep their own copy of the number they dialled.
+ * The row is kept with the status `Released`, so the calls, campaigns and
+ * assignment history that point at it stay readable. The backend refuses while
+ * a live campaign or an inbound deployment still uses the number (409,
+ * `number_in_use`, with the offenders in `details`). Releasing here does not
+ * give the line back to Sarvam: that happens in the console.
  */
 export async function DELETE(_request: Request, { params }: RouteContext) {
   await connection();

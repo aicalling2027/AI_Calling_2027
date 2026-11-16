@@ -12,7 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # app/core/config.py -> app/core -> app -> Backend/
@@ -66,7 +66,14 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 14
     password_min_length: int = 8
+    #: Legacy symmetric signing secret for Supabase access tokens. Empty when the
+    #: project signs asymmetrically; the JWKS published beside ``supabase_url`` is
+    #: preferred either way. See ``app/core/supabase_auth.py``.
     supabase_jwt_secret: str = ""
+    #: The ``aud`` claim a Supabase access token carries.
+    supabase_jwt_audience: str = "authenticated"
+    #: How long a fetched JWKS key set is reused before it is fetched again.
+    supabase_jwks_cache_seconds: int = 600
 
     # -- Rate limiting -----------------------------------------------------
     rate_limit_enabled: bool = True
@@ -100,10 +107,31 @@ class Settings(BaseSettings):
     sarvam_agent_app_id: str = ""
     sarvam_agent_app_version: int = 1
     sarvam_connection_id: str = ""
+    #: The deployed env file names the connection id after what it addresses
+    #: rather than after this attribute. pydantic-settings drops an unknown env
+    #: name silently - which left the id empty and every deployment refusing to
+    #: start - so that spelling is declared here and folded in below.
+    sarvam_phone_connection_id: str = ""
     sarvam_agent_phone_number: str = ""
+
+    # -- Vobiz telephony (dormant carrier adapter) ---------------------------
+    #: Kept for operator diagnostics only. Numbers are rented in the Sarvam
+    #: console and attached to a workspace through ``POST /phone-numbers/attach``,
+    #: so nothing in the product reads this account any more; see
+    #: ``app/integrations/vobiz.py``.
+    vobiz_base_url: str = "https://api.vobiz.ai"
+    vobiz_auth_id: str = ""
+    vobiz_auth_token: str = ""
 
     # -- Telephony ---------------------------------------------------------
     telephony_provider: str = "sarvam"
+    #: Where the number list comes from. Sarvam publishes no server-to-server
+    #: API for connections or rented numbers, so the Sarvam console is the
+    #: system of record and a workspace records what it rents through
+    #: ``POST /phone-numbers/attach``. Only the manual source is implemented;
+    #: the literal turns an attempt to wire a carrier read back in into a
+    #: startup error instead of a silently unsupported mode.
+    telephony_inventory_source: Literal["manual"] = "manual"
     telephony_webhook_secret: str = "change-me"
     telephony_sip_domain: str = ""
     telephony_sip_username: str = ""
@@ -274,10 +302,23 @@ class Settings(BaseSettings):
         """True when every supplied credential/config value is non-empty."""
         return all(bool(value and str(value).strip()) for value in values)
 
+    @model_validator(mode="after")
+    def _fold_connection_id_alias(self) -> "Settings":
+        """Let ``SARVAM_PHONE_CONNECTION_ID`` fill in the connection id.
+
+        The plain name wins whenever it holds a value; the alias only fills a
+        gap, so an empty ``SARVAM_CONNECTION_ID=`` copied from the example file
+        cannot wipe a real id.
+        """
+        if not self.sarvam_connection_id.strip() and self.sarvam_phone_connection_id.strip():
+            self.sarvam_connection_id = self.sarvam_phone_connection_id.strip()
+        return self
+
     def masked(self) -> dict[str, str]:
         """Safe-to-log view of the credential-bearing settings."""
         keys = (
             "sarvam_api_key",
+            "vobiz_auth_token",
             "supabase_service_role_key",
             "whatsapp_access_token",
             "meta_page_access_token",
