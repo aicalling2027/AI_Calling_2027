@@ -54,6 +54,14 @@ services:
         generateValue: true
       - key: TELEPHONY_WEBHOOK_SECRET
         generateValue: true
+
+      # Where the browser's Supabase access tokens can be verified. The project
+      # publishes its signing keys under this base, and /auth/supabase/exchange
+      # needs them; without it the dashboard reports that single sign-on is not
+      # configured. A legacy HS256 project would need SUPABASE_JWT_SECRET here
+      # instead (sync: false); this one signs ES256, so none is required.
+      - key: SUPABASE_URL
+        value: https://awuxrmgphnawphohzdwy.supabase.co
       - key: PUBLIC_BASE_URL
         sync: false
       - key: SARVAM_API_KEY

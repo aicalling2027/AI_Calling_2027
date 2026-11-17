@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import BASE_DIR, settings
 from app.core.constants import DEFAULT_PLANS, TRIAL_CREDITS, Role
 from app.core.logging import get_logger
 from app.core.security import hash_password
@@ -46,6 +46,59 @@ def create_schema() -> None:
         "Database schema ensured (%d tables) on %s.",
         len(Base.metadata.tables),
         settings.database_target,
+    )
+
+
+def report_schema_revision() -> None:
+    """State the migration this database is on, and shout when it is behind.
+
+    ``create_all`` only creates missing *tables*; it never adds a column to one
+    that already exists. A database that predates a revision therefore keeps
+    booting cleanly and only fails later, mid-request, with "column ... does not
+    exist" - which reads like a code bug. Comparing the stamped revision with
+    the head of ``alembic/versions`` turns that into one line at boot.
+    """
+    if settings.is_sqlite:
+        return
+
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        config = Config()
+        config.set_main_option("script_location", str(BASE_DIR / "alembic"))
+        head = ScriptDirectory.from_config(config).get_current_head()
+    except Exception as exc:  # noqa: BLE001 - a diagnostic must never block boot
+        logger.debug("Migration scripts unavailable: %s", exc)
+        return
+
+    if head is None:
+        return
+
+    try:
+        with engine.connect() as connection:
+            applied = connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one_or_none()
+    except Exception as exc:  # noqa: BLE001 - missing table means unstamped schema
+        logger.warning(
+            "No Alembic revision recorded; this build expects %s (%s). "
+            "Run `python -m alembic upgrade head`.",
+            head,
+            exc.__class__.__name__,
+        )
+        return
+
+    if applied == head:
+        logger.info("Schema revision %s (up to date).", applied)
+        return
+
+    logger.warning(
+        "Database schema is at revision %s but this build expects %s. Run "
+        "`python -m alembic upgrade head`: create_all cannot add columns to "
+        "tables that already exist.",
+        applied or "none",
+        head,
     )
 
 
@@ -195,6 +248,7 @@ def init_database() -> None:
     try:
         if settings.db_auto_create_tables or settings.is_sqlite:
             create_schema()
+        report_schema_revision()
         seed_all()
     except OperationalError as exc:
         raise RuntimeError(_connection_hint(exc)) from exc

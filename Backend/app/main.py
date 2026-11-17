@@ -23,6 +23,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1 import api_router
 from app.api.v1.health import router as health_router
+from app.core import supabase_auth
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import configure_logging, get_logger
@@ -99,6 +100,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
         readiness["ready"] if isinstance(readiness["ready"], int) else len(readiness["ready"]),
         readiness["simulated"] if isinstance(readiness["simulated"], int) else len(readiness["simulated"]),
     )
+    _log_signin_configuration()
 
     if not settings.is_production:
         logger.info(
@@ -344,6 +346,28 @@ def _build_openapi(app: FastAPI):
         return schema
 
     return openapi
+
+
+def _log_signin_configuration() -> None:
+    """Say which Supabase token schemes this process is able to verify.
+
+    The dashboard trades the browser's Supabase access token for an API session,
+    and that exchange can only succeed for the project that issued the token.
+    Staying quiet about a missing ``SUPABASE_URL`` makes the first sign-in after
+    a deploy the discovery mechanism, so the answer is stated at boot instead.
+    """
+    iss = supabase_auth.issuer()
+    if iss:
+        logger.info("Sign-in tokens: keys published at %s", iss)
+    elif settings.supabase_jwt_secret.strip():
+        logger.warning(
+            "SUPABASE_URL is not set, so only legacy HS256 sign-in tokens can be verified. "
+            "A project signing with the current ES256 keys will fail at /auth/supabase/exchange."
+        )
+    else:
+        logger.warning(
+            "Sign-in tokens cannot be verified: set SUPABASE_URL to the Supabase project URL."
+        )
 
 
 def _warn_insecure_production_defaults() -> None:
