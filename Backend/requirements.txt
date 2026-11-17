@@ -10,6 +10,10 @@ pydantic>=2.9.0
 pydantic-settings>=2.6.0
 email-validator>=2.2.0
 PyJWT>=2.9.0
+# PyJWT verifies the ES256/RS256 keys a Supabase project publishes through this
+# package. Without it the key set downloads and then cannot be read:
+# "ES256 requires 'cryptography' to be installed."
+cryptography>=44.0.0
 httpx>=0.27.0
 python-multipart>=0.0.12
 alembic>=1.14.0

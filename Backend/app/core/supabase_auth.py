@@ -116,6 +116,17 @@ def verify_access_token(token: str) -> SupabaseIdentity:
             )
         try:
             key = client.get_signing_key_from_jwt(raw).key
+        except jwt.exceptions.MissingCryptographyError as exc:
+            # PyJWT turns the published ES256/RS256 keys into usable keys through
+            # the ``cryptography`` package. When a deployment installs PyJWT alone
+            # the fetch succeeds and the key cannot be built, so this is a missing
+            # dependency on this host, not a bad token - say so instead of raising
+            # a bare PyJWT error that surfaces as a 500.
+            logger.error("supabase_jwks_missing_cryptography")
+            raise ProviderNotConfiguredError(
+                "Single sign-on cannot be verified on this server: the cryptography "
+                "package is not installed, so the published signing keys cannot be read."
+            ) from exc
         except jwt.PyJWKClientError as exc:
             # An unknown key id means the project rotated its keys or the token
             # came from another project; both are worth one fresh sign-in.

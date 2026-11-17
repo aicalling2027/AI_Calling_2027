@@ -10,6 +10,7 @@ from __future__ import annotations
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from importlib.util import find_spec
 from typing import Any
 
 from fastapi import FastAPI, Request, status
@@ -359,6 +360,15 @@ def _log_signin_configuration() -> None:
     iss = supabase_auth.issuer()
     if iss:
         logger.info("Sign-in tokens: keys published at %s", iss)
+        # Those keys are ES256/RS256, which PyJWT can only turn into usable keys
+        # when ``cryptography`` is installed. A deployment that pins PyJWT alone
+        # downloads the key set and then fails on every exchange.
+        if find_spec("cryptography") is None:
+            logger.warning(
+                "The 'cryptography' package is not installed, so the published "
+                "signing keys cannot be read and every /auth/supabase/exchange "
+                "will fail. Install Backend/requirements.txt."
+            )
     elif settings.supabase_jwt_secret.strip():
         logger.warning(
             "SUPABASE_URL is not set, so only legacy HS256 sign-in tokens can be verified. "

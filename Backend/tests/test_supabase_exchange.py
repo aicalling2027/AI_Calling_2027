@@ -11,6 +11,9 @@ organization field to send, and a token from another project is just a string.
 
 from __future__ import annotations
 
+import base64
+import json
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -19,6 +22,7 @@ import jwt
 import pytest
 from sqlalchemy import select
 
+from app.core import supabase_auth
 from app.core.config import settings
 from app.database.models.organization import OrganizationMember, User
 from app.database.session import SessionLocal
@@ -54,6 +58,24 @@ def token(**overrides: Any) -> str:
     claims.update(overrides)
     secret = str(claims.pop("secret", SECRET))
     return jwt.encode(claims, secret, algorithm="HS256")
+
+
+def es256_shaped_token() -> str:
+    """A token whose header asks for ES256; the signature is never reached."""
+
+    def segment(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, separators=(",", ":")).encode()
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    header = {"alg": "ES256", "typ": "JWT", "kid": "key-this-host-cannot-build"}
+    claims = {
+        "sub": "sb-probe",
+        "aud": AUDIENCE,
+        "iss": ISSUER,
+        "exp": int(time.time()) + 300,
+    }
+    # A base64url of "placeholder": well-formed enough that the header is read.
+    return f"{segment(header)}.{segment(claims)}.cGxhY2Vob2xkZXI"
 
 
 def exchange(client: Any, access_token: str) -> Any:
@@ -253,6 +275,29 @@ def test_unconfigured_single_sign_on_is_a_server_error(
 
     response = exchange(client, token())
     assert response.status_code == 503
+    assert response.json()["error"]["code"] == "provider_not_configured"
+
+
+def test_a_missing_cryptography_package_is_a_server_error(
+    client: Any, sso: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PyJWT needs ``cryptography`` to build a key from the published JWKS.
+
+    A deployment that installs PyJWT alone downloads the key set and then fails
+    to read it. That is this host's gap, not the caller's token, so it has to read
+    as an unconfigured provider rather than as an unhandled 500.
+    """
+
+    class KeylessClient:
+        def get_signing_key_from_jwt(self, raw: str) -> Any:
+            raise jwt.exceptions.MissingCryptographyError(
+                "ES256 requires 'cryptography' to be installed."
+            )
+
+    monkeypatch.setattr(supabase_auth, "_jwks", lambda: KeylessClient())
+
+    response = exchange(client, es256_shaped_token())
+    assert response.status_code == 503, response.text
     assert response.json()["error"]["code"] == "provider_not_configured"
 
 
