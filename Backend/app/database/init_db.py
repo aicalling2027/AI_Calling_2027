@@ -6,6 +6,7 @@ Production deployments apply Alembic migrations instead.
 
 from __future__ import annotations
 
+import ast
 from datetime import timedelta
 
 from sqlalchemy import select, text
@@ -49,6 +50,37 @@ def create_schema() -> None:
     )
 
 
+def _head_revision() -> str | None:
+    """The newest revision under ``alembic/versions``, one no revision revises.
+
+    The files are read directly rather than through alembic's script directory:
+    constructing one imports the autogenerate plugins and logs a line per plugin,
+    which at boot is louder than the diagnostics printed beside it. Only the two
+    module-level string literals matter, so an AST walk is enough.
+    """
+    revisions: set[str] = set()
+    parents: set[str] = set()
+
+    for path in sorted((BASE_DIR / "alembic" / "versions").glob("*.py")):
+        assigned: dict[str, object] = {}
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                if isinstance(node.value, ast.Constant):
+                    assigned[node.target.id] = node.value.value
+
+        revision = assigned.get("revision")
+        if not isinstance(revision, str):
+            continue
+        revisions.add(revision)
+
+        parent = assigned.get("down_revision")
+        if isinstance(parent, str):
+            parents.add(parent)
+
+    heads = revisions - parents
+    return heads.pop() if len(heads) == 1 else None
+
+
 def report_schema_revision() -> None:
     """State the migration this database is on, and shout when it is behind.
 
@@ -62,12 +94,7 @@ def report_schema_revision() -> None:
         return
 
     try:
-        from alembic.config import Config
-        from alembic.script import ScriptDirectory
-
-        config = Config()
-        config.set_main_option("script_location", str(BASE_DIR / "alembic"))
-        head = ScriptDirectory.from_config(config).get_current_head()
+        head = _head_revision()
     except Exception as exc:  # noqa: BLE001 - a diagnostic must never block boot
         logger.debug("Migration scripts unavailable: %s", exc)
         return
